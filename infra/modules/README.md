@@ -5,6 +5,7 @@ Reusable Bicep modules for:
 - Container app environments
 - App Insights
 - Key Vault
+- Self-hosted GitHub runners on ACA Jobs
 - Storage accounts
 - Azure SQL
 - Cosmos DB
