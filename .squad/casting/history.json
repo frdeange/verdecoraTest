@@ -1,0 +1,11 @@
+{
+  "assignments": [
+    {
+      "assignment_id": "alien-albaranes-001",
+      "universe": "Alien",
+      "created_at": "2026-05-03T19:19:00Z",
+      "agents": ["Ripley", "Bishop", "Hicks", "Dallas", "Parker", "Lambert", "Vasquez", "Burke", "Hudson", "Ash", "Newt", "Call"],
+      "project": "Sistema Inteligente de Gestión de Albaranes"
+    }
+  ]
+}

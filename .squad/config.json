@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "defaultModel": "claude-sonnet-4.5",
+  "agentModelOverrides": {
+    "ripley": "claude-opus-4.7",
+    "bishop": "claude-sonnet-4.5",
+    "hicks": "claude-haiku-4.5",
+    "dallas": "gpt-5.2-codex",
+    "parker": "claude-sonnet-4.5",
+    "lambert": "claude-sonnet-4.5",
+    "vasquez": "claude-sonnet-4.5",
+    "burke": "claude-sonnet-4.5",
+    "hudson": "claude-haiku-4.5",
+    "ash": "claude-opus-4.6-1m",
+    "newt": "claude-sonnet-4.5",
+    "call": "claude-sonnet-4.5"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "universes": ["Alien"],
+  "max_capacity_per_universe": 25,
+  "allow_overflow": true,
+  "overflow_strategy": "diegetic_expansion"
+}

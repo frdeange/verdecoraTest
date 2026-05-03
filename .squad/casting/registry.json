@@ -1,0 +1,16 @@
+{
+  "entries": [
+    { "persistent_name": "Ripley", "universe": "Alien", "role": "Lead Architect", "created_at": "2026-05-03T19:19:00Z", "legacy_named": false, "status": "active" },
+    { "persistent_name": "Bishop", "universe": "Alien", "role": "AI Agent Developer", "created_at": "2026-05-03T19:19:00Z", "legacy_named": false, "status": "active" },
+    { "persistent_name": "Hicks", "universe": "Alien", "role": "DevOps Lead", "created_at": "2026-05-03T19:19:00Z", "legacy_named": false, "status": "active" },
+    { "persistent_name": "Dallas", "universe": "Alien", "role": "Azure Cloud Engineer", "created_at": "2026-05-03T19:19:00Z", "legacy_named": false, "status": "active" },
+    { "persistent_name": "Parker", "universe": "Alien", "role": "Backend Developer", "created_at": "2026-05-03T19:19:00Z", "legacy_named": false, "status": "active" },
+    { "persistent_name": "Lambert", "universe": "Alien", "role": "Security Engineer", "created_at": "2026-05-03T19:19:00Z", "legacy_named": false, "status": "active" },
+    { "persistent_name": "Vasquez", "universe": "Alien", "role": "QA Engineer", "created_at": "2026-05-03T19:19:00Z", "legacy_named": false, "status": "active" },
+    { "persistent_name": "Burke", "universe": "Alien", "role": "BC/Dynamics Specialist", "created_at": "2026-05-03T19:19:00Z", "legacy_named": false, "status": "active" },
+    { "persistent_name": "Hudson", "universe": "Alien", "role": "Technical Writer", "created_at": "2026-05-03T19:19:00Z", "legacy_named": false, "status": "active" },
+    { "persistent_name": "Ash", "universe": "Alien", "role": "MAF Specialist", "created_at": "2026-05-03T19:19:00Z", "legacy_named": false, "status": "active" },
+    { "persistent_name": "Newt", "universe": "Alien", "role": "MCP Analyst", "created_at": "2026-05-03T19:19:00Z", "legacy_named": false, "status": "active" },
+    { "persistent_name": "Call", "universe": "Alien", "role": "Foundry Specialist", "created_at": "2026-05-03T19:19:00Z", "legacy_named": false, "status": "active" }
+  ]
+}
