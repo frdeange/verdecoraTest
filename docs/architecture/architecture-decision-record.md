@@ -72,7 +72,7 @@ Verdecora's in‑store capture app already exists and produces a PDF of each alb
 │  │   │   │   ┌──────────── HandoffBuilder ──────────────────────┐  │    │      │  │
 │  │   │   │   │                                                  │  │    │      │  │
 │  │   │   │   │   [A2 Triage]   GPT-5-mini structured output    │  │    │      │  │
-│  │   │   │   │     ├─ tool: route_decision()                   │  │    │      │  │
+│  │   │   │   │     ├─ strict JSON: {route, reasoning}          │  │    │      │  │
 │  │   │   │   │     └─ MCP: cosmos-mcp (read supplier rep)      │  │    │      │  │
 │  │   │   │   │              │                                  │  │    │      │  │
 │  │   │   │   │     ┌────────┼─────────┬─────────────┐          │  │    │      │  │
@@ -183,7 +183,7 @@ Verdecora's in‑store capture app already exists and produces a PDF of each alb
 | 8 | **`hitl-webform`** ACA app | Python 3.12 (FastAPI) | Receives ACS-email button-click / form submission, persists decision, publishes `hitl.response.{aprobado_hitl|rechazado|modificado}`. | Internal ingress + Front-Door / APIM in front for human reachability over corporate identity. |
 | 9 | Azure OpenAI (via Foundry project) | `foundry-albaranes-prd` (private networking) | **Model endpoints + telemetry only.** Two deployments: `gpt-5.1` (multimodal) and `gpt-5-mini`. | Foundry does NOT host agents in this design. Foundry traces still capture model-call telemetry. |
 | 10 | **A1 — Extractor agent** | MAF `ChatAgent` in `agentic-orchestrator`, GPT‑5.1 | PDF → strict JSON | Tools: `content-understanding-mcp`, `document-intelligence` (fallback), Content Safety pre-scan. Strict JSON schema; no parallel tool calls. |
-| 11 | **A2 — Triage agent** | MAF `ChatAgent` in `agentic-orchestrator`, **GPT‑5‑mini + structured output** | Routes albarán: fast-track / normal / direct-HITL / hard-reject | Strict JSON schema: `{route, reasoning}`. Rules are provided as system-prompt context; `cosmos-mcp` supplies supplier reputation. Routing policy versioned in `infra/policies/triage/`. |
+| 11 | **A2 — Triage agent** | MAF `ChatAgent` in `agentic-orchestrator`, **GPT‑5‑mini + structured output (strict JSON schema: `{route, reasoning}`)** | Routes albarán: fast-track / normal / direct-HITL / hard-reject | Rules are provided as system-prompt context; `cosmos-mcp` supplies supplier reputation. Routing policy versioned in `infra/policies/triage/`. |
 | 12 | **A3 — Coherence agent** | MAF `ChatAgent` in `agentic-orchestrator`, GPT‑5‑mini | Sanity gate: PO exists, supplier valid, dates plausible, totals in envelope | Tools: `bc-mcp-read`, `cosmos-mcp` (read). Output: `{coherence_ok, reasons[]}`. Failures route to A6 with ops CC, NOT to HITL approval. |
 | 13 | **A4 — Validator agent** | MAF `ChatAgent` in `agentic-orchestrator`, GPT‑5‑mini | Line-level Δ vs PO at 2% tolerance | Tools: `bc-mcp-read`, `cosmos-mcp` (read). Output: `{decision: coincide \| discrepancia, deltas[]}`. |
 | 14 | **A5 — Inventory agent** | MAF `ChatAgent` in `agentic-orchestrator`, GPT‑5‑mini | Posts Purchase Receipt to BC | Tools: `bc-mcp-write` (Post Purchase Receipt **only**, `@tool(approval_mode="always_require")` enforced via MAF + Cosmos approval table), `cosmos-mcp` (write). |
@@ -485,8 +485,10 @@ ACA Job, cron weekly Monday. Aggregates supplier OCR confidence trends, common d
 | Agent | Model | Why | Cost notes |
 |---|---|---|---|
 | Agent 1 (Extraction) | **GPT‑5.1** (multimodal, flagship) | Heterogeneous albaranes, image+text reasoning, strict JSON schema fidelity | Most expensive — minimize prompt size, cache system prompt, use prompt caching where supported |
-| Agent 2 (Validation) | **GPT‑5‑mini** | Pure structured comparison + reasoning over BC PO vs extraction; flagship is overkill | ~5–10× cheaper than 5.1; should dominate token volume and stay cheap |
-| Agent 3 (Inventory) | **GPT‑5‑mini** | Largely deterministic mapping to BC entities; LLM is convenience for natural‑language tool selection | Could degrade to rule‑based later if cost/risk warrant |
+| Agent 2 (Triage) | **GPT‑5‑mini** | Lightweight routing with strict JSON structured output over policy context; handles edge cases without hard-coding every branch | Cheap enough to run on every albarán; structured output keeps downstream routing deterministic |
+| Agent 3 (Coherence) | **GPT‑5‑mini** | Sanity checks against BC master data and extracted document context; flagship is overkill | ~5–10× cheaper than 5.1; reasoning depth is sufficient for this gate |
+| Agent 4 (Validator) | **GPT‑5‑mini** | Pure structured comparison + reasoning over BC PO vs extraction | Should dominate token volume and stay cheap |
+| Agent 5 (Inventory) | **GPT‑5‑mini** | Largely deterministic mapping to BC entities; LLM is convenience for natural-language tool selection | Could degrade to rule-based later if cost/risk warrant |
 
 **Operational rules:**
 - **Pin model versions** in Bicep (`gpt-5.1-2026-04-XX`, `gpt-5-mini-2026-04-XX`); never deploy `latest`.

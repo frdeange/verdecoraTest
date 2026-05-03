@@ -30,3 +30,14 @@ gh label create "squad" --color "0078d4" --description "Untriaged squad work" --
 - Repository accessed with pull-only permissions; write operations require admin/maintain role
 - Directory structure follows squad best practices: agents, services, models, config separation
 - CI/CD pipeline supports Python 3.12+ with coverage tracking
+
+### 2026-05-03: Full project backlog authored (50 issues, Sprints 0-4 + Post-MVP)
+- Authored complete idempotent script `.squad/scripts/create-backlog.ps1` with 50 `gh issue create` calls covering Sprint 0 (9), Sprint 1 (11), Sprint 2 (9), Sprint 3 (9), Sprint 4 (10), Post-MVP (2).
+- Authored `.squad/scripts/create-labels.ps1` with full taxonomy: 11 squad labels, 4 priority, 5 phase, 9 type labels.
+- **Blocker hit:** Copilot CLI auth is EMU account `frdeange_microsoft` with pull-only on `frdeange/verdecoraTest`. GitHub responded: `Unauthorized: As an Enterprise Managed User, you cannot access this content (createIssue)`. Issue creation must be executed by Kiko (or any user with write access).
+- Spec + run instructions captured in `.squad/decisions/inbox/hicks-backlog-created.md`.
+- Once script runs, `.squad/decisions/inbox/hicks-issue-map.json` will hold the `key -> #issue` mapping for dependency wiring in subsequent automation.
+
+## Learnings
+- EMU GitHub accounts cannot write to non-enterprise personal repos even with `repo` token scope; must hand off to a non-EMU user for create operations.
+- Squad workflow benefits from a deterministic `key -> issue#` map persisted to disk so dependent agents can reference issues without re-querying GitHub.

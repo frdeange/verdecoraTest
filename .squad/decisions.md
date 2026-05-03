@@ -418,6 +418,33 @@
 - **Bishop:** No change — model selection holds (GPT-5.1 for A1 only; GPT-5-mini for everything else, including the new agents).
 - **Lambert:** Pre-flight on triage rules (O-11) and per-tienda approver routing by Sprint 1.
 
+### 2026-05-04: Project Backlog Created (Spec + Script)
+**From:** Hicks (DevOps Lead)
+**Date:** 2026-05-04
+**Requested by:** Kiko de Angel
+**Status:** COMPLETED (execution blocked by permissions)
+
+**What:** Created comprehensive 50-issue project backlog organized into 5 sprints + post-MVP. Full backlog covers:
+- **Sprint 0 (Foundation & Validation):** 9 issues (MAF PoC, BC MCP validation, ACS Email PoC, VNet + runners, Bicep base, Identity, Content Understanding benchmark, CI/CD, Test framework)
+- **Sprint 1 (Core Agents A1-A3):** 11 issues (3 agents + 3 MCP servers + 3 test suites + Bicep Azure OpenAI + docs)
+- **Sprint 2 (Validation + Inventory A4-A5):** 9 issues (2 agents + bc-mcp integration + orchestrator + Flow 0 + tests + E2E + Bicep ACA + docs)
+- **Sprint 3 (Communication A6 + HITL):** 9 issues (1 agent + acs-mcp + webform + Service Bus timers + HITL tests + E2E HITL + Bicep ACS + HITL security + user manual)
+- **Sprint 4 (Security, Observability, Hardening):** 10 issues (private endpoints, NAT/firewall, prompt injection defense, PII redaction, observability dashboards, alerting, security tests, load tests, runbook, config guide)
+- **Post-MVP:** 2 issues (A7 Reconciliation, A8 Learning)
+
+**Deliverables Created:**
+- `.squad/scripts/create-labels.ps1` — Upserts full label taxonomy (squad, priority, phase, type)
+- `.squad/scripts/create-backlog.ps1` — Idempotent script to create all 50 issues with proper dependencies and labels
+- Full issue descriptions with Acceptance Criteria, Agent assignment, and cross-issue dependency tracking
+
+**Why:** Kiko required a complete, upfront project backlog for team coordination and DevOps cycle compliance (Issue → Branch → Dev → Test → Commit → Push → PR → Review → Merge → Close).
+
+**Execution Blocker:** EMU account `frdeange_microsoft` has pull-only access on `frdeange/verdecoraTest`. GitHub GraphQL API rejects `createIssue` with "Cannot access this content". **Script is ready; repo owner (Kiko) must execute once with personal account:**
+```powershell
+pwsh -File C:\repos\verdecoraTest\.squad\scripts\create-backlog.ps1
+```
+After execution, script produces `.squad/decisions/inbox/hicks-issue-map.json` (key → issue# mapping) for downstream automation.
+
 ## Governance
 
 - All meaningful changes require team consensus
