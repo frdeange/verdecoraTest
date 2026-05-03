@@ -1,0 +1,56 @@
+name: Bicep Validation
+
+on:
+  push:
+    paths:
+      - 'infra/**/*.bicep'
+      - 'infra/**/*.bicepparam'
+      - '.github/workflows/bicep-validate.yml'
+    branches: [master, develop]
+  pull_request:
+    paths:
+      - 'infra/**/*.bicep'
+      - 'infra/**/*.bicepparam'
+      - '.github/workflows/bicep-validate.yml'
+    branches: [master, develop]
+
+jobs:
+  validate-bicep:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          az version
+      
+      - name: Validate Bicep files
+        run: |
+          echo "Validating Bicep files..."
+          for file in infra/**/*.bicep; do
+            if [ -f "$file" ]; then
+              echo "Validating $file..."
+              az bicep build --file "$file"
+              if [ $? -ne 0 ]; then
+                echo "❌ Validation failed for $file"
+                exit 1
+              fi
+            fi
+          done
+          echo "✅ All Bicep files validated successfully"
+      
+      - name: Validate parameter files
+        run: |
+          echo "Validating Bicep parameter files..."
+          for file in infra/**/*.bicepparam; do
+            if [ -f "$file" ]; then
+              echo "Checking $file..."
+              # Bicep parameter files are JSON-like, basic validation
+              if ! grep -q '"version"' "$file"; then
+                echo "⚠️  Warning: $file may be missing bicep parameter schema"
+              fi
+            fi
+          done
+          echo "✅ Parameter file check complete"
