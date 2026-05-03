@@ -13,6 +13,7 @@
     "hudson": "claude-haiku-4.5",
     "ash": "claude-opus-4.6-1m",
     "newt": "claude-sonnet-4.5",
-    "call": "claude-sonnet-4.5"
+    "call": "claude-sonnet-4.5",
+    "brett": "claude-sonnet-4.5"
   }
 }

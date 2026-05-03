@@ -24,6 +24,7 @@
 | Ash | MAF Specialist | `.squad/agents/ash/charter.md` | 🔬 Active |
 | Newt | MCP Analyst | `.squad/agents/newt/charter.md` | 🔌 Active |
 | Call | Foundry Specialist | `.squad/agents/call/charter.md` | 🧠 Active |
+| Brett | Private Network & CI/CD Specialist | `.squad/agents/brett/charter.md` | 🔐 Active |
 | Scribe | Scribe | `.squad/agents/scribe/charter.md` | 📋 Active |
 | Ralph | Work Monitor | `.squad/agents/ralph/charter.md` | 🔄 Active |
 

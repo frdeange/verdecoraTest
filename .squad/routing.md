@@ -18,6 +18,7 @@ How to decide who handles what.
 | Agent Framework research | Ash | MAF v1.0 capabilities, patterns, SDK exploration, best practices |
 | MCP strategy | Newt | MCP analysis, available MCPs, integration patterns, MCP server design |
 | Azure AI Foundry | Call | Foundry Agent Service, persistent agents, model deployment, Foundry config |
+| Private networking & CI/CD | Brett | VNet, Private Endpoints, self-hosted runners, DNS, NAT Gateway, bootstrap |
 | Code review | Ripley | Review PRs, architectural quality, approve/reject |
 | Scope & priorities | Ripley | What to build next, trade-offs, decisions |
 | Session logging | Scribe | Automatic — never needs routing |
@@ -40,6 +41,7 @@ How to decide who handles what.
 | `squad:ash` | MAF research tasks | Ash |
 | `squad:newt` | MCP analysis tasks | Newt |
 | `squad:call` | Foundry configuration tasks | Call |
+| `squad:brett` | Private networking tasks | Brett |
 
 ### How Issue Assignment Works
 
