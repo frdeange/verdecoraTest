@@ -15,3 +15,5 @@
 - WorkIQ is useful for M365 information retrieval but not for Teams Adaptive Cards, `Action.Submit`, or HITL approval orchestration.
 - Email HITL is feasible through Outlook Actionable Messages or Power Automate, but WorkIQ alone is still not the action runtime; for this project, the best email MVP is Power Automate approval plus a small web form for `Modify`.
 - ACS Email is a viable alternative HITL channel: the Azure MCP surface can send HTML emails directly (`communication_email_send` with `is-html`), Python SDK support is solid, pricing is very low, and the main tradeoff is building our own reminder/timeout workflow plus a secure human-facing web form.
+- Built the ACS Email HITL PoC in `src/poc/acs_email_poc` with branded initial/reminder/escalation HTML templates, a Python `EmailClient.begin_send(...)` sender wrapper, and a FastAPI web form stub for Accept / Modify / Reject.
+- Validated the PoC by compiling `src`, importing the package, and smoke-testing the FastAPI routes with `TestClient`; the repository still has no unit tests (`pytest tests/unit -v` collects 0 items).
