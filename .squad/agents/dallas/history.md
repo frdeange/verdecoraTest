@@ -10,3 +10,7 @@
 ## Learnings
 
 _No learnings recorded yet._
+
+## 2026-05-04
+- Created Sprint 0 Bicep foundation modules (resource group, network, Service Bus, Cosmos DB, Storage, Key Vault, monitoring, and main orchestrator).
+- Added dev/prod parameter files aligned to Sweden Central.
