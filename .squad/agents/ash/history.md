@@ -19,3 +19,14 @@
 - **Observability:** `configure_otel_providers()` or `configure_azure_monitor()` + `enable_instrumentation()`
 - **PRD pseudocode issues found:** Wrong import paths, non-existent classes (`McpToolProvider`, `HandoffWorkflow`), incorrect `FoundryChatClient` constructor. Full corrections documented in `prerequisites/analysis/ash-maf-research.md`
 - **Output:** `prerequisites/analysis/ash-maf-research.md`
+
+### 2026-05-04: MAF Multi-Agent Orchestration Patterns Research
+- **6 orchestration patterns documented:** Sequential, Handoff, Concurrent, GroupChat, Magentic (Supervisor), WorkflowBuilder (custom graph)
+- **All patterns are in-process** — cross-container communication uses A2A protocol (`agent-framework-a2a`)
+- **WorkflowBuilder + CosmosCheckpointStorage** = best fit for 24h HITL waits (checkpoint → scale-to-zero → resume)
+- **MagenticBuilder** = supervisor pattern with LLM-managed dynamic routing, supports plan review and checkpointing
+- **A2A protocol** = standard for cross-process agent communication (HTTP/JSON-RPC, Agent Cards for discovery)
+- **AgentSession serialization** (`to_dict()`/`from_dict()`) enables manual state persistence to any store
+- **Service Bus** not native to MAF but trivially integrable as agent tools
+- **Recommendation:** Use WorkflowBuilder with conditional edges for our deterministic business process; MagenticBuilder as alternative for dynamic edge cases
+- **Output:** `prerequisites/analysis/ash-maf-multiagent-patterns.md`

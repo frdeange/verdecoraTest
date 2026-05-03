@@ -43,10 +43,10 @@
 - Region: Sweden Central (GDPR requirement).
 **Why:** Security and compliance requirement for GDPR.
 
-### 2026-05-03: HITL Channel — Email via WorkIQ
-**By:** Kiko de Angel (updated from PRD)
-**What:** Use EMAIL via WorkIQ instead of Teams Adaptive Cards or Power Automate Approvals. WorkIQ sends emails with accept/reject/modify buttons. NO Teams bot.
-**Why:** User preference simplifies infrastructure and avoids tenant policy risk on custom bots.
+### 2026-05-03T22:45: HITL Channel — ACS Email confirmed
+**By:** Kiko de Angel (via Copilot)
+**What:** HITL uses Azure Communication Services Email to send HTML emails with action buttons linking to a Container App web form. Accept/Reject/Modify flow handled by the web form + Cosmos DB + Durable Functions timers (24h reminder, 48h escalation). No Teams bot, no Power Automate, no Actionable Messages.
+**Why:** Full Python control, Private VNet compatible, no external dependencies or licenses.
 
 ### 2026-05-03: PRD Pseudocode Corrections for MAF v1.0
 **By:** Ash (MAF Specialist)
@@ -86,17 +86,39 @@
 **Why:** Keeps architecture aligned with standard BC behavior instead of forcing every scenario through Warehouse Receipt or Item Journal. Avoids overestimating what native BC MCP exposes.
 **Follow-up:** Confirm location setup. Decide whether receipt-only required or if custom AL endpoints allowed.
 
+### 2026-05-03T23:07: Hosting model & no Durable Functions
+**By:** Kiko de Angel (via Copilot)
+**What:**
+1. ALL agents (1, 2, 3) run in ACA with MAF SDK. No agents in Foundry.
+2. MAF handles orchestration including HandOff between Agent 2 → Agent 3.
+3. NO Durable Functions. Everything in ACA.
+4. Azure AI Foundry = model endpoints + telemetry, NOT agent hosting.
+5. MAF CAN orchestrate Foundry-hosted agents (non-HandOff), but since we need HandOff for Agent 2→3, all agents run in MAF's ACA runtime.
+**Why:** Simplicity — single runtime (ACA), single orchestration framework (MAF), no split between hosting platforms. Kiko's directive.
+
+### 2026-05-03T23:10: No Durable Functions, all ACA + Service Bus
+**By:** Kiko de Angel (via Copilot)
+**What:** No Durable Functions in the project. Everything runs on ACA + Service Bus. Timers for HITL (24h/48h) use Service Bus scheduled messages. State lives in Cosmos DB. This maximizes homogeneity: one compute platform, one deployment model, one VNet integration pattern.
+**Why:** Kiko wants a homogeneous environment for simplified operations.
+
+### 2026-05-03T23:31: A2A descartado, agentes in-process en MAF
+**By:** Kiko de Angel (via Copilot)
+**What:**
+1. A2A is NOT an option — MAF Python agents cannot be exposed as A2A directly (not yet supported).
+2. All agents run in-process in the same MAF runtime on ACA. Simple, no distributed agents.
+3. No over-engineering. WorkflowBuilder orchestrates agents within the same process.
+4. Future-proof: if scaling demands it, convert to hosted-agents. For now, keep them in the MAF runtime.
+**Why:** Simplicity. A2A is not mature enough in MAF Python. In-process agents work fine for our volume (~750/day).
+
 ### 2026-05-03: Foundry Agent Service as Primary Platform
 **By:** Call (Foundry Architect)
 **What:** Treat **Azure AI Foundry Agent Service** as primary platform for agent lifecycle, identity, tracing, evaluation, publishing.
-- **Foundry:** prompt agents first; hosted agents only when custom runtime logic required.
-- **Container Apps/Functions:** Event Grid and Change Feed adapters, webhook processors, private MCP servers.
-- Prefer **prompt agents** where possible for most stable production path.
-- If adopting **hosted agents**, do so knowingly under preview constraints.
+- **Foundry:** model endpoints + telemetry only.
+- **Container Apps:** MAF SDK agents (all 6 at MVP), Event Grid and Change Feed adapters, webhook processors, private MCP servers.
+- Prefer **in-process MAF agents** (WorkflowBuilder) for known deterministic pipelines.
 - Require **Application Insights** from day one.
 - Require **`allowed_tools`** and approval policies for MCP integrations.
-**Why:** Service is GA at platform level. Official docs mark hosted agents/workflow agents/non-prompt tracing as preview. Container Apps is better place for event adapters and webhook receivers.
-**Follow-up:** Decide whether project needs hosted agent runtime or whether prompt agents + remote MCP tools cover MVP.
+**Why:** Service is GA at platform level for model endpoints. Container Apps + MAF is most stable production path for orchestrated agents at current MAF SDK maturity. Splits concern cleanly: Foundry = model+telemetry, ACA = compute+orchestration.
 
 ### 2026-05-03: DevOps Setup and Infrastructure
 **By:** Hicks (DevOps Lead)
@@ -266,6 +288,129 @@
 - Is explicit GitHub public egress dependency acceptable?
 - Docker builds: second runner pool or ACR Tasks?
 - Service Bus: Premium tier approved for private endpoints?
+
+### 2026-05-04: MAF Multi-Agent Orchestration Pattern Selection
+**From:** Ash (MAF Specialist)
+**Date:** 2026-05-04
+**Priority:** HIGH — blocks agent architecture design
+**Status:** PROPOSED
+
+**Context:** Kiko asked us to rethink agent design for a potentially 5-8 agent pipeline. Researched all MAF v1.0 orchestration patterns.
+
+**Decision:** Use **WorkflowBuilder** + **CosmosCheckpointStorage** as primary pattern.
+
+**Rationale:**
+- Our albaran pipeline is a well-defined business process with known branching (valid → post, discrepancy → escalate).
+- `WorkflowBuilder` supports conditional edges (`add_switch_case_edge_group`) without LLM overhead.
+- Native checkpoint/resume via `CosmosCheckpointStorage` handles 24h HITL waits.
+- ACA can scale to zero during HITL waits (no idle compute).
+- Lowest token cost (routing is deterministic, not LLM-decided).
+
+**Hosting:** FastAPI in ACA (single container to start).
+- All agents in one ACA container with FastAPI endpoints.
+- Event Grid webhooks for blob-created and HITL-response triggers.
+- Future: split into per-agent ACA containers with A2A if scaling requires it.
+
+**Alternative:** `MagenticBuilder` (supervisor) — consider if requirements evolve and routing becomes dynamic/unpredictable (higher token cost but more adaptive).
+
+**Key findings:**
+1. HITL without Durable Functions: WorkflowBuilder checkpoints to Cosmos → ACA scales to zero → webhook resumes from checkpoint. More efficient than Durable Functions for 24h email waits.
+2. A2A protocol: Standard way for agents in separate ACA containers to communicate (uses HTTP/JSON-RPC + Agent Cards). Interoperable with Google ADK, CrewAI, LangGraph.
+3. Service Bus integration: Not built into MAF but trivially added as agent tools. Better suited for load-leveling than agent-to-agent communication.
+
+**Full analysis:** See `prerequisites/analysis/ash-maf-multiagent-patterns.md`
+
+### 2026-05-04: ACS Email for HITL — Formal Feasibility
+**From:** Newt (MCP Analyst)
+**Date:** 2026-05-04
+**Status:** PROPOSED
+
+**Proposed Decision:** Adopt **Azure Communication Services Email + Container App web form** as the preferred custom HITL path if the team values full Python control and wants to avoid Power Automate.
+
+**Why:**
+- ACS Email can send rich HTML email directly from Python.
+- Azure MCP already exposes `communication_email_send` with HTML support.
+- Custom sender domains are supported.
+- Email service cost is low.
+- `Modify` is cleaner in a normal web form than in Outlook cards/approval flows.
+
+**Required caveats:**
+- Reminders, timeout, escalation, and approval SLA logic must be implemented in our orchestrator layer.
+- Approval links/web UI still need a secure reachable edge; this is not a purely private-only human flow unless users are on VPN/internal access.
+- ACS network hardening exists, but the documented Network Security Perimeter email setup is preview.
+- Tokens, auth, replay protection, and audit logging are mandatory.
+
+**Recommendation:**
+- **Preferred custom path:** ACS Email + web form + orchestrator timers.
+- **Fallback path:** Power Automate approval email + backend callback + web form for Modify.
+
+### 2026-05-04: Agentic Redesign 3→6 Agents + ADR v3
+**From:** Ripley (Lead Architect)
+**Date:** 2026-05-04
+**Trigger:** Kiko's challenge — "¿sólo 3 agentes? Pensemos de forma transgresora."
+**Status:** PROPOSED — pending team review
+
+**Files:**
+- `prerequisites/analysis/ripley-agentic-redesign.md` (new — 3→6 agent justification)
+- `docs/architecture/architecture-decision-record.md` (rewritten as v3 — all Durable Functions removed, all-ACA + Service Bus, 6-agent roster, ACS Email HITL)
+
+**Decisions to record:**
+
+**D-R-019 (rewritten) — Hosting model: 100% ACA + MAF SDK in-process**
+- **What:** All AI agents (A1–A6 at MVP, A7–A8 deferred) run inside Azure Container Apps using the MAF SDK in-process. Foundry is the Azure OpenAI model + telemetry endpoint, nothing more. **No Foundry-hosted agents. No Durable Functions.**
+- **Why:** Kiko's directive (2026-05-03 23:07/23:10). Single compute plane, single orchestration framework, single VNet integration story. MAF HandOff (required for A2→A5 routing) is a MAF-SDK in-process concern.
+
+**D-R-003 (rewritten) — Eventing & state without Durable Functions**
+- **What:** Service Bus topic `albaran-events` for state-change events; Cosmos for state; **Service Bus scheduled messages** for HITL 24h/48h/72h timers (cancelled when `hitl.response.*` arrives early via `CancelScheduledMessageAsync`).
+- **Why:** Same Kiko directive. Replaces every Durable Functions primitive with simpler ACA + Service Bus + Cosmos building blocks.
+
+**D-R-020 — Agent roster: 6 at MVP + 2 deferred (rejecting PRD's 3)**
+- **What:** A1 Extractor (GPT-5.1), A2 Triage (rule-based MVP), A3 Coherence (GPT-5-mini), A4 Validator (GPT-5-mini), A5 Inventory (GPT-5-mini, `require_approval=always` on Post Purchase Receipt), A6 Communication (GPT-5-mini, all outbound). Deferred: A7 Reconciliation (MVP+1), A8 Learning (MVP+2).
+- **Why:** The PRD's 3-agent design bundled 5 distinct concerns (routing, coherence, communication, reconciliation, learning) into Agent 2 + the orchestrator. A truly agentic system separates them. Cost impact ≈ €0; complexity +25%; agentic value +200%.
+
+**D-R-021 — Triage Agent (A2) is rule-based at MVP**
+- **What:** A2 is a MAF agent with a deterministic `route_decision()` tool plus Cosmos-backed feature flags. LLM upgrade optional at MVP+1 once A8 produces supplier-reputation data.
+- **Why:** Routing-policy explainability outweighs sophistication at launch.
+
+**D-R-022 — Coherence (A3) is split from Validator (A4)**
+- **What:** A3 = world sanity (PO exists, supplier valid, dates/totals plausible). A4 = line-level Δ vs PO at 2%. Different MCP scopes, different failure routing (A3 fails → ops CC; A4 fails → HITL approval).
+- **Why:** Different prompts, different failure modes, different escalation paths. Bundling them was wrong.
+
+**D-R-023 — Communication (A6) is event-driven, not a HandOff target**
+- **What:** A6 runs in a separate ACA app (`communication-agent`), subscribes to `albaran.discrepancia / .baja_confianza / .error_validacion / .escalado / .error_inventario`. On `hitl.response.aprobado_hitl` it publishes back to the bus and the orchestrator's "resume-at-A5" subscription picks up A5 only.
+- **Why:** HandOff is synchronous/in-memory. HITL is hours-to-days asynchronous. Modeling A6 as a HandOff target would force keeping workflow state in memory for 72h.
+
+**D-R-024 — HITL timers via Service Bus scheduled messages**
+- **What:** 24h reminder, 48h escalation, 72h hard-cap implemented as `ScheduleMessageAsync` calls; cancelled via `CancelScheduledMessageAsync` when `hitl.response.*` arrives early.
+- **Why:** Replaces Durable Functions timers. Native to Service Bus; survives restarts; cancellable.
+
+**D-R-025 — A7 Reconciliation deferred to MVP+1; A8 Learning deferred to MVP+2**
+- **What:** Both are valuable but neither is on the critical path for "PDF in, BC posted receipt out." A8 needs ≥4 weeks of data to be useful.
+- **Why:** Ship MVP honest. A8 closes the agentic loop (writes `supplier_reputation` Cosmos doc → A2 reads it for smarter routing).
+
+**Open items:**
+
+| # | Item | Owner |
+|---|---|---|
+| O-11 | Triage rule-set v1 (concrete thresholds for fast-track / normal / direct-HITL / hard-reject) | Ripley + **Lambert** (config owner) |
+| O-12 | Email-template inventory (HITL initial, 24h reminder, 48h escalation, 72h ops alert, ops digest, future supplier reject) | **Newt + Lambert** |
+| O-13 | Confirm Service Bus Standard tier supports 72h scheduled-message TTL | **Brett** |
+| O-14 | MAF HandOff `require_per_service_call_history_persistence=True` — confirm in-memory store is sufficient for single workflow run | **Ash** |
+| O-15 | A7 Reconciliation cron — KEDA cron scaler vs ACA Jobs `scheduleTriggerConfig` | **Brett** (MVP+1 planning) |
+| O-16 | ACS Email private-link / Network Security Perimeter (preview) — decide edge for `hitl-webform` | **Brett + Newt** |
+
+**Items closed:**
+- O-1 reframed: "WorkIQ feasibility" → "ACS Email feasibility" (Newt still owns).
+- O-5 reframed: "Foundry prompt-agent GA in Sweden Central" → "Azure OpenAI / Foundry private-net GA" (much lower risk).
+- O-10 closed: Power Automate fallback no longer needed (ACS Email is the locked channel).
+
+**Asks of the team:**
+- **Ash:** PoC the in-process MAF orchestration (A1→A2→A3→A4→A5 stubs in a single ACA container) before Sprint 1 lock. Confirm O-14.
+- **Brett:** Update networking topology — drop `snet-functions`, add `snet-aca-jobs`. Confirm O-13, O-15, O-16. Plan ACS Email private-link posture.
+- **Newt:** Pivot ACS Email analysis to formal feasibility report covering all 6 outbound types (O-12). Validate `acs-email-mcp` server design.
+- **Burke:** No change — BC MCP scope (read + scoped write Post Purchase Receipt) holds.
+- **Bishop:** No change — model selection holds (GPT-5.1 for A1 only; GPT-5-mini for everything else, including the new agents).
+- **Lambert:** Pre-flight on triage rules (O-11) and per-tienda approver routing by Sprint 1.
 
 ## Governance
 

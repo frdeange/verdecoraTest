@@ -14,3 +14,4 @@
 - In this environment, native Azure MCP covers Blob Storage and Cosmos DB only partially for the PRD: Blob coverage is metadata-oriented and Cosmos coverage is query-oriented; neither fully proves the PRD's write/download path.
 - WorkIQ is useful for M365 information retrieval but not for Teams Adaptive Cards, `Action.Submit`, or HITL approval orchestration.
 - Email HITL is feasible through Outlook Actionable Messages or Power Automate, but WorkIQ alone is still not the action runtime; for this project, the best email MVP is Power Automate approval plus a small web form for `Modify`.
+- ACS Email is a viable alternative HITL channel: the Azure MCP surface can send HTML emails directly (`communication_email_send` with `is-html`), Python SDK support is solid, pricing is very low, and the main tradeoff is building our own reminder/timeout workflow plus a secure human-facing web form.
