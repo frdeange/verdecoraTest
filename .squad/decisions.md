@@ -154,6 +154,12 @@
 - Custom Bot Framework bot is plan B only if Approvals proves insufficient.
 - Rationale: Approvals provides native Teams integration, built-in reminders, escalation, audit trail, avoids tenant policy risk on custom bots.
 - **UPDATE:** Overridden by Q4 answer — use **EMAIL via WorkIQ** instead.
+- **Implementation strategy (Newt, 2026-05-03):**
+  - MVP: Power Automate approval email + backend callback + small web form for `Modify`.
+  - Advanced: Microsoft Graph `sendMail` + Outlook Actionable Message + HTTP endpoint.
+  - WorkIQ role: context/intelligence only, not approval orchestration.
+  - Modify: handled via web form or limited structured inputs, not in-email wizard.
+  - Escalation/reminder: Power Automate or orchestrator, not WorkIQ.
 
 **D-RIPLEY-005: Albarán state machine (formal)**
 - Formal state machine with **12 states** (PRD's 7 + 5 new):
@@ -181,6 +187,85 @@
 - JSON-schema validation of all MCP tool inputs before agent invocation.
 - Image retention 6 years (configurable) to align with Spanish AEAT requirements (pending Q8 confirmation).
 - Rationale: Supplier text is untrusted input; GDPR applies; defense in depth.
+
+## Architecture v2 Ratified Decisions (2026-05-04)
+
+**By:** Ripley (Lead Architect) + team consensus  
+**Source:** `docs/architecture/architecture-decision-record.md`
+
+| ID | Decision | Status |
+|---|---|---|
+| D-R-001 | LLMs: GPT-5.1 (Agent 1), GPT-5-mini (Agents 2 & 3); pinned versions in IaC; quarterly refresh cadence | ✅ Accepted |
+| D-R-002 | OCR: Content Understanding primary, DI v4.0 fallback — final lock after Sprint 0 benchmark | ⏳ Provisional |
+| D-R-003 | Inter-flow eventing: Service Bus + Durable Functions; Cosmos = data-of-record only, never a trigger | ✅ Accepted |
+| D-R-004 | HITL channel: email via WorkIQ (Kiko's directive); Power Automate Approvals as plug-compatible fallback | ⏳ Provisional pending implementation |
+| D-R-005 | State machine: 13 canonical states (+1 ops `cancelado_supervisor`) | ✅ Accepted |
+| D-R-006 | Idempotency: two-stage (`blob_etag` at Flow 0, `supplier_id+albaran_number` at Flow 1 close) | ✅ Accepted |
+| D-R-007 | Cosmos partition key `/pk = tienda_id_yyyymm` | ✅ Accepted |
+| D-R-008 | Region: Sweden Central, single primary; DR posture deferred post-MVP | ✅ Accepted |
+| D-R-009 | Tolerance: 2% global (qty + price, line-level) | ✅ Accepted |
+| D-R-010 | Canonical albarán identity: `(supplier_id, albaran_number)`; multiple albaranes per PO allowed | ✅ Accepted |
+| D-R-011 | Security: coherence validation only (PO/supplier/dates); no digital signature verification | ✅ Accepted |
+| D-R-012 | All infrastructure in private VNet; self-hosted GH runners (ACA Jobs) for CI/CD bootstrap | ✅ Accepted |
+| D-R-013 | MCP: Native BC MCP (read + scoped write). Custom MCPs only for Cosmos write, Content Understanding, WorkIQ | ✅ Accepted |
+| D-R-014 | No DELETE on any MCP server | ✅ Accepted |
+| D-R-015 | Pin LLM model versions; no `latest`, quarterly refresh | ✅ Accepted |
+| D-R-016 | 6-year immutable retention on `albaranes-raw` Blob (AEAT alignment) | ✅ Accepted |
+| D-R-017 | No LLM cost ceiling at MVP; budget alerts mandatory; monthly cost review | ✅ Accepted |
+| D-R-018 | BC integration via standard MCP entities; Posted Purchase Receipt as success artifact; custom AL only if Burke proves Warehouse Receipt necessary | ⏳ Provisional |
+
+## Private Networking & CI/CD Bootstrap (2026-05-03)
+
+**By:** Brett (Network Architect)  
+**Source:** `prerequisites/analysis/brett-private-networking.md`
+
+**D-BRETT-001: Phased bootstrap model for private Azure deployment**
+- Phase 0: deploy VNet, ACA runner environment, runner job, DNS scaffolding.
+- Phase 1: add Private Endpoints and Private DNS, validate private resolution, disable public access.
+- Phase 2: all subsequent deployments run from ACA self-hosted runners.
+- Rationale: Avoids chicken-and-egg IaC deployment problem.
+
+**D-BRETT-002: ACA Jobs as private GitHub Actions runner platform**
+- Use **event-driven ACA Jobs** with GitHub runner scale rule.
+- Do **not** use always-on ACA Apps as default runner model.
+- Rationale: Cost efficiency and event-driven architecture.
+
+**D-BRETT-003: Separation of CI/CD runners from product workloads**
+- One internal ACA environment for runtime workloads.
+- One dedicated ACA environment for runner jobs.
+- Rationale: Isolation, scale independence, security posture.
+
+**D-BRETT-004: Workload-profile ACA environments**
+- Standardize on workload-profile ACA environments (not legacy consumption-only).
+- Required for UDR/NAT support.
+- Rationale: Private networking support and controlled egress.
+
+**D-BRETT-005: Controlled public egress, not public ingress**
+- Private inbound to all target Azure data services.
+- Outbound from ACA subnets through NAT Gateway or Azure Firewall.
+- Explicitly accept GitHub SaaS requires outbound internet access.
+- Rationale: GDPR compliance, controlled blast radius.
+
+**D-BRETT-006: Docker-in-Docker limitations**
+- ACA Jobs cannot run Docker-in-Docker.
+- Container-image builds: use ACR Tasks / `az acr build` or separate VM-based runner pool.
+- Rationale: ACA Jobs platform constraint.
+
+**D-BRETT-007: Private DNS as core IaC baseline**
+- Required zones: Cosmos NoSQL, Blob, Key Vault, Azure OpenAI, AI Services / Foundry, ACA, Service Bus (if used).
+- DNS validation required before disabling public access.
+- Rationale: Prevents DNS leakage, enables private resolution validation.
+
+**D-BRETT-008: Foundry Agent Service private networking exception**
+- Private networking supported in Sweden Central.
+- Hosted-agent network injection decided at resource creation time.
+- Hosted-agent ACR cannot currently be private-only (limitation).
+- Rationale: Transparency on platform constraints.
+
+**Open flags for Kiko review (pending):**
+- Is explicit GitHub public egress dependency acceptable?
+- Docker builds: second runner pool or ACR Tasks?
+- Service Bus: Premium tier approved for private endpoints?
 
 ## Governance
 

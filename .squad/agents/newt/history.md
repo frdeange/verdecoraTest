@@ -13,3 +13,4 @@
 - BC MCP is a strong fit for read scenarios (purchase orders, lines, items, vendors), but warehouse receipt / inventory posting likely needs a small BC API extension exposed through the native BC MCP server rather than a separate custom MCP server.
 - In this environment, native Azure MCP covers Blob Storage and Cosmos DB only partially for the PRD: Blob coverage is metadata-oriented and Cosmos coverage is query-oriented; neither fully proves the PRD's write/download path.
 - WorkIQ is useful for M365 information retrieval but not for Teams Adaptive Cards, `Action.Submit`, or HITL approval orchestration.
+- Email HITL is feasible through Outlook Actionable Messages or Power Automate, but WorkIQ alone is still not the action runtime; for this project, the best email MVP is Power Automate approval plus a small web form for `Modify`.
