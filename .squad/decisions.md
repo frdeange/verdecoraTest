@@ -2,6 +2,14 @@
 
 ## Active Decisions
 
+### 2026-05-04T00:23: GitHub CLI authenticated + BC MCP doc incoming
+**By:** Kiko de Angel (via Copilot)
+**What:**
+1. GitHub CLI is now authenticated with write access — agents can use `gh` directly for issues, PRs, branches.
+2. Backlog issues (50) successfully created on GitHub.
+3. Another agent is writing a BC MCP configuration requirements document to `docs/` — must be integrated into final documentation in a standardized way.
+**Why:** Unblocks direct GitHub operations. BC MCP doc needs tracking for documentation integration.
+
 ### 2026-05-03: Lenguaje de implementación — Python
 **By:** Kiko de Angel
 **What:** Todo el proyecto se implementa en Python, salvo la parte de IaC (Bicep). Esto incluye agentes IA, MCP servers custom (si los hubiera), webhooks, procesadores, y tests.
