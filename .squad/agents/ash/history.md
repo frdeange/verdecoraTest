@@ -30,3 +30,16 @@
 - **Service Bus** not native to MAF but trivially integrable as agent tools
 - **Recommendation:** Use WorkflowBuilder with conditional edges for our deterministic business process; MagenticBuilder as alternative for dynamic edge cases
 - **Output:** `prerequisites/analysis/ash-maf-multiagent-patterns.md`
+
+### 2026-05-04: MAF v1.0 PoC Complete
+- **Branch:** `squad/1-maf-poc` → PR #56
+- **What:** Built minimal PoC validating SequentialBuilder + HandoffBuilder patterns
+- **3 stub agents:** StubExtractor, StubValidator, StubInventory — each with mock @tool
+- **SequentialBuilder:** Confirmed API for linear pipeline (extraction step)
+- **HandoffBuilder:** Confirmed API for conditional routing (coincide → Inventory, discrepancia → HITL)
+- **HITL:** Validated `handoffs=["StubInventory", "user"]` pattern for human escalation
+- **OpenTelemetry:** Console exporter with custom spans wrapping each stage
+- **Dry-run mode:** CLI runs without LLM credentials by calling tools directly
+- **Key finding:** SequentialBuilder is linear-only; WorkflowBuilder recommended for Sprint 1 deterministic routing
+- **Key finding:** HandoffBuilder routing is LLM-dependent (prompt-driven); must test with real model
+- **Output:** `src/poc/maf_poc/`, `docs/poc/maf-v1-poc.md`
