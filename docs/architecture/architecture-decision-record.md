@@ -71,7 +71,7 @@ Verdecora's in‑store capture app already exists and produces a PDF of each alb
 │  │   │   │                  ▼                                      │    │      │  │
 │  │   │   │   ┌──────────── HandoffBuilder ──────────────────────┐  │    │      │  │
 │  │   │   │   │                                                  │  │    │      │  │
-│  │   │   │   │   [A2 Triage]   rule-based (LLM optional MVP+1) │  │    │      │  │
+│  │   │   │   │   [A2 Triage]   GPT-5-mini structured output    │  │    │      │  │
 │  │   │   │   │     ├─ tool: route_decision()                   │  │    │      │  │
 │  │   │   │   │     └─ MCP: cosmos-mcp (read supplier rep)      │  │    │      │  │
 │  │   │   │   │              │                                  │  │    │      │  │
@@ -183,7 +183,7 @@ Verdecora's in‑store capture app already exists and produces a PDF of each alb
 | 8 | **`hitl-webform`** ACA app | Python 3.12 (FastAPI) | Receives ACS-email button-click / form submission, persists decision, publishes `hitl.response.{aprobado_hitl|rechazado|modificado}`. | Internal ingress + Front-Door / APIM in front for human reachability over corporate identity. |
 | 9 | Azure OpenAI (via Foundry project) | `foundry-albaranes-prd` (private networking) | **Model endpoints + telemetry only.** Two deployments: `gpt-5.1` (multimodal) and `gpt-5-mini`. | Foundry does NOT host agents in this design. Foundry traces still capture model-call telemetry. |
 | 10 | **A1 — Extractor agent** | MAF `ChatAgent` in `agentic-orchestrator`, GPT‑5.1 | PDF → strict JSON | Tools: `content-understanding-mcp`, `document-intelligence` (fallback), Content Safety pre-scan. Strict JSON schema; no parallel tool calls. |
-| 11 | **A2 — Triage agent** | MAF `ChatAgent` in `agentic-orchestrator`, **rule-based at MVP** (LLM optional MVP+1) | Routes albarán: fast-track / normal / direct-HITL / hard-reject | Tools: `route_decision()` (deterministic), `cosmos-mcp` (read supplier reputation, populated by A8 from MVP+2). Routing policy versioned in `infra/policies/triage/`. |
+| 11 | **A2 — Triage agent** | MAF `ChatAgent` in `agentic-orchestrator`, **GPT‑5‑mini + structured output** | Routes albarán: fast-track / normal / direct-HITL / hard-reject | Strict JSON schema: `{route, reasoning}`. Rules are provided as system-prompt context; `cosmos-mcp` supplies supplier reputation. Routing policy versioned in `infra/policies/triage/`. |
 | 12 | **A3 — Coherence agent** | MAF `ChatAgent` in `agentic-orchestrator`, GPT‑5‑mini | Sanity gate: PO exists, supplier valid, dates plausible, totals in envelope | Tools: `bc-mcp-read`, `cosmos-mcp` (read). Output: `{coherence_ok, reasons[]}`. Failures route to A6 with ops CC, NOT to HITL approval. |
 | 13 | **A4 — Validator agent** | MAF `ChatAgent` in `agentic-orchestrator`, GPT‑5‑mini | Line-level Δ vs PO at 2% tolerance | Tools: `bc-mcp-read`, `cosmos-mcp` (read). Output: `{decision: coincide \| discrepancia, deltas[]}`. |
 | 14 | **A5 — Inventory agent** | MAF `ChatAgent` in `agentic-orchestrator`, GPT‑5‑mini | Posts Purchase Receipt to BC | Tools: `bc-mcp-write` (Post Purchase Receipt **only**, `@tool(approval_mode="always_require")` enforced via MAF + Cosmos approval table), `cosmos-mcp` (write). |
@@ -249,8 +249,8 @@ extractor = Agent(client=gpt51, name="A1_Extractor",
                   tools=[content_understanding])
 
 triage = Agent(client=gpt5mini, name="A2_Triage",
-               instructions=load("a2_triage.md"),
-               tools=[route_decision_tool, cosmos],
+               instructions=load("a2_triage.md"),  # strict JSON: {route, reasoning}
+               tools=[cosmos],
                require_per_service_call_history_persistence=True)
 
 coherence = Agent(client=gpt5mini, name="A3_Coherence",
@@ -345,7 +345,7 @@ async def handle_recibido(msg):
 | Agent | Inputs | Outputs / next hop |
 |---|---|---|
 | **A1 Extractor** (GPT‑5.1) | `{blob_sas_url, albaran_id}` | Strict-JSON extraction → Cosmos. State: `extraido` / `baja_confianza` / `error_extraccion`. Then HandOff into routing graph (or publish error event). |
-| **A2 Triage** (rule-based MVP, LLM optional MVP+1) | `albaran_id`, `confianza_global`, supplier reputation | One of: HandOff to A3 (normal); publish `albaran.baja_confianza` (direct HITL); publish `albaran.error_extraccion` (hard reject after Content Safety hit); or HandOff direct to A5 (fast-track, MVP+1 only with reputation) |
+| **A2 Triage** (GPT‑5‑mini, structured output) | `albaran_id`, `confianza_global`, supplier reputation | Strict JSON `{route, reasoning}`. `route ∈ {fast_track, normal, hitl, hard_reject}` → HandOff to A3 (normal); publish `albaran.baja_confianza` (direct HITL); publish `albaran.error_extraccion` (hard reject after Content Safety hit); or HandOff direct to A5 (fast-track) |
 | **A3 Coherence** (GPT‑5‑mini) | `albaran_id` | `{coherence_ok, reasons[]}`. If ok → HandOff to A4. If not → publish `albaran.error_validacion` (Communication agent picks it up with ops CC) |
 | **A4 Validator** (GPT‑5‑mini) | `albaran_id` | `{decision, deltas[]}`. `coincide` → HandOff to A5. `discrepancia` → publish `albaran.discrepancia` (Communication agent picks it up; HITL flow) |
 | **A5 Inventory** (GPT‑5‑mini) | `albaran_id` (post-validation or post-HITL-approval) | Calls `bc-mcp-write.post_purchase_receipt` (`@tool(approval_mode="always_require")` enforced by MAF + Cosmos approval table). On success: `estado=inventariado`, publish `albaran.inventariado`. On error: `estado=error_inventario`, retry with exponential backoff (3×), then publish `albaran.error_inventario` |
@@ -684,7 +684,7 @@ All decisions take ID `D‑R‑NNN` (Ripley‑led; team‑accepted unless noted)
 | **D‑R‑018** | BC integration uses **standard MCP entities only** (Posted Purchase Receipt as success artifact). Custom AL only if Burke later proves Warehouse Receipt necessary | ⏳ Provisional | Risk accepted; Burke owns escalation |
 | **D‑R‑019** | **Hosting model: ALL agents (A1–A6, plus deferred A7–A8) run in Azure Container Apps with the MAF SDK in‑process. No Foundry-hosted agents. No Durable Functions. Foundry = model + telemetry endpoint over Azure OpenAI. Timers = Service Bus scheduled messages. State = Cosmos.** | ✅ Accepted (Kiko 2026‑05‑03 23:07/23:10) | Single compute plane; full HandOff support (only available with MAF SDK in-process); homogeneous VNet integration; no preview-feature dependency; eliminates the ADR-v2 Foundry-vs-ACA-vs-Functions ambiguity. |
 | **D‑R‑020** | **Agent roster: 6 agents at MVP (A1 Extractor, A2 Triage, A3 Coherence, A4 Validator, A5 Inventory, A6 Communication) + 2 deferred (A7 Reconciliation MVP+1, A8 Learning MVP+2). The PRD's 3-agent design is rejected.** | ✅ Accepted (Ripley, post Kiko challenge) | See `prerequisites/analysis/ripley-agentic-redesign.md`. Splits decisions out of the orchestrator (Triage), separates fraud/sanity from line-Δ comparison (Coherence vs Validator), and treats outbound communication as a first-class agent. Truly agentic vs functional pipeline. |
-| **D‑R‑021** | **Triage Agent (A2) is rule-based at MVP; LLM optional at MVP+1** when supplier-reputation data exists (from A8) | ✅ Accepted | Routing policy explainability outweighs sophistication at launch; LLM upgrade path preserved. |
+| **D‑R‑021** | **Triage Agent (A2) uses GPT‑5‑mini with strict JSON structured output schema (`{route: fast_track\|normal\|hitl\|hard_reject, reasoning: string}`); rules are provided as system-prompt context and the LLM reasons about edge cases.** | ✅ Accepted | Keeps routing policy explicit while handling ambiguous cases consistently; structured output preserves auditability and deterministic downstream branching. |
 | **D‑R‑022** | **Coherence Agent (A3) split from Validator (A4).** A3 = world sanity (PO/supplier/dates/totals envelope); A4 = line-level Δ vs PO at 2% | ✅ Accepted | Different MCP scopes, different failure modes (ops vs HITL), different prompts. Coherence failures CC ops; line discrepancies do not. |
 | **D‑R‑023** | **Communication Agent (A6) is event-driven on Service Bus, not a HandOff target.** It runs in a separate ACA app and resumes the main orchestration via published events. | ✅ Accepted | HITL is hours/days asynchronous; HandOff is in-memory synchronous within a workflow run. State lives in Cosmos throughout. |
 | **D‑R‑024** | **HITL timers (24h reminder, 48h escalation, 72h hard cap) implemented via Service Bus scheduled messages** with cancellation on early `hitl.response.*` | ✅ Accepted | Replaces Durable Functions timers from ADR-v2. Native to Service Bus; cancellable via `CancelScheduledMessageAsync`. |

@@ -110,6 +110,12 @@
 4. Future-proof: if scaling demands it, convert to hosted-agents. For now, keep them in the MAF runtime.
 **Why:** Simplicity. A2A is not mature enough in MAF Python. In-process agents work fine for our volume (~750/day).
 
+### 2026-05-03T23:35: Triage Agent uses LLM + structured output
+**By:** Kiko de Angel (via Copilot)
+**What:** Triage Agent (A2) uses GPT-5-mini with strict JSON structured output schema instead of rule-based logic. The schema forces one of {fast_track, normal, hitl, hard_reject} as the route, plus a "reasoning" field for auditability. Rules are provided as context in the system prompt, but the LLM reasons about edge cases and combinations. This makes Triage a true agentic component, not a glorified if/else.
+**Why:** Kiko wants a truly agentic system. LLM + structured output gives flexibility + determinism + auditability at negligible cost (~€0.0005/albarán with GPT-5-mini).
+**Note:** Superseded by D-R-021 (2026-05-04 ADR v3) which specifies rule-based MVP with LLM upgrade optional at MVP+1.
+
 ### 2026-05-03: Foundry Agent Service as Primary Platform
 **By:** Call (Foundry Architect)
 **What:** Treat **Azure AI Foundry Agent Service** as primary platform for agent lifecycle, identity, tracing, evaluation, publishing.
