@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 # Verdecora — Full project backlog creation script
 # Run with an account that has write/admin access to frdeange/verdecoraTest.
 # Idempotent: gh label create uses --force; gh issue create will create duplicates only if rerun.
