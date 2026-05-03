@@ -7,7 +7,7 @@ param environment string
 param location string
 
 @description('Resource group name.')
-param resourceGroupName string = 'rg-albaranes-${environment}'
+param resourceGroupName string = 'rg-verdecoratest-${environment}'
 
 var tags = {
   project: 'verdecora-albaranes'

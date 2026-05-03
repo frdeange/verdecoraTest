@@ -6,7 +6,7 @@ param environment string
 @description('Azure region for all resources.')
 param location string = 'swedencentral'
 
-var resourceGroupName = 'rg-albaranes-${environment}'
+var resourceGroupName = 'rg-verdecoratest-${environment}'
 
 module resourceGroup './resource-group.bicep' = {
   name: 'resourceGroup'
