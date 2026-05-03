@@ -3,20 +3,20 @@ $repo = 'frdeange/verdecoraTest'
 
 # Squad member labels
 $squad = @(
-  @{ name='squad'; color='0078d4'; desc='Untriaged squad work' }
-  @{ name='squad:ripley'; color='107c10'; desc='Assigned to Ripley (Lead Architect)' }
-  @{ name='squad:bishop'; color='107c10'; desc='Assigned to Bishop (AI Agent Dev)' }
-  @{ name='squad:hicks'; color='107c10'; desc='Assigned to Hicks (DevOps Lead)' }
-  @{ name='squad:dallas'; color='107c10'; desc='Assigned to Dallas (Azure Cloud)' }
-  @{ name='squad:parker'; color='107c10'; desc='Assigned to Parker (Backend Dev)' }
-  @{ name='squad:lambert'; color='107c10'; desc='Assigned to Lambert (Security)' }
-  @{ name='squad:vasquez'; color='107c10'; desc='Assigned to Vasquez (QA)' }
-  @{ name='squad:burke'; color='107c10'; desc='Assigned to Burke (BC/Dynamics)' }
-  @{ name='squad:hudson'; color='107c10'; desc='Assigned to Hudson (Docs)' }
-  @{ name='squad:ash'; color='107c10'; desc='Assigned to Ash (MAF Specialist)' }
-  @{ name='squad:newt'; color='107c10'; desc='Assigned to Newt (MCP Analyst)' }
-  @{ name='squad:call'; color='107c10'; desc='Assigned to Call (Foundry)' }
-  @{ name='squad:brett'; color='107c10'; desc='Assigned to Brett (Private Net/CI)' }
+  @{ name='🔵 squad'; color='0078d4'; desc='Untriaged squad work' }
+  @{ name='🏗 squad:ripley'; color='107c10'; desc='Assigned to Ripley (Lead Architect)' }
+  @{ name='🤖 squad:bishop'; color='107c10'; desc='Assigned to Bishop (AI Agent Dev)' }
+  @{ name='⚙ squad:hicks'; color='107c10'; desc='Assigned to Hicks (DevOps Lead)' }
+  @{ name='☁ squad:dallas'; color='107c10'; desc='Assigned to Dallas (Azure Cloud)' }
+  @{ name='🔧 squad:parker'; color='107c10'; desc='Assigned to Parker (Backend Dev)' }
+  @{ name='🔒 squad:lambert'; color='107c10'; desc='Assigned to Lambert (Security)' }
+  @{ name='🧪 squad:vasquez'; color='107c10'; desc='Assigned to Vasquez (QA)' }
+  @{ name='📊 squad:burke'; color='107c10'; desc='Assigned to Burke (BC/Dynamics)' }
+  @{ name='📝 squad:hudson'; color='107c10'; desc='Assigned to Hudson (Docs)' }
+  @{ name='🔬 squad:ash'; color='107c10'; desc='Assigned to Ash (MAF Specialist)' }
+  @{ name='🔌 squad:newt'; color='107c10'; desc='Assigned to Newt (MCP Analyst)' }
+  @{ name='🧠 squad:call'; color='107c10'; desc='Assigned to Call (Foundry)' }
+  @{ name='🔐 squad:brett'; color='107c10'; desc='Assigned to Brett (Private Net/CI)' }
 )
 
 # Type labels with emoji prefix in name

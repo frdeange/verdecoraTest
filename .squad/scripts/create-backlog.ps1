@@ -60,7 +60,7 @@ None — this unblocks Sprint 1.
 $ids['s0-poc-maf'] = New-Issue `
   -Title "🔬 [S0] MAF v1.0 PoC in Azure Container Apps" `
   -Body $body `
-  -Labels @('squad:ash','🔬 poc','🔴 priority:critical','🏗 phase:foundation','🤖 ai-agents','⚡ parallelizable')
+  -Labels @('🔬 squad:ash','🔬 poc','🔴 priority:critical','🏗 phase:foundation','🤖 ai-agents','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -85,7 +85,7 @@ None.
 $ids['s0-bc-mcp'] = New-Issue `
   -Title "📊 [S0] BC MCP validation against CRONUS" `
   -Body $body `
-  -Labels @('squad:burke','🔬 poc','🔴 priority:critical','🏗 phase:foundation','🔌 mcp','⚡ parallelizable')
+  -Labels @('📊 squad:burke','🔬 poc','🔴 priority:critical','🏗 phase:foundation','🔌 mcp','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -107,7 +107,7 @@ Newt (Communications/HITL)
 $ids['s0-acs-poc'] = New-Issue `
   -Title "🔌 [S0] ACS Email PoC with HITL action buttons" `
   -Body $body `
-  -Labels @('squad:newt','🔬 poc','🟠 priority:high','🏗 phase:foundation','🔧 backend','⚡ parallelizable')
+  -Labels @('🔌 squad:newt','🔬 poc','🟠 priority:high','🏗 phase:foundation','🔧 backend','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -128,7 +128,7 @@ Brett (Networking/Runners)
 $ids['s0-vnet-runners'] = New-Issue `
   -Title "🔐 [S0] VNet + self-hosted runners bootstrap" `
   -Body $body `
-  -Labels @('squad:brett','☁ infrastructure','🔴 priority:critical','🏗 phase:foundation','⚡ parallelizable')
+  -Labels @('🔐 squad:brett','☁ infrastructure','🔴 priority:critical','🏗 phase:foundation','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -154,7 +154,7 @@ Dallas (IaC/Bicep)
 $ids['s0-bicep-base'] = New-Issue `
   -Title "☁ [S0] Bicep foundation modules" `
   -Body $body `
-  -Labels @('squad:dallas','☁ infrastructure','🔴 priority:critical','🏗 phase:foundation','🔗 sequential')
+  -Labels @('☁ squad:dallas','☁ infrastructure','🔴 priority:critical','🏗 phase:foundation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -178,7 +178,7 @@ Lambert (Identity/Security)
 $ids['s0-identity'] = New-Issue `
   -Title "🔒 [S0] Identity foundation — Managed Identities + RBAC" `
   -Body $body `
-  -Labels @('squad:lambert','🔒 security','🔴 priority:critical','🏗 phase:foundation','🔗 sequential')
+  -Labels @('🔒 squad:lambert','🔒 security','🔴 priority:critical','🏗 phase:foundation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -200,7 +200,7 @@ Bishop (AI Agents) + Ash (Architecture)
 $ids['s0-cu-bench'] = New-Issue `
   -Title "🤖 [S0] Content Understanding vs Document Intelligence benchmark" `
   -Body $body `
-  -Labels @('squad:bishop','🔬 poc','🟠 priority:high','🏗 phase:foundation','🤖 ai-agents','⚡ parallelizable')
+  -Labels @('🤖 squad:bishop','🔬 poc','🟠 priority:high','🏗 phase:foundation','🤖 ai-agents','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -225,7 +225,7 @@ Hicks (DevOps Lead)
 $ids['s0-cicd'] = New-Issue `
   -Title "⚙ [S0] CI/CD pipeline hardening" `
   -Body $body `
-  -Labels @('squad:hicks','☁ infrastructure','🟠 priority:high','🏗 phase:foundation','🔗 sequential')
+  -Labels @('⚙ squad:hicks','☁ infrastructure','🟠 priority:high','🏗 phase:foundation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -249,7 +249,7 @@ Vasquez (QA/Testing)
 $ids['s0-test-fw'] = New-Issue `
   -Title "🧪 [S0] Test framework setup (pytest + fixtures + BC mocks)" `
   -Body $body `
-  -Labels @('squad:vasquez','🧪 testing','🟠 priority:high','🏗 phase:foundation','🔗 sequential')
+  -Labels @('🧪 squad:vasquez','🧪 testing','🟠 priority:high','🏗 phase:foundation','🔗 sequential')
 
 # ============================================================
 # SPRINT 1 — Core Agents (A1 + A2 + A3)
@@ -277,7 +277,7 @@ Bishop (AI Agents)
 $ids['s1-a1'] = New-Issue `
   -Title "🤖 [S1] A1 Extractor agent — MAF + Content Understanding + GPT-5.1" `
   -Body $body `
-  -Labels @('squad:bishop','🤖 ai-agents','🟠 priority:high','💻 phase:implementation','🔗 sequential')
+  -Labels @('🤖 squad:bishop','🤖 ai-agents','🟠 priority:high','💻 phase:implementation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -301,7 +301,7 @@ Bishop (AI Agents)
 $ids['s1-a2'] = New-Issue `
   -Title "🤖 [S1] A2 Triage agent — GPT-5-mini structured routing" `
   -Body $body `
-  -Labels @('squad:bishop','🤖 ai-agents','🟠 priority:high','💻 phase:implementation','🔗 sequential')
+  -Labels @('🤖 squad:bishop','🤖 ai-agents','🟠 priority:high','💻 phase:implementation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -325,7 +325,7 @@ Bishop (AI Agents)
 $ids['s1-a3'] = New-Issue `
   -Title "🤖 [S1] A3 Coherence agent — GPT-5-mini + BC MCP read" `
   -Body $body `
-  -Labels @('squad:bishop','🤖 ai-agents','🟠 priority:high','💻 phase:implementation','🔗 sequential')
+  -Labels @('🤖 squad:bishop','🤖 ai-agents','🟠 priority:high','💻 phase:implementation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -346,7 +346,7 @@ Parker (MCP/Backend)
 $ids['s1-cosmos-mcp'] = New-Issue `
   -Title "🔌 [S1] cosmos-mcp server — Python MCP for Cosmos R/W" `
   -Body $body `
-  -Labels @('squad:parker','🔌 mcp','🟠 priority:high','💻 phase:implementation','⚡ parallelizable')
+  -Labels @('🔧 squad:parker','🔌 mcp','🟠 priority:high','💻 phase:implementation','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -370,7 +370,7 @@ Parker (MCP/Backend)
 $ids['s1-cu-mcp'] = New-Issue `
   -Title "🔌 [S1] content-understanding-mcp server" `
   -Body $body `
-  -Labels @('squad:parker','🔌 mcp','🟠 priority:high','💻 phase:implementation','🔗 sequential')
+  -Labels @('🔧 squad:parker','🔌 mcp','🟠 priority:high','💻 phase:implementation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -390,7 +390,7 @@ Parker (MCP/Backend)
 $ids['s1-ff-mcp'] = New-Issue `
   -Title "🔌 [S1] feature-flags-mcp server (Cosmos-backed)" `
   -Body $body `
-  -Labels @('squad:parker','🔌 mcp','🟡 priority:medium','💻 phase:implementation','⚡ parallelizable')
+  -Labels @('🔧 squad:parker','🔌 mcp','🟡 priority:medium','💻 phase:implementation','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -412,7 +412,7 @@ Vasquez (QA)
 $ids['s1-a1-tests'] = New-Issue `
   -Title "🧪 [S1] A1 Extractor tests (unit + integration)" `
   -Body $body `
-  -Labels @('squad:vasquez','🧪 testing','🟠 priority:high','💻 phase:implementation','🔗 sequential')
+  -Labels @('🧪 squad:vasquez','🧪 testing','🟠 priority:high','💻 phase:implementation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -432,7 +432,7 @@ Vasquez (QA)
 $ids['s1-a2-tests'] = New-Issue `
   -Title "🧪 [S1] A2 Triage tests (unit)" `
   -Body $body `
-  -Labels @('squad:vasquez','🧪 testing','🟡 priority:medium','💻 phase:implementation','🔗 sequential')
+  -Labels @('🧪 squad:vasquez','🧪 testing','🟡 priority:medium','💻 phase:implementation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -452,7 +452,7 @@ Vasquez (QA)
 $ids['s1-a3-tests'] = New-Issue `
   -Title "🧪 [S1] A3 Coherence tests (unit + integration)" `
   -Body $body `
-  -Labels @('squad:vasquez','🧪 testing','🟠 priority:high','💻 phase:implementation','🔗 sequential')
+  -Labels @('🧪 squad:vasquez','🧪 testing','🟠 priority:high','💻 phase:implementation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -471,7 +471,7 @@ Dallas (IaC)
 $ids['s1-aoai-bicep'] = New-Issue `
   -Title "☁ [S1] Bicep — Azure OpenAI + Foundry project + model deployments" `
   -Body $body `
-  -Labels @('squad:dallas','☁ infrastructure','🟠 priority:high','💻 phase:implementation','⚡ parallelizable')
+  -Labels @('☁ squad:dallas','☁ infrastructure','🟠 priority:high','💻 phase:implementation','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -492,7 +492,7 @@ Hudson (Tech Writer)
 $ids['s1-docs'] = New-Issue `
   -Title "📝 [S1] A1–A3 technical docs + prompt documentation" `
   -Body $body `
-  -Labels @('squad:hudson','📝 documentation','🟡 priority:medium','💻 phase:implementation','🔗 sequential')
+  -Labels @('📝 squad:hudson','📝 documentation','🟡 priority:medium','💻 phase:implementation','🔗 sequential')
 
 # ============================================================
 # SPRINT 2 — Validation + Inventory (A4 + A5) + Pipeline
@@ -516,7 +516,7 @@ Bishop (AI Agents)
 $ids['s2-a4'] = New-Issue `
   -Title "🤖 [S2] A4 Validator agent — line-level comparison @ 2% tolerance" `
   -Body $body `
-  -Labels @('squad:bishop','🤖 ai-agents','🟠 priority:high','💻 phase:implementation','🔗 sequential')
+  -Labels @('🤖 squad:bishop','🤖 ai-agents','🟠 priority:high','💻 phase:implementation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -537,7 +537,7 @@ Bishop (AI Agents)
 $ids['s2-a5'] = New-Issue `
   -Title "🤖 [S2] A5 Inventory agent — Post Purchase Receipt via BC MCP" `
   -Body $body `
-  -Labels @('squad:bishop','🤖 ai-agents','🔴 priority:critical','💻 phase:implementation','🔗 sequential')
+  -Labels @('🤖 squad:bishop','🤖 ai-agents','🔴 priority:critical','💻 phase:implementation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -558,7 +558,7 @@ Burke (BC/ERP)
 $ids['s2-bc-mcp'] = New-Issue `
   -Title "🔌 [S2] bc-mcp integration — read + write configs" `
   -Body $body `
-  -Labels @('squad:burke','🔌 mcp','🔴 priority:critical','💻 phase:implementation','🔗 sequential')
+  -Labels @('📊 squad:burke','🔌 mcp','🔴 priority:critical','💻 phase:implementation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -580,7 +580,7 @@ Parker (MCP/Backend)
 $ids['s2-orchestrator'] = New-Issue `
   -Title "🔧 [S2] agentic-orchestrator ACA app — MAF Sequential+Handoff (A1→A5)" `
   -Body $body `
-  -Labels @('squad:parker','🔧 backend','🔴 priority:critical','💻 phase:implementation','🔗 sequential')
+  -Labels @('🔧 squad:parker','🔧 backend','🔴 priority:critical','💻 phase:implementation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -598,7 +598,7 @@ Parker (MCP/Backend)
 $ids['s2-flow0'] = New-Issue `
   -Title "🔧 [S2] Flow 0 dedup ACA Job — Event Grid → Service Bus → Cosmos" `
   -Body $body `
-  -Labels @('squad:parker','🔧 backend','🟠 priority:high','💻 phase:implementation','⚡ parallelizable')
+  -Labels @('🔧 squad:parker','🔧 backend','🟠 priority:high','💻 phase:implementation','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -618,7 +618,7 @@ Vasquez (QA)
 $ids['s2-tests'] = New-Issue `
   -Title "🧪 [S2] A4–A5 tests + handoff chain" `
   -Body $body `
-  -Labels @('squad:vasquez','🧪 testing','🟠 priority:high','💻 phase:implementation','🔗 sequential')
+  -Labels @('🧪 squad:vasquez','🧪 testing','🟠 priority:high','💻 phase:implementation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -638,7 +638,7 @@ Vasquez (QA)
 $ids['s2-e2e'] = New-Issue `
   -Title "🧪 [S2] E2E pipeline test — Flow 0 → Flow 1+2 happy path" `
   -Body $body `
-  -Labels @('squad:vasquez','🧪 testing','🟠 priority:high','💻 phase:implementation','🔗 sequential')
+  -Labels @('🧪 squad:vasquez','🧪 testing','🟠 priority:high','💻 phase:implementation','🔗 sequential')
 
 $body = @'
 ## Description
@@ -656,7 +656,7 @@ Dallas (IaC)
 $ids['s2-bicep-aca'] = New-Issue `
   -Title "☁ [S2] Bicep — Container Apps + ACA Jobs + KEDA scalers" `
   -Body $body `
-  -Labels @('squad:dallas','☁ infrastructure','🟠 priority:high','💻 phase:implementation','⚡ parallelizable')
+  -Labels @('☁ squad:dallas','☁ infrastructure','🟠 priority:high','💻 phase:implementation','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -676,7 +676,7 @@ Hudson (Tech Writer)
 $ids['s2-docs'] = New-Issue `
   -Title "📝 [S2] A4–A5 + pipeline docs" `
   -Body $body `
-  -Labels @('squad:hudson','📝 documentation','🟡 priority:medium','💻 phase:implementation','🔗 sequential')
+  -Labels @('📝 squad:hudson','📝 documentation','🟡 priority:medium','💻 phase:implementation','🔗 sequential')
 
 # ============================================================
 # SPRINT 3 — Communication (A6) + HITL
@@ -700,7 +700,7 @@ Bishop (AI Agents)
 $ids['s3-a6'] = New-Issue `
   -Title "🤖 [S3] A6 Communication agent — event-driven, ACS Email, templates" `
   -Body $body `
-  -Labels @('squad:bishop','🤖 ai-agents','🟠 priority:high','📧 phase:hitl','🔗 sequential')
+  -Labels @('🤖 squad:bishop','🤖 ai-agents','🟠 priority:high','📧 phase:hitl','🔗 sequential')
 
 $body = @'
 ## Description
@@ -720,7 +720,7 @@ Parker (MCP/Backend)
 $ids['s3-acs-mcp'] = New-Issue `
   -Title "🔌 [S3] acs-email-mcp server" `
   -Body $body `
-  -Labels @('squad:parker','🔌 mcp','🟠 priority:high','📧 phase:hitl','🔗 sequential')
+  -Labels @('🔧 squad:parker','🔌 mcp','🟠 priority:high','📧 phase:hitl','🔗 sequential')
 
 $body = @'
 ## Description
@@ -742,7 +742,7 @@ Parker (MCP/Backend)
 $ids['s3-webform'] = New-Issue `
   -Title "🔧 [S3] hitl-webform ACA app — FastAPI accept/reject/modify" `
   -Body $body `
-  -Labels @('squad:parker','🔧 backend','🟠 priority:high','📧 phase:hitl','🔗 sequential')
+  -Labels @('🔧 squad:parker','🔧 backend','🟠 priority:high','📧 phase:hitl','🔗 sequential')
 
 $body = @'
 ## Description
@@ -759,7 +759,7 @@ Parker (MCP/Backend)
 $ids['s3-sb-timer'] = New-Issue `
   -Title "🔧 [S3] Service Bus timer integration — 24h/48h/72h escalation" `
   -Body $body `
-  -Labels @('squad:parker','🔧 backend','🟡 priority:medium','📧 phase:hitl','⚡ parallelizable')
+  -Labels @('🔧 squad:parker','🔧 backend','🟡 priority:medium','📧 phase:hitl','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -779,7 +779,7 @@ Vasquez (QA)
 $ids['s3-hitl-tests'] = New-Issue `
   -Title "🧪 [S3] HITL flow tests — email, callback, escalation, cancellation" `
   -Body $body `
-  -Labels @('squad:vasquez','🧪 testing','🟠 priority:high','📧 phase:hitl','🔗 sequential')
+  -Labels @('🧪 squad:vasquez','🧪 testing','🟠 priority:high','📧 phase:hitl','🔗 sequential')
 
 $body = @'
 ## Description
@@ -799,7 +799,7 @@ Vasquez (QA)
 $ids['s3-e2e-hitl'] = New-Issue `
   -Title "🧪 [S3] E2E with HITL — discrepancy → email → approval → inventory" `
   -Body $body `
-  -Labels @('squad:vasquez','🧪 testing','🟠 priority:high','📧 phase:hitl','🔗 sequential')
+  -Labels @('🧪 squad:vasquez','🧪 testing','🟠 priority:high','📧 phase:hitl','🔗 sequential')
 
 $body = @'
 ## Description
@@ -816,7 +816,7 @@ Dallas (IaC)
 $ids['s3-bicep-acs'] = New-Issue `
   -Title "☁ [S3] Bicep — ACS Email resource + sender domain DNS" `
   -Body $body `
-  -Labels @('squad:dallas','☁ infrastructure','🟠 priority:high','📧 phase:hitl','⚡ parallelizable')
+  -Labels @('☁ squad:dallas','☁ infrastructure','🟠 priority:high','📧 phase:hitl','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -837,7 +837,7 @@ Lambert (Security)
 $ids['s3-hitl-sec'] = New-Issue `
   -Title "🔒 [S3] HITL security — Entra auth, SAS for PDFs, audit logging" `
   -Body $body `
-  -Labels @('squad:lambert','🔒 security','🔴 priority:critical','📧 phase:hitl','🔗 sequential')
+  -Labels @('🔒 squad:lambert','🔒 security','🔴 priority:critical','📧 phase:hitl','🔗 sequential')
 
 $body = @'
 ## Description
@@ -857,7 +857,7 @@ Hudson (Tech Writer)
 $ids['s3-user-manual'] = New-Issue `
   -Title "📝 [S3] HITL user manual for store managers" `
   -Body $body `
-  -Labels @('squad:hudson','📝 documentation','🟡 priority:medium','📧 phase:hitl','🔗 sequential')
+  -Labels @('📝 squad:hudson','📝 documentation','🟡 priority:medium','📧 phase:hitl','🔗 sequential')
 
 # ============================================================
 # SPRINT 4 — Security, Observability, Hardening
@@ -878,7 +878,7 @@ Brett (Networking)
 $ids['s4-pe'] = New-Issue `
   -Title "🔒 [S4] Private Endpoints for all PaaS services" `
   -Body $body `
-  -Labels @('squad:brett','🔒 security','🔴 priority:critical','🔒 phase:hardening','⚡ parallelizable')
+  -Labels @('🔐 squad:brett','🔒 security','🔴 priority:critical','🔒 phase:hardening','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -895,7 +895,7 @@ Brett (Networking)
 $ids['s4-egress'] = New-Issue `
   -Title "🔒 [S4] NAT Gateway / Azure Firewall — egress control" `
   -Body $body `
-  -Labels @('squad:brett','🔒 security','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
+  -Labels @('🔐 squad:brett','🔒 security','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -913,7 +913,7 @@ Lambert (Security)
 $ids['s4-prompt-injection'] = New-Issue `
   -Title "🔒 [S4] Prompt injection defense + Content Safety + OCR sanitization" `
   -Body $body `
-  -Labels @('squad:lambert','🔒 security','🔴 priority:critical','🔒 phase:hardening','⚡ parallelizable')
+  -Labels @('🔒 squad:lambert','🔒 security','🔴 priority:critical','🔒 phase:hardening','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -931,7 +931,7 @@ Lambert (Security)
 $ids['s4-pii'] = New-Issue `
   -Title "🔒 [S4] PII redaction — transportista names + signature regions" `
   -Body $body `
-  -Labels @('squad:lambert','🔒 security','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
+  -Labels @('🔒 squad:lambert','🔒 security','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -948,7 +948,7 @@ Dallas (IaC) + observability-focused
 $ids['s4-dashboards'] = New-Issue `
   -Title "📊 [S4] Observability dashboards — App Insights, Workbooks, KQL" `
   -Body $body `
-  -Labels @('squad:dallas','📊 observability','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
+  -Labels @('☁ squad:dallas','📊 observability','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -965,7 +965,7 @@ Dallas (IaC)
 $ids['s4-alerts'] = New-Issue `
   -Title "📊 [S4] Alerting rules — error rate, queue depth, BC failures, HITL backlog" `
   -Body $body `
-  -Labels @('squad:dallas','📊 observability','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
+  -Labels @('☁ squad:dallas','📊 observability','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -982,7 +982,7 @@ Vasquez (QA)
 $ids['s4-sec-tests'] = New-Issue `
   -Title "🧪 [S4] Security testing — prompt injection + auth bypass" `
   -Body $body `
-  -Labels @('squad:vasquez','🧪 testing','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
+  -Labels @('🧪 squad:vasquez','🧪 testing','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -999,7 +999,7 @@ Vasquez (QA)
 $ids['s4-load'] = New-Issue `
   -Title "🧪 [S4] Load testing — 750 albaranes/day simulation" `
   -Body $body `
-  -Labels @('squad:vasquez','🧪 testing','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
+  -Labels @('🧪 squad:vasquez','🧪 testing','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -1016,7 +1016,7 @@ Hudson (Tech Writer)
 $ids['s4-runbook'] = New-Issue `
   -Title "📝 [S4] Operations runbook" `
   -Body $body `
-  -Labels @('squad:hudson','📝 documentation','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
+  -Labels @('📝 squad:hudson','📝 documentation','🟠 priority:high','🔒 phase:hardening','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -1032,7 +1032,7 @@ Hudson (Tech Writer)
 $ids['s4-config-guide'] = New-Issue `
   -Title "📝 [S4] Configuration guide — thresholds, MCP config, BC setup" `
   -Body $body `
-  -Labels @('squad:hudson','📝 documentation','🟡 priority:medium','🔒 phase:hardening','⚡ parallelizable')
+  -Labels @('📝 squad:hudson','📝 documentation','🟡 priority:medium','🔒 phase:hardening','⚡ parallelizable')
 
 # ============================================================
 # POST-MVP
@@ -1052,7 +1052,7 @@ Bishop (AI Agents)
 $ids['post-a7'] = New-Issue `
   -Title "🤖 [Post-MVP] A7 Reconciliation agent — daily BC vs Cosmos" `
   -Body $body `
-  -Labels @('squad:bishop','🤖 ai-agents','🟡 priority:medium','🚀 phase:post-mvp','⚡ parallelizable')
+  -Labels @('🤖 squad:bishop','🤖 ai-agents','🟡 priority:medium','🚀 phase:post-mvp','⚡ parallelizable')
 
 $body = @'
 ## Description
@@ -1069,7 +1069,7 @@ Bishop (AI Agents)
 $ids['post-a8'] = New-Issue `
   -Title "🤖 [Post-MVP] A8 Learning agent — supplier reputation + pattern analysis" `
   -Body $body `
-  -Labels @('squad:bishop','🤖 ai-agents','⚪ priority:low','🚀 phase:post-mvp','⚡ parallelizable')
+  -Labels @('🤖 squad:bishop','🤖 ai-agents','⚪ priority:low','🚀 phase:post-mvp','⚡ parallelizable')
 
 # ============================================================
 # Persist mapping
