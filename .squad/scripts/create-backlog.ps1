@@ -8,7 +8,8 @@ $ErrorActionPreference = 'Stop'
 $repo = 'frdeange/verdecoraTest'
 
 Write-Host "==> Creating labels..." -ForegroundColor Cyan
-& "$PSScriptRoot\create-labels.ps1"
+# Labels already created — run create-labels.ps1 separately if needed
+# & "$PSScriptRoot\create-labels.ps1"
 
 function New-Issue {
     param(
