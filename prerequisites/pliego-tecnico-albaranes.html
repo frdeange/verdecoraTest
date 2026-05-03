@@ -1,0 +1,2119 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pliego de Requisitos Técnicos — Sistema Inteligente de Gestión de Albaranes</title>
+    <style>
+        :root {
+            --azure-blue: #0078d4;
+            --azure-dark: #004578;
+            --azure-light: #deecf9;
+            --accent-green: #107c10;
+            --accent-orange: #ff8c00;
+            --accent-red: #d13438;
+            --bg-white: #ffffff;
+            --bg-gray: #f3f2f1;
+            --text-primary: #323130;
+            --text-secondary: #605e5c;
+            --border-color: #edebe9;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-primary);
+            background: var(--bg-gray);
+            line-height: 1.6;
+        }
+
+        /* ── Header ── */
+        header {
+            background: linear-gradient(135deg, var(--azure-dark) 0%, var(--azure-blue) 100%);
+            color: #fff;
+            padding: 3rem 2rem 2rem;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: .5rem;
+        }
+
+        header .subtitle {
+            font-size: 1.1rem;
+            opacity: .85;
+        }
+
+        header .meta-info {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            font-size: .9rem;
+            opacity: .8;
+        }
+
+        header .meta-info span {
+            background: rgba(255, 255, 255, .15);
+            padding: .3rem .8rem;
+            border-radius: 4px;
+        }
+
+        /* ── Layout ── */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
+        }
+
+        /* ── Table of Contents ── */
+        .toc {
+            background: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .toc h2 {
+            font-size: 1.2rem;
+            color: var(--azure-dark);
+            margin-bottom: 1rem;
+        }
+
+        .toc ol {
+            padding-left: 1.4rem;
+        }
+
+        .toc li {
+            margin: .35rem 0;
+        }
+
+        .toc a {
+            color: var(--azure-blue);
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Sections ── */
+        section {
+            background: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        section h2 {
+            font-size: 1.5rem;
+            color: var(--azure-dark);
+            border-bottom: 3px solid var(--azure-blue);
+            padding-bottom: .5rem;
+            margin-bottom: 1.2rem;
+        }
+
+        section h3 {
+            font-size: 1.15rem;
+            color: var(--azure-blue);
+            margin: 1.2rem 0 .6rem;
+        }
+
+        section h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 1rem 0 .4rem;
+        }
+
+        p,
+        li {
+            margin-bottom: .5rem;
+        }
+
+        ul,
+        ol {
+            padding-left: 1.6rem;
+        }
+
+        /* ── Tags / Badges ── */
+        .badge {
+            display: inline-block;
+            font-size: .75rem;
+            font-weight: 600;
+            padding: .15rem .55rem;
+            border-radius: 3px;
+            vertical-align: middle;
+            margin-left: .3rem;
+        }
+
+        .badge-azure {
+            background: var(--azure-light);
+            color: var(--azure-dark);
+        }
+
+        .badge-mcp {
+            background: #e8f5e9;
+            color: #1b5e20;
+        }
+
+        .badge-agent {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .badge-assumption {
+            background: #fff8e1;
+            color: #f57f17;
+            border: 1px solid #ffe082;
+        }
+
+        /* ── Tables ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: .92rem;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border-color);
+            padding: .6rem .8rem;
+            text-align: left;
+        }
+
+        th {
+            background: var(--azure-light);
+            color: var(--azure-dark);
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        /* ── Code blocks ── */
+        pre,
+        code {
+            font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+        }
+
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1.2rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-size: .85rem;
+            line-height: 1.5;
+        }
+
+        code {
+            background: #f0f0f0;
+            padding: .1rem .35rem;
+            border-radius: 3px;
+            font-size: .88em;
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        /* ── Callout boxes ── */
+        .callout {
+            padding: 1rem 1.2rem;
+            border-left: 4px solid;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+
+        .callout-info {
+            background: #e8f4fd;
+            border-color: var(--azure-blue);
+        }
+
+        .callout-warn {
+            background: #fff8e1;
+            border-color: var(--accent-orange);
+        }
+
+        .callout-assumption {
+            background: #fff3e0;
+            border-color: var(--accent-orange);
+        }
+
+        .callout-assumption::before {
+            content: "⚠️ Suposición: ";
+            font-weight: 700;
+            color: var(--accent-orange);
+        }
+
+        .callout-critical {
+            background: #fde7e9;
+            border-color: var(--accent-red);
+        }
+
+        /* ── Diagram container ── */
+        .diagram {
+            background: #fafafa;
+            border: 1px dashed #ccc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            text-align: center;
+            font-size: .88rem;
+            overflow-x: auto;
+        }
+
+        .diagram pre {
+            background: transparent;
+            color: var(--text-primary);
+            text-align: left;
+            display: inline-block;
+            font-size: .82rem;
+        }
+
+        /* ── Flow boxes ── */
+        .flow-step {
+            display: inline-block;
+            background: var(--azure-light);
+            color: var(--azure-dark);
+            padding: .4rem .8rem;
+            border-radius: 6px;
+            margin: .2rem;
+            font-size: .85rem;
+            font-weight: 600;
+        }
+
+        .flow-arrow {
+            display: inline-block;
+            color: var(--azure-blue);
+            font-size: 1.2rem;
+            vertical-align: middle;
+            margin: 0 .3rem;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.5rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            section {
+                padding: 1.2rem;
+            }
+
+            table {
+                font-size: .82rem;
+            }
+        }
+
+        @media print {
+            body {
+                background: #fff;
+            }
+
+            header {
+                background: var(--azure-dark) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            section {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- HEADER                                                     -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <header>
+        <h1>Pliego de Requisitos Técnicos</h1>
+        <p class="subtitle">Sistema Inteligente de Gestión de Albaranes con Agentes de IA</p>
+        <div class="meta-info">
+            <span>📄 Versión 1.0</span>
+            <span>📅 Mayo 2026</span>
+            <span>☁️ Microsoft Azure</span>
+            <span>🤖 Microsoft Agent Framework v1.0+</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- ── TOC ── -->
+        <nav class="toc">
+            <h2>Índice de Contenido</h2>
+            <ol>
+                <li><a href="#s1">Contexto y Objetivo del Proyecto</a></li>
+                <li><a href="#s2">Descripción Funcional del Flujo</a></li>
+                <li><a href="#s3">Arquitectura de Referencia en Azure</a></li>
+                <li><a href="#s4">Orquestación Multi-Agente con Microsoft Agent Framework</a></li>
+                <li><a href="#s5">Agente 1 — Extracción de Albaranes (OCR + IA)</a></li>
+                <li><a href="#s6">Agente 2 — Validación contra Pedido (Business Central)</a></li>
+                <li><a href="#s7">Agente 3 — Alta en Inventario (Business Central)</a></li>
+                <li><a href="#s8">Flujo Human-in-the-Loop (Microsoft Teams)</a></li>
+                <li><a href="#s9">Integración MCP (Model Context Protocol)</a></li>
+                <li><a href="#s10">Almacenamiento y Persistencia de Datos</a></li>
+                <li><a href="#s11">Observabilidad, Telemetría y Trazabilidad</a></li>
+                <li><a href="#s12">Seguridad y Gobernanza</a></li>
+                <li><a href="#s13">Infraestructura y Despliegue</a></li>
+                <li><a href="#s14">Requisitos No Funcionales</a></li>
+                <li><a href="#s15">Suposiciones y Decisiones Abiertas</a></li>
+                <li><a href="#s16">Entregables Esperados</a></li>
+                <li><a href="#s17">Glosario</a></li>
+            </ol>
+        </nav>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 1. CONTEXTO                                            -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s1">
+            <h2>1. Contexto y Objetivo del Proyecto</h2>
+            <p>
+                La organización necesita automatizar el proceso de recepción y validación de albaranes de proveedores
+                en sus puntos de venta (tiendas). Actualmente, el proceso es manual y propenso a errores de
+                transcripción, discrepancias con los pedidos y retrasos en la actualización del inventario en el ERP
+                (Microsoft Dynamics 365 Business Central).
+            </p>
+            <h3>1.1 Objetivos</h3>
+            <ul>
+                <li>Automatizar la digitalización, extracción y validación de la información contenida en albaranes de
+                    múltiples proveedores con formatos heterogéneos.</li>
+                <li>Reducir el tiempo desde la recepción física del albarán hasta la actualización del inventario en
+                    Business Central.</li>
+                <li>Implementar un flujo de aprobación humana (<em>Human-in-the-Loop</em>) integrado con Microsoft
+                    Teams para gestionar discrepancias.</li>
+                <li>Garantizar trazabilidad extremo a extremo de cada albarán procesado.</li>
+                <li>Desplegar toda la solución en la nube de Microsoft Azure con una arquitectura basada en contenedores
+                    y agentes de IA.</li>
+            </ul>
+
+            <h3>1.2 Alcance</h3>
+            <p>El alcance incluye:</p>
+            <ul>
+                <li>Desarrollo de la pipeline completa de procesamiento de albaranes (captura → extracción → validación
+                    → inventario).</li>
+                <li>Tres agentes de IA orquestados mediante <strong>Microsoft Agent Framework v1.0+</strong> y
+                    hospedados en <strong>Azure AI Foundry Agent Service</strong>.</li>
+                <li>Integración bidireccional con <strong>Dynamics 365 Business Central</strong> mediante
+                    <strong>MCP (Model Context Protocol)</strong>.</li>
+                <li>Flujo de aprobación en <strong>Microsoft Teams</strong>.</li>
+                <li>Plataforma de observabilidad completa con <strong>Azure Monitor</strong> y <strong>Application
+                        Insights</strong>.</li>
+                <li>Infraestructura como Código (IaC) para despliegue reproducible en <strong>Azure Container
+                        Apps</strong>.</li>
+            </ul>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 2. DESCRIPCIÓN FUNCIONAL                               -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s2">
+            <h2>2. Descripción Funcional del Flujo</h2>
+
+            <div class="diagram">
+                <pre>
+┌──────────────┐    ┌───────────────┐    ┌───────────────────┐    ┌──────────────────┐
+│  1. Tienda   │───▶│ 2. Blob       │───▶│ 3. Event Grid     │───▶│ 4. Agente 1:     │
+│  Escanea     │    │ Storage       │    │ (Disparo)         │    │ Extracción OCR   │
+│  albarán     │    │ (Imagen)      │    │                   │    │                  │
+└──────────────┘    └───────────────┘    └───────────────────┘    └────────┬─────────┘
+                                                                           │
+                                                                           ▼
+┌──────────────────┐    ┌───────────────────┐    ┌────────────────────────────────────┐
+│ 7a. Agente 3:    │◀───│ 6. ¿Coincide?     │◀───│ 5. Cosmos DB (JSON extraído)       │
+│ Alta inventario  │ SÍ │                   │    │    + Change Feed → Agente 2:       │
+│ (Business Central│    └────────┬──────────┘    │    Validación contra Pedido (BC)   │
+└──────────────────┘             │ NO            └────────────────────────────────────┘
+                                 ▼
+                    ┌───────────────────┐    ┌──────────────────┐
+                    │ 8. Teams:         │───▶│ 9. Decisión:     │
+                    │ Human-in-the-Loop │    │ Aceptar/Corregir │
+                    └───────────────────┘    └────────┬─────────┘
+                                                      │ Aceptar
+                                                      ▼
+                                            ┌──────────────────┐
+                                            │ 7b. Agente 3:    │
+                                            │ Alta inventario  │
+                                            │ (con correcciones│
+                                            │  si las hubiera) │
+                                            └──────────────────┘
+                </pre>
+            </div>
+
+            <h3>Pasos detallados</h3>
+            <ol>
+                <li><strong>Captura en tienda:</strong> El personal de tienda escanea o fotografía el albarán recibido
+                    del proveedor mediante una aplicación móvil o escáner conectado.</li>
+                <li><strong>Almacenamiento:</strong> La imagen se sube a un contenedor de <strong>Azure Blob
+                        Storage</strong> dedicado (<code>albaranes-raw</code>).</li>
+                <li><strong>Evento de disparo:</strong> La creación del blob genera un evento mediante <strong>Azure
+                        Event Grid</strong> que invoca al primer agente de IA.</li>
+                <li><strong>Agente 1 — Extracción:</strong> El agente procesa la imagen utilizando capacidades de
+                    visión (Azure AI Document Intelligence + modelo multimodal) y extrae campos estructurados en JSON.
+                </li>
+                <li><strong>Persistencia:</strong> El JSON resultante se almacena en <strong>Azure Cosmos DB</strong>
+                    como un nuevo documento, generando a su vez un evento de <em>Change Feed</em>.</li>
+                <li><strong>Agente 2 — Validación:</strong> El Change Feed dispara al segundo agente, que obtiene el
+                    pedido original desde <strong>Business Central</strong> (vía MCP) y lo compara con los datos
+                    extraídos del albarán.</li>
+                <li><strong>Coincidencia → Agente 3:</strong> Si albarán y pedido coinciden, los datos pasan al Agente
+                    3, que da de alta la mercancía en el inventario de Business Central (vía MCP).</li>
+                <li><strong>Discrepancia → Teams:</strong> Si hay diferencias, se envía una tarjeta adaptativa
+                    (<em>Adaptive Card</em>) al responsable de tienda en Microsoft Teams, detallando las
+                    discrepancias.</li>
+                <li><strong>Decisión humana:</strong> El responsable puede: aceptar las cantidades del albarán, corregir
+                    manualmente las cantidades, o rechazar el albarán.</li>
+                <li><strong>Resolución:</strong> Si se acepta (con o sin correcciones), se invoca al Agente 3 con los
+                    datos finales validados.</li>
+            </ol>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 3. ARQUITECTURA DE REFERENCIA                          -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s3">
+            <h2>3. Arquitectura de Referencia en Azure</h2>
+
+            <h3>3.1 Componentes principales</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Componente</th>
+                        <th>Servicio Azure</th>
+                        <th>Propósito</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Almacenamiento de imágenes</td>
+                        <td>Azure Blob Storage <span class="badge badge-azure">PaaS</span></td>
+                        <td>Contenedor para imágenes escaneadas de albaranes</td>
+                    </tr>
+                    <tr>
+                        <td>Eventos / Disparo</td>
+                        <td>Azure Event Grid <span class="badge badge-azure">PaaS</span></td>
+                        <td>Publicación y enrutamiento de eventos (blob creado, cambios en Cosmos)</td>
+                    </tr>
+                    <tr>
+                        <td>Plataforma de Agentes</td>
+                        <td>Azure AI Foundry Agent Service <span class="badge badge-agent">AI</span></td>
+                        <td>Hosting gestionado de los agentes de IA</td>
+                    </tr>
+                    <tr>
+                        <td>Orquestación</td>
+                        <td>Microsoft Agent Framework v1.0+ <span class="badge badge-agent">SDK</span></td>
+                        <td>Definición de flujos multi-agente (Handoff, Sequential, Event-Driven)</td>
+                    </tr>
+                    <tr>
+                        <td>OCR / Visión</td>
+                        <td>Azure AI Document Intelligence v4.0 <span class="badge badge-agent">AI</span></td>
+                        <td>Extracción de campos de documentos heterogéneos</td>
+                    </tr>
+                    <tr>
+                        <td>Modelo LLM</td>
+                        <td>Azure OpenAI Service (GPT-4o / GPT-4.1) <span class="badge badge-agent">AI</span></td>
+                        <td>Razonamiento y mapeo de campos, comparación, redacción de mensajes</td>
+                    </tr>
+                    <tr>
+                        <td>Base documental</td>
+                        <td>Azure Cosmos DB (NoSQL) <span class="badge badge-azure">PaaS</span></td>
+                        <td>Almacenamiento de albaranes procesados (JSON) con Change Feed</td>
+                    </tr>
+                    <tr>
+                        <td>ERP / Pedidos / Inventario</td>
+                        <td>Dynamics 365 Business Central <span class="badge badge-mcp">MCP</span></td>
+                        <td>Fuente de verdad de pedidos, destino para alta de inventario</td>
+                    </tr>
+                    <tr>
+                        <td>Conectividad MCP</td>
+                        <td>MCP Server (Business Central nativo) <span class="badge badge-mcp">MCP</span></td>
+                        <td>Exposición de entidades BC como tools MCP para los agentes</td>
+                    </tr>
+                    <tr>
+                        <td>Human-in-the-Loop</td>
+                        <td>Microsoft Teams + Adaptive Cards <span class="badge badge-azure">PaaS</span></td>
+                        <td>Notificación y aprobación de discrepancias</td>
+                    </tr>
+                    <tr>
+                        <td>Contenedores / Runtime</td>
+                        <td>Azure Container Apps <span class="badge badge-azure">PaaS</span></td>
+                        <td>Ejecución de microservicios, procesadores de Change Feed, webhooks</td>
+                    </tr>
+                    <tr>
+                        <td>Observabilidad</td>
+                        <td>Azure Monitor + Application Insights + Log Analytics <span
+                                class="badge badge-azure">PaaS</span></td>
+                        <td>Métricas, trazas distribuidas, logs centralizados, alertas</td>
+                    </tr>
+                    <tr>
+                        <td>Identidad</td>
+                        <td>Microsoft Entra ID (Azure AD) <span class="badge badge-azure">PaaS</span></td>
+                        <td>Autenticación y autorización OAuth 2.0 para todos los servicios</td>
+                    </tr>
+                    <tr>
+                        <td>Secretos</td>
+                        <td>Azure Key Vault <span class="badge badge-azure">PaaS</span></td>
+                        <td>Gestión segura de claves, cadenas de conexión y certificados</td>
+                    </tr>
+                    <tr>
+                        <td>IaC</td>
+                        <td>Bicep / Terraform <span class="badge badge-azure">Tooling</span></td>
+                        <td>Infraestructura como Código para despliegue reproducible</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>3.2 Diagrama de arquitectura lógica</h3>
+            <div class="diagram">
+                <pre>
+                            ┌────────────────────────────────────────────────┐
+                            │           AZURE AI FOUNDRY AGENT SERVICE       │
+                            │  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
+                            │  │ Agente 1 │  │ Agente 2 │  │ Agente 3 │    │
+                            │  │Extracción│  │Validación│  │Inventario│    │
+                            │  └────┬─────┘  └────┬─────┘  └────┬─────┘    │
+                            │       │MCP          │MCP          │MCP       │
+                            └───────┼─────────────┼─────────────┼──────────┘
+                                    │             │             │
+            ┌───────────┐     ┌─────▼─────┐  ┌───▼────┐  ┌────▼──────────┐
+            │  Blob     │────▶│ Doc Intel │  │ BC MCP │  │ BC MCP        │
+            │  Storage  │     │ (MCP Tool)│  │ Server │  │ Server        │
+            └───────────┘     └───────────┘  │(Lectura│  │(Escritura inv)│
+                  │                          └────────┘  └───────────────┘
+                  │ Event Grid
+                  ▼                    ┌────────────┐
+            ┌───────────┐             │  Microsoft │
+            │ Container │◀───────────▶│  Teams     │
+            │ Apps      │  Webhook    │  (Adaptive │
+            │ (Runtime) │             │  Cards)    │
+            └─────┬─────┘             └────────────┘
+                  │
+            ┌─────▼─────┐     ┌──────────────────────┐
+            │ Cosmos DB │────▶│ Azure Monitor         │
+            │ (Change   │     │ + App Insights        │
+            │  Feed)    │     │ + Log Analytics        │
+            └───────────┘     └──────────────────────┘
+                </pre>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 4. ORQUESTACIÓN MULTI-AGENTE                          -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s4">
+            <h2>4. Orquestación Multi-Agente con Microsoft Agent Framework</h2>
+
+            <h3>4.1 Sobre Microsoft Agent Framework v1.0</h3>
+            <p>
+                <strong>Microsoft Agent Framework v1.0</strong> (liberado en abril 2026) es el SDK de producción
+                unificado que fusiona Semantic Kernel y AutoGen. Ofrece soporte oficial para .NET y Python, con
+                patrones de orquestación multi-agente integrados, interoperabilidad MCP/A2A, y telemetría OpenTelemetry
+                nativa.
+            </p>
+
+            <h3>4.2 Diseño de flujos — Análisis</h3>
+            <p>
+                Tras analizar el proceso completo, se recomienda descomponerlo en <strong>dos flujos
+                    principales</strong> orquestados y un <strong>sub-flujo condicional</strong>:
+            </p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Flujo</th>
+                        <th>Patrón de orquestación</th>
+                        <th>Disparador</th>
+                        <th>Agentes involucrados</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Flujo 1:</strong> Extracción y persistencia</td>
+                        <td>Event-Driven → Single Agent</td>
+                        <td>Event Grid (Blob creado)</td>
+                        <td>Agente 1 (Extracción)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Flujo 2:</strong> Validación y decisión</td>
+                        <td>Sequential Workflow con Handoff condicional</td>
+                        <td>Cosmos DB Change Feed</td>
+                        <td>Agente 2 (Validación) → Agente 3 (Inventario)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Sub-flujo 2b:</strong> Discrepancia + HITL</td>
+                        <td>Handoff Workflow + Human-in-the-Loop</td>
+                        <td>Resultado de Agente 2 (discrepancia)</td>
+                        <td>Agente 2 → Teams → Agente 3 (Inventario)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>4.3 Justificación del diseño en dos flujos</h3>
+            <div class="callout callout-info">
+                <strong>¿Por qué dos flujos y no uno solo?</strong><br>
+                La separación en dos flujos desacoplados mediante Cosmos DB como capa intermedia ofrece:
+                <ul>
+                    <li><strong>Resiliencia:</strong> Si el Agente 2 o Business Central están caídos, los albaranes
+                        extraídos no se pierden; quedan en Cosmos DB y se reprocesan automáticamente.</li>
+                    <li><strong>Escalabilidad independiente:</strong> El Flujo 1 (OCR intensivo) puede escalar
+                        diferente al Flujo 2 (que depende de llamadas a BC).</li>
+                    <li><strong>Auditoría:</strong> Cosmos DB actúa como registro intermedio inmutable del dato extraído
+                        antes de cualquier decisión de negocio.</li>
+                    <li><strong>Reintentabilidad:</strong> Cada flujo puede reintentar de forma independiente sin
+                        re-ejecutar todo el pipeline.</li>
+                </ul>
+            </div>
+
+            <h3>4.4 Detalle de orquestación — Flujo 1 (Event-Driven Single Agent)</h3>
+            <p>
+                <span class="flow-step">Blob creado</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Event Grid</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Webhook Container App</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Agente 1: Extracción</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Cosmos DB (Write)</span>
+            </p>
+            <pre><code># Pseudocódigo — Flujo 1 con Microsoft Agent Framework (Python)
+from agent_framework import Agent, FoundryChatClient
+from agent_framework.tools import McpToolProvider
+
+# Configurar herramientas MCP para el agente
+blob_mcp = McpToolProvider(server="mcp-blob-storage")
+cosmos_mcp = McpToolProvider(server="mcp-cosmos-db")
+doc_intel_mcp = McpToolProvider(server="mcp-document-intelligence")
+
+extraction_agent = Agent(
+    client=FoundryChatClient(endpoint=FOUNDRY_ENDPOINT),
+    name="ExtractionAgent",
+    instructions="""Eres un agente experto en lectura de albaranes de entrega.
+    Analiza la imagen proporcionada y extrae TODOS los campos relevantes
+    en formato JSON estructurado: proveedor, fecha, nº albarán,
+    líneas de detalle (producto, cantidad, unidad, precio), totales,
+    observaciones, y referencia al pedido si existe.""",
+    tools=[blob_mcp, doc_intel_mcp, cosmos_mcp]
+)
+
+# El webhook de Container App invoca:
+async def handle_blob_event(event):
+    blob_url = event["data"]["url"]
+    result = await extraction_agent.run(
+        f"Procesa el albarán ubicado en: {blob_url}"
+    )
+    # El agente guarda automáticamente en Cosmos via MCP tool
+    return result</code></pre>
+
+            <h3>4.5 Detalle de orquestación — Flujo 2 (Sequential + Handoff condicional)</h3>
+            <p>
+                <span class="flow-step">Cosmos Change Feed</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Agente 2: Validación</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">¿Coincide?</span>
+            </p>
+            <p>
+                &nbsp;&nbsp;&nbsp;&nbsp;SÍ →
+                <span class="flow-step">Handoff → Agente 3: Inventario</span>
+            </p>
+            <p>
+                &nbsp;&nbsp;&nbsp;&nbsp;NO →
+                <span class="flow-step">Teams HITL</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Aprobado → Handoff → Agente 3</span>
+            </p>
+
+            <pre><code># Pseudocódigo — Flujo 2 con Microsoft Agent Framework (Python)
+from agent_framework import Agent, HandoffWorkflow, FoundryChatClient
+from agent_framework.tools import McpToolProvider
+
+bc_read_mcp = McpToolProvider(server="mcp-business-central-read")
+bc_write_mcp = McpToolProvider(server="mcp-business-central-inventory")
+cosmos_mcp = McpToolProvider(server="mcp-cosmos-db")
+teams_mcp = McpToolProvider(server="mcp-teams-notifications")
+
+validation_agent = Agent(
+    client=FoundryChatClient(endpoint=FOUNDRY_ENDPOINT),
+    name="ValidationAgent",
+    instructions="""Comparas datos de albaranes extraídos con pedidos
+    de Business Central. Identifica discrepancias en: cantidades,
+    productos, precios, referencias. Emite un veredicto estructurado.""",
+    tools=[cosmos_mcp, bc_read_mcp, teams_mcp]
+)
+
+inventory_agent = Agent(
+    client=FoundryChatClient(endpoint=FOUNDRY_ENDPOINT),
+    name="InventoryAgent",
+    instructions="""Registras mercancía recibida en el inventario de
+    Business Central. Solo realizas operaciones de ALTA (Create/Update).
+    Nunca eliminas registros.""",
+    tools=[bc_write_mcp, cosmos_mcp]
+)
+
+# Workflow con Handoff condicional
+workflow = HandoffWorkflow(
+    agents=[validation_agent, inventory_agent],
+    handoff_strategy="conditional",
+    # El validation_agent decide: handoff a inventory_agent
+    # o escalación a human-in-the-loop
+)
+
+# Procesador de Change Feed
+async def handle_change_feed(document):
+    result = await workflow.run(
+        f"Valida el albarán {document['id']} contra su pedido "
+        f"referencia {document['ref_pedido']} y procede según resultado."
+    )</code></pre>
+
+            <h3>4.6 Gestión de estado entre flujos</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Estado</th>
+                        <th>Almacenamiento</th>
+                        <th>Campo clave</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Imagen original</td>
+                        <td>Blob Storage</td>
+                        <td><code>blob_url</code></td>
+                    </tr>
+                    <tr>
+                        <td>Datos extraídos</td>
+                        <td>Cosmos DB (<code>albaranes</code>)</td>
+                        <td><code>albaran_id</code>, <code>estado: "extraido"</code></td>
+                    </tr>
+                    <tr>
+                        <td>Resultado validación</td>
+                        <td>Cosmos DB (actualización)</td>
+                        <td><code>estado: "validado" | "discrepancia"</code></td>
+                    </tr>
+                    <tr>
+                        <td>Decisión humana</td>
+                        <td>Cosmos DB (actualización)</td>
+                        <td><code>estado: "aprobado_hitl" | "rechazado"</code></td>
+                    </tr>
+                    <tr>
+                        <td>Alta inventario</td>
+                        <td>Business Central + Cosmos DB</td>
+                        <td><code>estado: "inventariado"</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 5. AGENTE 1 — EXTRACCIÓN                              -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s5">
+            <h2>5. Agente 1 — Extracción de Albaranes (OCR + IA)</h2>
+
+            <h3>5.1 Objetivo</h3>
+            <p>
+                Extraer de forma precisa y estructurada toda la información relevante de albaranes provenientes de
+                múltiples proveedores con formatos heterogéneos (PDF, imagen, fax escaneado, etc.).
+            </p>
+
+            <h3>5.2 Estrategia de extracción (doble pasada)</h3>
+            <p>Se recomienda una estrategia de <strong>doble pasada</strong> para maximizar la precisión:</p>
+            <ol>
+                <li><strong>Pasada 1 — Azure AI Document Intelligence (v4.0):</strong> Extracción OCR de alto
+                    rendimiento usando modelos prebuilt (invoice) y/o modelos custom entrenados con albaranes
+                    representativos. Produce JSON estructurado con campos detectados, tablas y valores de confianza.
+                </li>
+                <li><strong>Pasada 2 — Modelo multimodal (GPT-4o vía Azure OpenAI):</strong> El agente recibe tanto
+                    la imagen original como el JSON de la pasada 1. El LLM verifica, completa campos faltantes,
+                    resuelve ambigüedades y normaliza el formato de salida.</li>
+            </ol>
+
+            <div class="callout callout-assumption">
+                Se asume que el modelo prebuilt de invoice de Document Intelligence cubrirá la mayoría de formatos.
+                Para proveedores con formatos muy atípicos, puede ser necesario entrenar un modelo custom neural con un
+                mínimo de 5 documentos de ejemplo por formato. El proveedor deberá evaluar esta necesidad durante la
+                fase de análisis.
+            </div>
+
+            <h3>5.3 Esquema JSON de salida</h3>
+            <pre><code>{
+  "albaran_id": "ALB-2026-00451",
+  "estado": "extraido",
+  "metadata": {
+    "blob_url": "https://storage.blob.core.windows.net/albaranes-raw/...",
+    "fecha_procesamiento": "2026-05-02T17:30:00Z",
+    "confianza_global": 0.94,
+    "modelo_extraccion": "doc-intel-v4.0 + gpt-4o"
+  },
+  "proveedor": {
+    "nombre": "Distribuciones García S.L.",
+    "nif": "B12345678",
+    "direccion": "C/ Ejemplo 123, 28001 Madrid"
+  },
+  "albaran": {
+    "numero": "AG-2026/1234",
+    "fecha_emision": "2026-04-30",
+    "ref_pedido": "PO-2026-0089",
+    "punto_entrega": "Tienda Madrid Centro"
+  },
+  "lineas": [
+    {
+      "linea": 1,
+      "codigo_producto": "SKU-001",
+      "descripcion": "Producto ejemplo A",
+      "cantidad": 50,
+      "unidad": "uds",
+      "precio_unitario": 12.50,
+      "importe": 625.00,
+      "confianza": 0.97
+    }
+  ],
+  "totales": {
+    "base_imponible": 625.00,
+    "iva": 131.25,
+    "total": 756.25
+  },
+  "observaciones": "Entrega parcial. Faltan 10 uds de SKU-002."
+}</code></pre>
+
+            <h3>5.4 Requisitos técnicos del Agente 1</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Requisito</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Formatos de entrada</td>
+                        <td>JPEG, PNG, TIFF, PDF (incluyendo PDF escaneado sin texto embebido)</td>
+                    </tr>
+                    <tr>
+                        <td>Idiomas</td>
+                        <td>Español (principal), con soporte para campos en inglés, francés y portugués</td>
+                    </tr>
+                    <tr>
+                        <td>Confianza mínima</td>
+                        <td>Campos con confianza &lt; 0.80 deben marcarse como <code>"requiere_revision": true</code>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Tiempo máximo de procesamiento</td>
+                        <td>≤ 30 segundos por albarán (incluidas ambas pasadas)</td>
+                    </tr>
+                    <tr>
+                        <td>Herramientas MCP requeridas</td>
+                        <td>
+                            <code>mcp-blob-storage</code> (Lectura),
+                            <code>mcp-document-intelligence</code> (Lectura/Análisis),
+                            <code>mcp-cosmos-db</code> (Escritura)
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 6. AGENTE 2 — VALIDACIÓN                              -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s6">
+            <h2>6. Agente 2 — Validación contra Pedido (Business Central)</h2>
+
+            <h3>6.1 Objetivo</h3>
+            <p>
+                Comparar los datos extraídos del albarán con la información del pedido de compra original registrado en
+                Dynamics 365 Business Central, e identificar de forma precisa cualquier discrepancia.
+            </p>
+
+            <h3>6.2 Lógica de validación</h3>
+            <p>El agente debe realizar las siguientes comprobaciones:</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Comprobación</th>
+                        <th>Fuente Albarán</th>
+                        <th>Fuente Pedido (BC)</th>
+                        <th>Tolerancia</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Existencia del pedido</td>
+                        <td><code>ref_pedido</code></td>
+                        <td>Purchase Order Number</td>
+                        <td>Exacta</td>
+                    </tr>
+                    <tr>
+                        <td>Proveedor correcto</td>
+                        <td><code>proveedor.nif</code></td>
+                        <td>Vendor No.</td>
+                        <td>Exacta</td>
+                    </tr>
+                    <tr>
+                        <td>Productos incluidos</td>
+                        <td><code>lineas[].codigo_producto</code></td>
+                        <td>Purchase Lines → Item No.</td>
+                        <td>Exacta</td>
+                    </tr>
+                    <tr>
+                        <td>Cantidades</td>
+                        <td><code>lineas[].cantidad</code></td>
+                        <td>Purchase Lines → Quantity</td>
+                        <td>Configurable (±5% por defecto)</td>
+                    </tr>
+                    <tr>
+                        <td>Precios unitarios</td>
+                        <td><code>lineas[].precio_unitario</code></td>
+                        <td>Purchase Lines → Direct Unit Cost</td>
+                        <td>Configurable (±2% por defecto)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="callout callout-assumption">
+                Se asume que los umbrales de tolerancia para cantidades (±5%) y precios (±2%) serán configurables
+                mediante variables de entorno o un documento de configuración en Cosmos DB. Estos valores iniciales
+                deben ser confirmados con el cliente.
+            </div>
+
+            <h3>6.3 Estructura de resultado de validación</h3>
+            <pre><code>{
+  "albaran_id": "ALB-2026-00451",
+  "ref_pedido": "PO-2026-0089",
+  "estado": "discrepancia",
+  "validacion": {
+    "timestamp": "2026-05-02T17:31:00Z",
+    "resultado": "DISCREPANCIA",
+    "discrepancias": [
+      {
+        "tipo": "CANTIDAD",
+        "linea": 1,
+        "producto": "SKU-001",
+        "valor_albaran": 50,
+        "valor_pedido": 60,
+        "diferencia": -10,
+        "impacto_economico": -125.00,
+        "descripcion": "El albarán indica 50 uds pero el pedido especifica 60 uds."
+      }
+    ],
+    "lineas_ok": [
+      { "linea": 2, "producto": "SKU-003", "estado": "coincide" }
+    ]
+  }
+}</code></pre>
+
+            <h3>6.4 Requisitos técnicos del Agente 2</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Requisito</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Acceso a Business Central</td>
+                        <td>Vía MCP Server de BC — <strong>Solo lectura</strong> de Purchase Orders y Purchase Lines
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Acceso a Cosmos DB</td>
+                        <td>Lectura del albarán extraído + Escritura del resultado de validación</td>
+                    </tr>
+                    <tr>
+                        <td>Notificaciones Teams</td>
+                        <td>Capacidad de enviar Adaptive Cards vía MCP tool de Teams (solo en caso de discrepancia)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Tiempo máximo</td>
+                        <td>≤ 15 segundos por validación</td>
+                    </tr>
+                    <tr>
+                        <td>Herramientas MCP</td>
+                        <td>
+                            <code>mcp-business-central-read</code> (Lectura),
+                            <code>mcp-cosmos-db</code> (Lectura + Escritura),
+                            <code>mcp-teams</code> (Escritura notificaciones)
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 7. AGENTE 3 — INVENTARIO                              -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s7">
+            <h2>7. Agente 3 — Alta en Inventario (Business Central)</h2>
+
+            <h3>7.1 Objetivo</h3>
+            <p>
+                Registrar la mercancía recibida (según albarán validado o aprobado) como entrada de inventario en
+                Dynamics 365 Business Central, de forma precisa y segura.
+            </p>
+
+            <h3>7.2 Operaciones permitidas</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Operación</th>
+                        <th>Entidad BC</th>
+                        <th>Permitido</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Crear recepción de almacén (<em>Warehouse Receipt</em>)</td>
+                        <td>Posted Warehouse Receipt</td>
+                        <td>✅ Sí</td>
+                    </tr>
+                    <tr>
+                        <td>Actualizar cantidades recibidas en líneas de pedido</td>
+                        <td>Purchase Lines (Qty. to Receive)</td>
+                        <td>✅ Sí</td>
+                    </tr>
+                    <tr>
+                        <td>Registrar movimiento de inventario</td>
+                        <td>Item Journal Line</td>
+                        <td>✅ Sí</td>
+                    </tr>
+                    <tr>
+                        <td>Eliminar registros</td>
+                        <td>Cualquiera</td>
+                        <td>❌ No — Prohibido</td>
+                    </tr>
+                    <tr>
+                        <td>Modificar pedido original</td>
+                        <td>Purchase Order</td>
+                        <td>❌ No</td>
+                    </tr>
+                    <tr>
+                        <td>Modificar maestro de artículos</td>
+                        <td>Item</td>
+                        <td>❌ No</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="callout callout-critical">
+                <strong>Restricción crítica:</strong> El Agente 3 debe operar bajo el principio de mínimo privilegio.
+                Solo puede crear y actualizar registros de recepción e inventario. Bajo ninguna circunstancia podrá
+                ejecutar operaciones de eliminación (<code>DELETE</code>), reversión ni modificación de datos maestros.
+                Esta restricción debe implementarse tanto a nivel de configuración del MCP Server de BC como en las
+                instrucciones del agente.
+            </div>
+
+            <h3>7.3 Datos de entrada esperados</h3>
+            <pre><code>{
+  "albaran_id": "ALB-2026-00451",
+  "ref_pedido": "PO-2026-0089",
+  "origen": "validacion_directa | aprobacion_hitl",
+  "lineas_a_inventariar": [
+    {
+      "codigo_producto": "SKU-001",
+      "cantidad_recibida": 50,
+      "ubicacion_almacen": "TIENDA-MADRID-01",
+      "lote": null
+    }
+  ],
+  "correcciones_hitl": null
+}</code></pre>
+
+            <h3>7.4 Requisitos técnicos del Agente 3</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Requisito</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Acceso a Business Central</td>
+                        <td>Vía MCP Server de BC — <strong>Create + Update</strong> en entidades de inventario
+                            únicamente</td>
+                    </tr>
+                    <tr>
+                        <td>Idempotencia</td>
+                        <td>Las operaciones deben ser idempotentes para soportar reintentos sin duplicar registros</td>
+                    </tr>
+                    <tr>
+                        <td>Confirmación</td>
+                        <td>Actualizar estado en Cosmos DB a <code>"inventariado"</code> tras éxito</td>
+                    </tr>
+                    <tr>
+                        <td>Rollback</td>
+                        <td>En caso de error parcial, registrar estado <code>"error_inventario"</code> con detalle para
+                            reproceso</td>
+                    </tr>
+                    <tr>
+                        <td>Herramientas MCP</td>
+                        <td>
+                            <code>mcp-business-central-inventory</code> (Create + Update),
+                            <code>mcp-cosmos-db</code> (Lectura + Escritura estado)
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 8. HUMAN-IN-THE-LOOP                                  -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s8">
+            <h2>8. Flujo Human-in-the-Loop (Microsoft Teams)</h2>
+
+            <h3>8.1 Descripción</h3>
+            <p>
+                Cuando el Agente 2 detecta discrepancias entre el albarán y el pedido, se activa un flujo de aprobación
+                humana mediante una <strong>Adaptive Card</strong> enviada a Microsoft Teams al responsable de la
+                tienda correspondiente.
+            </p>
+
+            <h3>8.2 Contenido de la Adaptive Card</h3>
+            <p>La tarjeta debe incluir:</p>
+            <ul>
+                <li><strong>Cabecera:</strong> Nº de albarán, proveedor, fecha, referencia de pedido.</li>
+                <li><strong>Tabla de discrepancias:</strong> Por cada discrepancia — producto, cantidad del albarán vs.
+                    cantidad del pedido, diferencia, impacto económico.</li>
+                <li><strong>Resumen de impacto:</strong> Diferencia total en unidades y en importe.</li>
+                <li><strong>Acciones disponibles:</strong>
+                    <ul>
+                        <li>✅ <strong>Aceptar albarán</strong> — Se inventaría según las cantidades del albarán.</li>
+                        <li>✏️ <strong>Corregir cantidades</strong> — Campos editables para que el usuario ajuste las
+                            cantidades línea a línea antes de confirmar.</li>
+                        <li>❌ <strong>Rechazar albarán</strong> — Se marca como rechazado y no se procesa.</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3>8.3 Flujo técnico</h3>
+            <ol>
+                <li>El Agente 2 invoca la tool MCP de Teams para enviar la Adaptive Card al canal/chat correspondiente.
+                </li>
+                <li>La Adaptive Card incluye un <code>Action.Submit</code> que envía la respuesta a un webhook en
+                    Azure Container Apps.</li>
+                <li>El webhook procesa la respuesta, actualiza el documento en Cosmos DB con la decisión y, si
+                    corresponde, invoca al Agente 3.</li>
+                <li>Si no hay respuesta en un período configurable (<strong>timeout</strong>), se envía un recordatorio.
+                </li>
+            </ol>
+
+            <div class="callout callout-assumption">
+                Se asume que existe un canal de Teams o chat grupal predefinido por tienda donde se enviarán las
+                notificaciones. La resolución del destinatario (responsable de tienda) se obtendrá desde un maestro de
+                tiendas configurable. Si no existe, el proveedor deberá proponer una solución de enrutamiento.
+            </div>
+
+            <div class="callout callout-assumption">
+                Se asume un timeout por defecto de <strong>24 horas</strong> para la decisión humana, tras el cual se
+                enviará un recordatorio. Si transcurren <strong>48 horas</strong> sin respuesta, el albarán quedará en
+                estado <code>"pendiente_escalacion"</code>. Estos valores deben ser configurables.
+            </div>
+
+            <h3>8.4 Requisitos técnicos del HITL</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Requisito</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Plataforma de notificación</td>
+                        <td>Microsoft Teams (Adaptive Cards v1.5+)</td>
+                    </tr>
+                    <tr>
+                        <td>Bot Framework</td>
+                        <td>Bot registrado en Azure Bot Service para enviar y recibir mensajes en Teams</td>
+                    </tr>
+                    <tr>
+                        <td>Webhook de respuesta</td>
+                        <td>Endpoint HTTPS en Container Apps para procesar <code>Action.Submit</code></td>
+                    </tr>
+                    <tr>
+                        <td>Corrección de cantidades</td>
+                        <td>Campos <code>Input.Number</code> en la Adaptive Card para cada línea con discrepancia</td>
+                    </tr>
+                    <tr>
+                        <td>Auditoría de decisión</td>
+                        <td>Registrar en Cosmos DB: quién decidió, cuándo, qué acción tomó y qué valores modificó</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 9. INTEGRACIÓN MCP                                    -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s9">
+            <h2>9. Integración MCP (Model Context Protocol)</h2>
+
+            <h3>9.1 Principio rector</h3>
+            <p>
+                <strong>Toda interacción de los agentes con servicios externos se realiza exclusivamente mediante
+                    MCP (Model Context Protocol)</strong>. MCP actúa como la capa de abstracción universal que
+                permite a los agentes descubrir y utilizar herramientas de forma estandarizada, segura y auditable.
+            </p>
+
+            <h3>9.2 Inventario de MCP Servers</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>MCP Server</th>
+                        <th>Servicio subyacente</th>
+                        <th>Operaciones CRUD expuestas</th>
+                        <th>Consumido por</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>mcp-blob-storage</code></td>
+                        <td>Azure Blob Storage</td>
+                        <td><strong>R</strong>ead (descargar blob)</td>
+                        <td>Agente 1</td>
+                    </tr>
+                    <tr>
+                        <td><code>mcp-document-intelligence</code></td>
+                        <td>Azure AI Document Intelligence v4.0</td>
+                        <td><strong>R</strong>ead (analizar documento)</td>
+                        <td>Agente 1</td>
+                    </tr>
+                    <tr>
+                        <td><code>mcp-cosmos-db</code></td>
+                        <td>Azure Cosmos DB (NoSQL)</td>
+                        <td><strong>C</strong>reate, <strong>R</strong>ead, <strong>U</strong>pdate</td>
+                        <td>Agente 1, 2, 3</td>
+                    </tr>
+                    <tr>
+                        <td><code>mcp-business-central-read</code></td>
+                        <td>Dynamics 365 Business Central</td>
+                        <td><strong>R</strong>ead (Purchase Orders, Purchase Lines, Vendors, Items)</td>
+                        <td>Agente 2</td>
+                    </tr>
+                    <tr>
+                        <td><code>mcp-business-central-inventory</code></td>
+                        <td>Dynamics 365 Business Central</td>
+                        <td><strong>C</strong>reate, <strong>U</strong>pdate (Warehouse Receipt, Item Journal)</td>
+                        <td>Agente 3</td>
+                    </tr>
+                    <tr>
+                        <td><code>mcp-teams</code></td>
+                        <td>Microsoft Teams (Bot Framework)</td>
+                        <td><strong>C</strong>reate (enviar Adaptive Card), <strong>U</strong>pdate (actualizar tarjeta)
+                        </td>
+                        <td>Agente 2</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>9.3 Matriz de permisos CRUD por agente</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>MCP Server</th>
+                        <th>Agente 1</th>
+                        <th>Agente 2</th>
+                        <th>Agente 3</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>mcp-blob-storage</code></td>
+                        <td>R</td>
+                        <td>—</td>
+                        <td>—</td>
+                    </tr>
+                    <tr>
+                        <td><code>mcp-document-intelligence</code></td>
+                        <td>R</td>
+                        <td>—</td>
+                        <td>—</td>
+                    </tr>
+                    <tr>
+                        <td><code>mcp-cosmos-db</code></td>
+                        <td>C, R</td>
+                        <td>R, U</td>
+                        <td>R, U</td>
+                    </tr>
+                    <tr>
+                        <td><code>mcp-business-central-read</code></td>
+                        <td>—</td>
+                        <td>R</td>
+                        <td>—</td>
+                    </tr>
+                    <tr>
+                        <td><code>mcp-business-central-inventory</code></td>
+                        <td>—</td>
+                        <td>—</td>
+                        <td>C, U</td>
+                    </tr>
+                    <tr>
+                        <td><code>mcp-teams</code></td>
+                        <td>—</td>
+                        <td>C, U</td>
+                        <td>—</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="callout callout-critical">
+                <strong>Prohibición explícita:</strong> Ningún MCP Server expondrá operaciones de
+                <strong>Delete</strong> a los agentes. Esta restricción es deliberada y debe implementarse en la
+                configuración de cada MCP Server (no solo en las instrucciones del agente). En el caso del MCP Server
+                nativo de Business Central, se configurarán las API Pages expuestas para excluir endpoints de
+                eliminación.
+            </div>
+
+            <h3>9.4 Configuración MCP en Business Central</h3>
+            <p>
+                Dynamics 365 Business Central ofrece soporte nativo de MCP Server desde la wave 2 de 2025. La
+                configuración requiere:
+            </p>
+            <ol>
+                <li><strong>Habilitar MCP Server</strong> en la configuración de Business Central.</li>
+                <li><strong>Definir API Pages expuestas:</strong> Seleccionar únicamente las entidades necesarias
+                    (Purchase Orders, Purchase Lines, Vendors, Items, Warehouse Receipts, Item Journal Lines).</li>
+                <li><strong>Configurar permisos por operación:</strong> Asignar Read/Create/Update según la tabla
+                    de permisos anterior. Desactivar Delete en todas las entidades.</li>
+                <li><strong>Autenticación OAuth 2.0:</strong> Configurar la aplicación registrada en Entra ID con los
+                    scopes mínimos necesarios.</li>
+            </ol>
+
+            <h3>9.5 MCP Servers personalizados</h3>
+            <p>
+                Los MCP Servers para Blob Storage, Document Intelligence, Cosmos DB y Teams deberán ser
+                desarrollados como servidores MCP remotos desplegados en <strong>Azure Container Apps</strong>. Cada
+                uno expondrá únicamente las tools necesarias según la matriz de permisos.
+            </p>
+            <pre><code># Ejemplo: Definición de tools en mcp-cosmos-db
+tools:
+  - name: "read_albaran"
+    description: "Lee un albarán procesado de Cosmos DB por su ID"
+    input_schema:
+      type: object
+      properties:
+        albaran_id: { type: string }
+      required: [albaran_id]
+    permissions: [read]
+
+  - name: "create_albaran"
+    description: "Crea un nuevo registro de albarán en Cosmos DB"
+    input_schema:
+      type: object
+      properties:
+        albaran_data: { type: object }
+      required: [albaran_data]
+    permissions: [create]
+
+  - name: "update_albaran_status"
+    description: "Actualiza el estado de un albarán existente"
+    input_schema:
+      type: object
+      properties:
+        albaran_id: { type: string }
+        nuevo_estado: { type: string, enum: [extraido, validado, discrepancia, aprobado_hitl, rechazado, inventariado, error_inventario] }
+        detalles: { type: object }
+      required: [albaran_id, nuevo_estado]
+    permissions: [update]
+
+  # ⛔ NO se expone ninguna tool de delete</code></pre>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 10. ALMACENAMIENTO                                    -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s10">
+            <h2>10. Almacenamiento y Persistencia de Datos</h2>
+
+            <h3>10.1 Azure Blob Storage</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Parámetro</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Contenedor</td>
+                        <td><code>albaranes-raw</code></td>
+                    </tr>
+                    <tr>
+                        <td>Tipo de acceso</td>
+                        <td>Private (sin acceso anónimo)</td>
+                    </tr>
+                    <tr>
+                        <td>Redundancia</td>
+                        <td>ZRS (Zone Redundant Storage) mínimo</td>
+                    </tr>
+                    <tr>
+                        <td>Ciclo de vida</td>
+                        <td>Mover a Hot → Cool (30 días) → Archive (90 días)</td>
+                    </tr>
+                    <tr>
+                        <td>Soft delete</td>
+                        <td>Habilitado (14 días)</td>
+                    </tr>
+                    <tr>
+                        <td>Integración Event Grid</td>
+                        <td>Suscripción al evento <code>Microsoft.Storage.BlobCreated</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>10.2 Azure Cosmos DB</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Parámetro</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>API</td>
+                        <td>NoSQL (Core SQL)</td>
+                    </tr>
+                    <tr>
+                        <td>Base de datos</td>
+                        <td><code>albaranes-db</code></td>
+                    </tr>
+                    <tr>
+                        <td>Contenedor principal</td>
+                        <td><code>albaranes</code> (partition key: <code>/albaran.punto_entrega</code>)</td>
+                    </tr>
+                    <tr>
+                        <td>Contenedor de configuración</td>
+                        <td><code>configuracion</code> (umbrales, mappings, parámetros HITL)</td>
+                    </tr>
+                    <tr>
+                        <td>Change Feed</td>
+                        <td>Habilitado (modo completo <em>Full Fidelity</em> — incluye updates)</td>
+                    </tr>
+                    <tr>
+                        <td>TTL</td>
+                        <td>Sin expiración (retención indefinida para auditoría)</td>
+                    </tr>
+                    <tr>
+                        <td>Consistencia</td>
+                        <td>Session consistency</td>
+                    </tr>
+                    <tr>
+                        <td>Throughput</td>
+                        <td>Autoscale (400–4000 RU/s recomendado inicialmente)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="callout callout-assumption">
+                Se asume que la clave de partición <code>/albaran.punto_entrega</code> (nombre o código de tienda) es
+                adecuada para una distribución equilibrada. Si el número de tiendas es muy reducido (&lt;5), podría
+                ser necesario un partition key diferente (ej. <code>/albaran_id</code>). El proveedor debe validar
+                esto durante el diseño detallado.
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 11. OBSERVABILIDAD                                    -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s11">
+            <h2>11. Observabilidad, Telemetría y Trazabilidad</h2>
+
+            <h3>11.1 Principio</h3>
+            <p>
+                <strong>Trazabilidad extremo a extremo obligatoria.</strong> Cada albarán procesado debe ser rastreable
+                desde su captura hasta su alta en inventario (o rechazo), incluyendo cada decisión tomada por agentes
+                y por humanos.
+            </p>
+
+            <h3>11.2 Stack de observabilidad</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Capa</th>
+                        <th>Servicio Azure</th>
+                        <th>Uso</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Trazas distribuidas</td>
+                        <td>Application Insights (OpenTelemetry)</td>
+                        <td>Tracing end-to-end de flujos multi-agente: spans por agente, tool invocations, razonamiento
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Métricas</td>
+                        <td>Azure Monitor Metrics</td>
+                        <td>Latencia por agente, tokens consumidos, tasa de error, volumen de albaranes/hora</td>
+                    </tr>
+                    <tr>
+                        <td>Logs</td>
+                        <td>Log Analytics Workspace</td>
+                        <td>Logs estructurados de todos los componentes (Container Apps, agentes, MCP Servers)</td>
+                    </tr>
+                    <tr>
+                        <td>Dashboards</td>
+                        <td>Azure Workbooks / Grafana</td>
+                        <td>Paneles operativos para el equipo de soporte</td>
+                    </tr>
+                    <tr>
+                        <td>Alertas</td>
+                        <td>Azure Monitor Alerts + Action Groups</td>
+                        <td>Notificaciones automáticas ante errores, latencia alta, agentes sin respuesta</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>11.3 Integración con Azure AI Foundry</h3>
+            <p>
+                Azure AI Foundry Agent Service se integra nativamente con Application Insights mediante las
+                <strong>convenciones semánticas GenAI de OpenTelemetry</strong>. La configuración requiere:
+            </p>
+            <ol>
+                <li>Vincular un recurso de Application Insights al proyecto de Foundry en el portal Azure.</li>
+                <li>Configurar el SDK de Microsoft Agent Framework con el exporter de OpenTelemetry para Application
+                    Insights.</li>
+                <li>Habilitar la captura de spans para: invocación de agentes, llamadas a tools MCP, uso de tokens,
+                    resultados de evaluación.</li>
+            </ol>
+
+            <pre><code># Configuración de telemetría con Agent Framework (Python)
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
+
+# Configurar exporter a Application Insights
+exporter = AzureMonitorTraceExporter(
+    connection_string="InstrumentationKey=xxxxx;IngestionEndpoint=https://..."
+)
+provider = TracerProvider()
+provider.add_span_processor(BatchSpanProcessor(exporter))
+trace.set_tracer_provider(provider)
+
+# El Agent Framework genera automáticamente spans para:
+# - Cada invocación de agente
+# - Cada llamada a tool MCP
+# - Cada request/response al modelo LLM
+# - Token usage (prompt + completion)</code></pre>
+
+            <h3>11.4 Métricas clave obligatorias</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Métrica</th>
+                        <th>Descripción</th>
+                        <th>Alerta recomendada</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>albaran.processing.duration</code></td>
+                        <td>Tiempo total desde blob creado hasta inventariado</td>
+                        <td>&gt; 5 minutos (sin HITL)</td>
+                    </tr>
+                    <tr>
+                        <td><code>agent.extraction.confidence</code></td>
+                        <td>Confianza media de extracción del Agente 1</td>
+                        <td>&lt; 0.80</td>
+                    </tr>
+                    <tr>
+                        <td><code>agent.validation.discrepancy_rate</code></td>
+                        <td>% de albaranes con discrepancia</td>
+                        <td>&gt; 30% (podría indicar problema con proveedor)</td>
+                    </tr>
+                    <tr>
+                        <td><code>hitl.response.time</code></td>
+                        <td>Tiempo desde envío de tarjeta Teams hasta decisión humana</td>
+                        <td>&gt; 24 horas</td>
+                    </tr>
+                    <tr>
+                        <td><code>agent.inventory.error_rate</code></td>
+                        <td>% de fallos al dar de alta en inventario</td>
+                        <td>&gt; 1%</td>
+                    </tr>
+                    <tr>
+                        <td><code>agent.tokens.total</code></td>
+                        <td>Tokens consumidos por agente por invocación</td>
+                        <td>&gt; 10,000 tokens/invocación (posible loop)</td>
+                    </tr>
+                    <tr>
+                        <td><code>mcp.tool.latency</code></td>
+                        <td>Latencia de llamadas MCP por server</td>
+                        <td>&gt; 5 segundos</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>11.5 Trazabilidad de albarán (Correlation ID)</h3>
+            <p>
+                Cada albarán procesado debe tener un <strong>Correlation ID</strong> único
+                (<code>albaran_id</code>) que se propague como <code>trace_id</code> de OpenTelemetry a través de todos
+                los spans generados por los tres agentes, los MCP servers y el flujo HITL. Esto permite reconstruir
+                la historia completa de un albarán en Application Insights mediante una sola consulta KQL:
+            </p>
+            <pre><code>// KQL — Trazabilidad completa de un albarán
+traces
+| where customDimensions.albaran_id == "ALB-2026-00451"
+| order by timestamp asc
+| project timestamp, operationName, customDimensions.agent_name,
+          customDimensions.mcp_server, customDimensions.estado, duration</code></pre>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 12. SEGURIDAD                                         -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s12">
+            <h2>12. Seguridad y Gobernanza</h2>
+
+            <h3>12.1 Identidad y acceso</h3>
+            <ul>
+                <li>Toda autenticación entre servicios se realiza mediante <strong>Managed Identities</strong> (System
+                    Assigned) de Microsoft Entra ID. Prohibido el uso de claves compartidas o connection strings en
+                    código.</li>
+                <li>Los MCP Servers de Business Central se autentican vía <strong>OAuth 2.0 Client Credentials
+                        Flow</strong> con scopes restringidos.</li>
+                <li>El acceso humano al portal de administración requiere MFA y roles RBAC de Azure.</li>
+            </ul>
+
+            <h3>12.2 Red y aislamiento</h3>
+            <ul>
+                <li>Azure Container Apps desplegado en un <strong>Virtual Network</strong> dedicado.</li>
+                <li>Cosmos DB y Blob Storage accesibles solo mediante <strong>Private Endpoints</strong>.</li>
+                <li>Key Vault accesible solo desde la VNet.</li>
+                <li>Todo el tráfico externo (Teams, BC) sale por un <strong>NAT Gateway</strong> con IP fija si se
+                    requiere allowlisting.</li>
+            </ul>
+
+            <h3>12.3 Gestión de secretos</h3>
+            <ul>
+                <li>Todas las claves, tokens y connection strings se almacenan en <strong>Azure Key Vault</strong>.</li>
+                <li>Container Apps referencia secretos de Key Vault directamente (sin copiarlos a variables de
+                    entorno).</li>
+                <li>Rotación automática de secretos habilitada.</li>
+            </ul>
+
+            <h3>12.4 Protección de datos</h3>
+            <ul>
+                <li>Cifrado en reposo: AES-256 (por defecto en todos los servicios Azure).</li>
+                <li>Cifrado en tránsito: TLS 1.2+ obligatorio.</li>
+                <li>Retención de imágenes de albaranes sujeta a la política de retención del cliente (configurable
+                    mediante lifecycle management de Blob Storage).</li>
+            </ul>
+
+            <div class="callout callout-assumption">
+                Se asume que no hay requisitos específicos de residencia de datos más allá de desplegar en una región
+                Azure de la UE. Si existen requisitos GDPR específicos respecto a datos personales en albaranes
+                (ej. nombres de transportistas), el proveedor deberá implementar mecanismos de anonimización.
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 13. INFRAESTRUCTURA Y DESPLIEGUE                     -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s13">
+            <h2>13. Infraestructura y Despliegue</h2>
+
+            <h3>13.1 Azure Container Apps</h3>
+            <p>
+                Toda la lógica de aplicación (webhooks, procesadores de Change Feed, MCP Servers personalizados)
+                se despliega como microservicios en <strong>Azure Container Apps</strong>, que proporciona:
+            </p>
+            <ul>
+                <li>Autoescalado basado en HTTP, eventos (KEDA) o métricas personalizadas.</li>
+                <li>Soporte nativo para Dapr (comunicación entre servicios, state management).</li>
+                <li>Integración con Container Apps Jobs para tareas batch.</li>
+                <li>Blue/green deployments y traffic splitting para despliegues sin downtime.</li>
+            </ul>
+
+            <h3>13.2 Topología de Container Apps</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Container App</th>
+                        <th>Tipo</th>
+                        <th>Función</th>
+                        <th>Scaling</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>ca-webhook-eventgrid</code></td>
+                        <td>App (HTTP)</td>
+                        <td>Recibe eventos de Event Grid (blob creado) e invoca Agente 1</td>
+                        <td>0 → N (HTTP concurrent requests)</td>
+                    </tr>
+                    <tr>
+                        <td><code>ca-changefeed-processor</code></td>
+                        <td>App (Background)</td>
+                        <td>Procesa Change Feed de Cosmos DB e invoca Agente 2</td>
+                        <td>1 → N (basado en lag del feed)</td>
+                    </tr>
+                    <tr>
+                        <td><code>ca-webhook-teams</code></td>
+                        <td>App (HTTP)</td>
+                        <td>Recibe respuestas de Adaptive Cards de Teams</td>
+                        <td>0 → N (HTTP)</td>
+                    </tr>
+                    <tr>
+                        <td><code>ca-mcp-blob</code></td>
+                        <td>App (HTTP)</td>
+                        <td>MCP Server para Blob Storage</td>
+                        <td>1 → 5</td>
+                    </tr>
+                    <tr>
+                        <td><code>ca-mcp-docintel</code></td>
+                        <td>App (HTTP)</td>
+                        <td>MCP Server para Document Intelligence</td>
+                        <td>1 → 5</td>
+                    </tr>
+                    <tr>
+                        <td><code>ca-mcp-cosmos</code></td>
+                        <td>App (HTTP)</td>
+                        <td>MCP Server para Cosmos DB</td>
+                        <td>1 → 10</td>
+                    </tr>
+                    <tr>
+                        <td><code>ca-mcp-teams</code></td>
+                        <td>App (HTTP)</td>
+                        <td>MCP Server para Teams Bot</td>
+                        <td>1 → 3</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="callout callout-info">
+                <strong>Nota:</strong> Los MCP Servers de Business Central son nativos (proporcionados por BC) y no
+                requieren Container App propia. Se acceden directamente desde los agentes a través de la configuración
+                de Foundry.
+            </div>
+
+            <h3>13.3 Infraestructura como Código (IaC)</h3>
+            <ul>
+                <li><strong>Herramienta:</strong> Bicep (recomendado por alineamiento con Azure) o Terraform.</li>
+                <li><strong>Repositorio:</strong> Código IaC versionado en un repositorio Git independiente o como
+                    módulo dentro del monorepo del proyecto.</li>
+                <li><strong>Entornos:</strong> Mínimo 3 entornos: <code>dev</code>, <code>staging</code>,
+                    <code>production</code>.</li>
+                <li><strong>CI/CD:</strong> GitHub Actions o Azure DevOps Pipelines para despliegue automatizado.</li>
+            </ul>
+
+            <h3>13.4 Región Azure</h3>
+            <div class="callout callout-assumption">
+                Se asume despliegue en <strong>West Europe (Países Bajos)</strong> como región primaria. Si se requiere
+                redundancia geográfica, valorar <strong>North Europe (Irlanda)</strong> como región secundaria.
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 14. REQUISITOS NO FUNCIONALES                         -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s14">
+            <h2>14. Requisitos No Funcionales</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Categoría</th>
+                        <th>Requisito</th>
+                        <th>Métrica / SLA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Disponibilidad</td>
+                        <td>El sistema debe estar disponible durante el horario de apertura de tiendas</td>
+                        <td>≥ 99.5% uptime mensual</td>
+                    </tr>
+                    <tr>
+                        <td>Rendimiento — Extracción</td>
+                        <td>Tiempo de procesamiento del Agente 1</td>
+                        <td>≤ 30 segundos (P95)</td>
+                    </tr>
+                    <tr>
+                        <td>Rendimiento — Validación</td>
+                        <td>Tiempo de procesamiento del Agente 2</td>
+                        <td>≤ 15 segundos (P95)</td>
+                    </tr>
+                    <tr>
+                        <td>Rendimiento — Inventario</td>
+                        <td>Tiempo de alta del Agente 3</td>
+                        <td>≤ 10 segundos (P95)</td>
+                    </tr>
+                    <tr>
+                        <td>Rendimiento — E2E (sin HITL)</td>
+                        <td>Tiempo total desde captura hasta inventariado</td>
+                        <td>≤ 2 minutos (P95)</td>
+                    </tr>
+                    <tr>
+                        <td>Escalabilidad</td>
+                        <td>Procesamiento concurrente de albaranes</td>
+                        <td>≥ 50 albaranes simultáneos</td>
+                    </tr>
+                    <tr>
+                        <td>Precisión OCR</td>
+                        <td>Tasa de extracción correcta de campos clave</td>
+                        <td>≥ 95% (sobre dataset de aceptación)</td>
+                    </tr>
+                    <tr>
+                        <td>Resiliencia</td>
+                        <td>Reintentos automáticos ante fallos transitorios</td>
+                        <td>3 reintentos con exponential backoff</td>
+                    </tr>
+                    <tr>
+                        <td>Auditabilidad</td>
+                        <td>Trazabilidad completa de cada albarán</td>
+                        <td>100% de albaranes trazables en App Insights</td>
+                    </tr>
+                    <tr>
+                        <td>Mantenibilidad</td>
+                        <td>Actualización de umbrales sin redespliegue</td>
+                        <td>Vía configuración en Cosmos DB</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 15. SUPOSICIONES                                      -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s15">
+            <h2>15. Suposiciones y Decisiones Abiertas</h2>
+
+            <p>Las siguientes suposiciones se han tomado en ausencia de confirmación explícita. Deben ser validadas
+                con el cliente antes del inicio del desarrollo:</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Suposición</th>
+                        <th>Impacto si es incorrecta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>S1</td>
+                        <td>La aplicación de captura en tienda (móvil/escáner) ya existe o será proporcionada por el
+                            cliente. Este pliego <strong>no incluye</strong> su desarrollo.</td>
+                        <td>Alto — Requeriría un módulo adicional de frontend/mobile.</td>
+                    </tr>
+                    <tr>
+                        <td>S2</td>
+                        <td>Business Central está en versión 2025 wave 2 o posterior, con soporte nativo de MCP Server.
+                        </td>
+                        <td>Alto — Si es una versión anterior, será necesario desarrollar una API custom como
+                            intermediario.</td>
+                    </tr>
+                    <tr>
+                        <td>S3</td>
+                        <td>Los pedidos de compra en Business Central siempre tienen un número de referencia que coincide
+                            o es mapeado con el campo <code>ref_pedido</code> del albarán.</td>
+                        <td>Medio — Se requeriría lógica de fuzzy matching o búsqueda por proveedor + fecha.</td>
+                    </tr>
+                    <tr>
+                        <td>S4</td>
+                        <td>Todos los albaranes incluyen una referencia al pedido de compra. Si algún albarán no la
+                            incluye, se derivará automáticamente al flujo HITL.</td>
+                        <td>Bajo — Ya cubierto por la lógica de discrepancia.</td>
+                    </tr>
+                    <tr>
+                        <td>S5</td>
+                        <td>El tenant de Microsoft 365 del cliente permite la instalación de bots personalizados en
+                            Teams.</td>
+                        <td>Alto — Impediría el flujo HITL y requeriría un canal alternativo (email, app web).</td>
+                    </tr>
+                    <tr>
+                        <td>S6</td>
+                        <td>Los tolerancias de validación (±5% cantidad, ±2% precio) son valores iniciales razonables.
+                        </td>
+                        <td>Bajo — Son configurables.</td>
+                    </tr>
+                    <tr>
+                        <td>S7</td>
+                        <td>El modelo LLM utilizado será GPT-4o o GPT-4.1 desplegado en Azure OpenAI Service dentro del
+                            mismo tenant.</td>
+                        <td>Bajo — Agent Framework soporta múltiples proveedores.</td>
+                    </tr>
+                    <tr>
+                        <td>S8</td>
+                        <td>No se requiere procesamiento offline (sin conectividad) en las tiendas.</td>
+                        <td>Alto — Requeriría arquitectura edge con buffer local.</td>
+                    </tr>
+                    <tr>
+                        <td>S9</td>
+                        <td>El volumen estimado es de hasta 500 albaranes/día en total (todas las tiendas).</td>
+                        <td>Medio — Volúmenes mayores podrían requerir ajustes de throughput y scaling.</td>
+                    </tr>
+                    <tr>
+                        <td>S10</td>
+                        <td>Se despliega en región de Azure en la UE sin requisitos de soberanía de datos adicionales.
+                        </td>
+                        <td>Medio — Regulaciones específicas podrían limitar servicios disponibles.</td>
+                    </tr>
+                    <tr>
+                        <td>S11</td>
+                        <td>El lenguaje de implementación principal será <strong>Python</strong> (alineado con el SDK
+                            principal de Agent Framework).</td>
+                        <td>Bajo — También disponible en .NET si el equipo lo prefiere.</td>
+                    </tr>
+                    <tr>
+                        <td>S12</td>
+                        <td>La interacción con Business Central para inventario se mapea a entidades estándar
+                            (Warehouse Receipt, Item Journal). No se requiere lógica de negocio custom en BC (ej.
+                            codeunits).</td>
+                        <td>Medio — Si existe lógica custom, podría requerir desarrollo en AL (Business Central).</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 16. ENTREGABLES                                       -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s16">
+            <h2>16. Entregables Esperados</h2>
+
+            <h3>16.1 Entregables de desarrollo</h3>
+            <ol>
+                <li><strong>Código fuente</strong> de los tres agentes de IA con tests unitarios e integración.</li>
+                <li><strong>MCP Servers personalizados</strong> (Blob, Document Intelligence, Cosmos DB, Teams) con
+                    documentación de las tools expuestas.</li>
+                <li><strong>Webhook services</strong> para Event Grid y Teams (Container Apps).</li>
+                <li><strong>Change Feed processor</strong> para Cosmos DB.</li>
+                <li><strong>Adaptive Card templates</strong> para el flujo HITL en Teams.</li>
+                <li><strong>Infraestructura como Código</strong> (Bicep/Terraform) para el despliegue completo.</li>
+                <li><strong>Pipelines CI/CD</strong> para build, test y deploy automatizado.</li>
+            </ol>
+
+            <h3>16.2 Entregables de documentación</h3>
+            <ol>
+                <li><strong>Documento de Diseño Técnico Detallado (HLD + LLD)</strong>.</li>
+                <li><strong>Guía de operaciones</strong> — monitorización, alertas, troubleshooting.</li>
+                <li><strong>Runbook de incidentes</strong> — procedimientos para los escenarios de error más comunes.
+                </li>
+                <li><strong>Guía de configuración</strong> — umbrales, MCP Servers, BC setup.</li>
+                <li><strong>Manual de usuario</strong> — flujo HITL en Teams para responsables de tienda.</li>
+            </ol>
+
+            <h3>16.3 Entregables de calidad</h3>
+            <ol>
+                <li><strong>Plan de pruebas</strong> con cobertura funcional, integración y E2E.</li>
+                <li><strong>Dataset de prueba de albaranes</strong> — mínimo 50 documentos de ≥5 proveedores distintos.
+                </li>
+                <li><strong>Informe de precisión OCR</strong> sobre el dataset de aceptación.</li>
+                <li><strong>Dashboards de observabilidad</strong> configurados en Azure Workbooks.</li>
+                <li><strong>Prueba de carga</strong> — verificación del rendimiento bajo volumen estimado (500
+                    albaranes/día).</li>
+            </ol>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 17. GLOSARIO                                          -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <section id="s17">
+            <h2>17. Glosario</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Término</th>
+                        <th>Definición</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Albarán</strong></td>
+                        <td>Documento de entrega que acompaña la mercancía del proveedor al punto de venta. Detalla
+                            productos, cantidades y referencia al pedido.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>MCP</strong></td>
+                        <td>Model Context Protocol — estándar abierto basado en JSON-RPC que permite a agentes de IA
+                            conectarse a herramientas y fuentes de datos de forma estandarizada.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Agent Framework</strong></td>
+                        <td>Microsoft Agent Framework v1.0+ — SDK unificado (fusión de Semantic Kernel y AutoGen) para
+                            construir y orquestar agentes de IA multi-modelo.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Foundry Agent Service</strong></td>
+                        <td>Servicio gestionado de Azure AI Foundry para hospedar, escalar y gobernar agentes de IA en
+                            producción.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>HITL</strong></td>
+                        <td>Human-in-the-Loop — patrón de diseño que incorpora supervisión y decisión humana en un
+                            flujo automatizado.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Change Feed</strong></td>
+                        <td>Funcionalidad de Cosmos DB que emite un flujo ordenado de cambios (inserciones y
+                            actualizaciones) para consumo en tiempo real.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Adaptive Card</strong></td>
+                        <td>Formato declarativo de tarjetas interactivas de Microsoft, usado en Teams para presentar
+                            información y recoger input del usuario.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>KEDA</strong></td>
+                        <td>Kubernetes Event-Driven Autoscaling — componente de autoescalado basado en eventos,
+                            integrado nativamente en Azure Container Apps.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>IaC</strong></td>
+                        <td>Infrastructure as Code — práctica de definir y gestionar infraestructura mediante ficheros
+                            de código versionados.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>BC</strong></td>
+                        <td>Microsoft Dynamics 365 Business Central — ERP de Microsoft para pequeñas y medianas
+                            empresas.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ── Footer ── -->
+        <footer style="text-align:center; color:var(--text-secondary); padding:2rem 0; font-size:.85rem;">
+            <p>
+                📄 Documento generado como pliego de requisitos técnicos para licitación.<br>
+                Versión 1.0 — Mayo 2026<br>
+                Las suposiciones marcadas con ⚠️ requieren validación con el cliente antes del inicio del desarrollo.
+            </p>
+        </footer>
+
+    </div>
+
+</body>
+
+</html>
