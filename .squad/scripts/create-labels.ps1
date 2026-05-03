@@ -38,28 +38,28 @@ $types = @(
 
 # Priority labels
 $priorities = @(
-  @{ name='priority:critical'; color='d73a49'; desc='Must do NOW' }
-  @{ name='priority:high'; color='ff8c00'; desc='Next up' }
-  @{ name='priority:medium'; color='fbca04'; desc='Normal priority' }
-  @{ name='priority:low'; color='6e7681'; desc='Backlog' }
+  @{ name='🔴 priority:critical'; color='d73a49'; desc='Must do NOW' }
+  @{ name='🟠 priority:high'; color='ff8c00'; desc='Next up' }
+  @{ name='🟡 priority:medium'; color='fbca04'; desc='Normal priority' }
+  @{ name='⚪ priority:low'; color='6e7681'; desc='Backlog' }
 )
 
 # Phase labels
 $phases = @(
-  @{ name='phase:analysis'; color='deecf9'; desc='Analysis phase' }
-  @{ name='phase:foundation'; color='deecf9'; desc='Sprint 0 Foundation' }
-  @{ name='phase:implementation'; color='deecf9'; desc='Sprint 1-2 Core agents' }
-  @{ name='phase:hitl'; color='deecf9'; desc='Sprint 3 HITL Communication' }
-  @{ name='phase:hardening'; color='deecf9'; desc='Sprint 4 Security Observability' }
-  @{ name='phase:post-mvp'; color='deecf9'; desc='Post-MVP' }
+  @{ name='📋 phase:analysis'; color='deecf9'; desc='Analysis phase' }
+  @{ name='🏗 phase:foundation'; color='deecf9'; desc='Sprint 0 Foundation' }
+  @{ name='💻 phase:implementation'; color='deecf9'; desc='Sprint 1-2 Core agents' }
+  @{ name='📧 phase:hitl'; color='deecf9'; desc='Sprint 3 HITL Communication' }
+  @{ name='🔒 phase:hardening'; color='deecf9'; desc='Sprint 4 Security Observability' }
+  @{ name='🚀 phase:post-mvp'; color='deecf9'; desc='Post-MVP' }
 )
 
 # Parallelization labels
 $parallel = @(
-  @{ name='parallelizable'; color='0e8a16'; desc='Can run in parallel with other tasks' }
-  @{ name='sequential'; color='d93f0b'; desc='Has dependencies must wait for blockers' }
-  @{ name='blocked'; color='b60205'; desc='Blocked by another issue' }
-  @{ name='poc'; color='c5def5'; desc='Proof of concept task' }
+  @{ name='⚡ parallelizable'; color='0e8a16'; desc='Can run in parallel with other tasks' }
+  @{ name='🔗 sequential'; color='d93f0b'; desc='Has dependencies must wait for blockers' }
+  @{ name='🚫 blocked'; color='b60205'; desc='Blocked by another issue' }
+  @{ name='🔬 poc'; color='c5def5'; desc='Proof of concept task' }
 )
 
 $all = $squad + $types + $priorities + $phases + $parallel
