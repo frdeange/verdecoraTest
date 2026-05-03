@@ -10,4 +10,10 @@
 
 ## Learnings
 
-_No learnings recorded yet._
+### 2026-05-03 — BC MCP / inventory analysis
+- Reviewed the PRD assumptions for Purchase Orders, Purchase Lines, Vendors, Items, Warehouse Receipts, and Item Journals.
+- Confirmed native BC MCP can expose standard top-level API pages for **Purchase Orders**, **Purchase Order Lines**, **Vendors**, **Items**, and **Posted Purchase Receipts**.
+- Confirmed the standard API set does **not** expose a native top-level **Warehouse Receipt** API page, and does **not** expose **Item Journal Line** as a native item-journal API (standard `journalLines` is based on **Gen. Journal Line**).
+- Confirmed the standard `purchaseOrder` API exposes the bound action **`receiveAndInvoice`**, but not a standard receive-only bound action.
+- Documented that the correct receiving flow is **location-driven**: direct PO receipt for non-warehouse locations, Warehouse Receipt for locations that require receipt/put-away.
+- Wrote detailed findings to `prerequisites/analysis/burke-bc-analysis.md`.
