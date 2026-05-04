@@ -62,7 +62,7 @@ app = create_app()
 def main() -> None:
     import uvicorn
 
-    uvicorn.run("src.services.orchestrator.main:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("src.services.orchestrator.main:app", host="0.0.0.0", port=8080, reload=False)
 
 
 if __name__ == "__main__":

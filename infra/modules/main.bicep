@@ -9,6 +9,18 @@ param location string = 'swedencentral'
 @description('Ops team email notified by Azure Monitor action groups.')
 param opsEmailAddress string = 'ops@verdecora.example.com'
 
+@description('Optional override for the orchestrator image during infrastructure deployments.')
+param orchestratorImage string = ''
+
+@description('Optional override for the Flow 0 dedup job image during infrastructure deployments.')
+param dedupJobImage string = ''
+
+@description('Optional override for the HITL webform image during infrastructure deployments.')
+param hitlWebformImage string = ''
+
+@description('Optional override for the escalation timer job image during infrastructure deployments.')
+param escalationTimerJobImage string = ''
+
 var resourceGroupName = 'rg-verdecoratest-${environment}'
 var storageAccountUrl = 'https://${storage.outputs.storageAccountName}.blob.${az.environment().suffixes.storage}/'
 
@@ -63,6 +75,19 @@ module storage './storage.bicep' = {
   params: {
     environment: environment
     location: location
+  }
+  dependsOn: [
+    rg
+  ]
+}
+
+module acr './acr.bicep' = {
+  name: 'acr'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    environment: environment
+    location: location
+    agentPoolSubnetId: network.outputs.subnetEgressId
   }
   dependsOn: [
     rg
@@ -162,6 +187,7 @@ module privateEndpoints './private-endpoints.bicep' = if (enableNetworkHardening
     subnetId: network.outputs.subnetPeId
     storageResourceId: storage.outputs.storageAccountId
     cosmosResourceId: cosmos.outputs.cosmosAccountId
+    acrResourceId: acr.outputs.acrId
     keyVaultResourceId: keyVault.outputs.keyVaultId
     serviceBusResourceId: serviceBus.outputs.serviceBusNamespaceId
     aiServicesResourceId: aiFoundry.outputs.aiServicesId
@@ -170,7 +196,6 @@ module privateEndpoints './private-endpoints.bicep' = if (enableNetworkHardening
   }
   dependsOn: [
     rg
-    network
   ]
 }
 
@@ -194,6 +219,11 @@ module containerApps './container-apps.bicep' = {
     acsEndpoint: acs.outputs.acsEndpoint
     keyVaultUrl: keyVault.outputs.keyVaultUri
     tenantId: subscription().tenantId
+    acrLoginServer: acr.outputs.acrLoginServer
+    orchestratorImage: orchestratorImage
+    dedupJobImage: dedupJobImage
+    hitlWebformImage: hitlWebformImage
+    escalationTimerJobImage: escalationTimerJobImage
   }
   dependsOn: [
     rg
@@ -228,6 +258,7 @@ module identity './identity.bicep' = {
     communicationServiceName: acs.outputs.acsName
     aiServicesAccountName: aiFoundry.outputs.aiServicesName
     docIntellAccountName: docIntell.outputs.docIntellAccountName
+    acrName: acr.outputs.acrName
     orchestratorPrincipalId: containerApps.outputs.orchestratorPrincipalId
     hitlWebformPrincipalId: containerApps.outputs.hitlWebformPrincipalId
     flow0WorkerPrincipalId: containerApps.outputs.flow0DedupPrincipalId
