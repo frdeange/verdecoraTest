@@ -46,7 +46,9 @@ var cosmosBuiltInDataContributorRoleDefinitionId = '00000000-0000-0000-0000-0000
 var serviceBusDataSenderRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')
 var serviceBusDataReceiverRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'e36647ef-1570-4e4c-ae03-a6bda23981cb')
 var storageBlobDataReaderRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')
+var storageBlobDataContributorRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
 var keyVaultSecretsUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
+var contributorRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')
 var communicationServicesContributorRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2495237a-0d06-4fc0-b5ef-8a60a7cb5773')
 var cognitiveServicesOpenAIUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
 var cognitiveServicesUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
@@ -230,6 +232,16 @@ resource flow0WorkerBlobReaderRoleAssignment 'Microsoft.Authorization/roleAssign
   }
 }
 
+resource hitlWebformBlobContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities) {
+  name: guid(storageAccount.id, hitlWebformIdentity!.name, storageBlobDataContributorRoleDefinitionId)
+  scope: storageAccount
+  properties: {
+    principalId: hitlWebformIdentity!.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: storageBlobDataContributorRoleDefinitionId
+  }
+}
+
 resource agenticOrchestratorKeyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities && !empty(keyVaultName)) {
   name: guid(keyVault.id, agenticOrchestratorIdentity!.name, keyVaultSecretsUserRoleDefinitionId)
   scope: keyVault
@@ -277,6 +289,16 @@ resource communicationAgentCommunicationServicesContributorRoleAssignment 'Micro
     principalId: communicationAgentIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: communicationServicesContributorRoleDefinitionId
+  }
+}
+
+resource agenticOrchestratorCommunicationServicesContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities && !empty(communicationServiceName)) {
+  name: guid(communicationService.id, agenticOrchestratorIdentity!.name, contributorRoleDefinitionId)
+  scope: communicationService
+  properties: {
+    principalId: agenticOrchestratorIdentity!.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: contributorRoleDefinitionId
   }
 }
 
@@ -360,6 +382,16 @@ resource orchestratorSystemAssignedDocIntellRoleAssignment 'Microsoft.Authorizat
   }
 }
 
+resource orchestratorSystemAssignedCommunicationServicesContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(orchestratorPrincipalId) && !empty(communicationServiceName)) {
+  name: guid(communicationService.id, orchestratorPrincipalId, contributorRoleDefinitionId, 'system')
+  scope: communicationService
+  properties: {
+    principalId: orchestratorPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: contributorRoleDefinitionId
+  }
+}
+
 resource flow0SystemAssignedCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = if (!empty(flow0WorkerPrincipalId)) {
   parent: cosmosAccount
   name: guid(cosmosAccount.id, flow0WorkerPrincipalId, cosmosBuiltInDataContributorRoleDefinitionId, 'system')
@@ -397,6 +429,16 @@ resource flow0SystemAssignedBlobReaderRoleAssignment 'Microsoft.Authorization/ro
     principalId: flow0WorkerPrincipalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: storageBlobDataReaderRoleDefinitionId
+  }
+}
+
+resource hitlWebformSystemAssignedBlobContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(hitlWebformPrincipalId)) {
+  name: guid(storageAccount.id, hitlWebformPrincipalId, storageBlobDataContributorRoleDefinitionId, 'system')
+  scope: storageAccount
+  properties: {
+    principalId: hitlWebformPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: storageBlobDataContributorRoleDefinitionId
   }
 }
 

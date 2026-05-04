@@ -6,3 +6,4 @@ User manuals and guides.
 - User workflows
 - API documentation
 - Configuration guides
+- [Manual de Usuario — Revisión de Albaranes](hitl-user-manual.md)
