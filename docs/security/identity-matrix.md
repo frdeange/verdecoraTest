@@ -9,7 +9,7 @@
 - **Key Vault authorization model:** Azure RBAC mode only.
 - **BC MCP authentication:** OAuth 2.0 Authorization Code + PKCE with delegated user identity.
 
-> **Exception handling:** `acs-connection-string` and `github-runner-pat` are tracked as temporary operational exceptions because the delivery scope explicitly requires placeholder secrets for them. They must remain disabled for production use unless a security review re-approves them.
+> **Exception handling:** `github-runner-pat` remains a temporary operational exception for bootstrap automation. HITL email and PDF access use managed identity end-to-end and do not require ACS connection strings or storage account keys.
 
 ## Managed identity matrix
 
@@ -20,17 +20,26 @@
 | Agentic orchestrator | `agentic-orchestrator` | Service Bus namespace | Azure Service Bus Data Receiver | Consume queue/topic messages that resume or advance orchestration. |
 | Agentic orchestrator | `agentic-orchestrator` | Blob Storage account | Storage Blob Data Reader | Read inbound albarán PDFs and related blob metadata. |
 | Agentic orchestrator | `agentic-orchestrator` | Key Vault | Key Vault Secrets User | Read BC OAuth client secret and any approved non-MI exceptions at runtime. |
+| Agentic orchestrator | `agentic-orchestrator` | Azure Communication Services | Contributor | Send HITL emails through ACS while the platform lacks a narrower RBAC role for managed-identity email operations. |
 | Communication agent | `communication-agent` | Azure Communication Services | Azure Communication Services Contributor | Send and manage HITL email traffic and related ACS configuration operations. |
 | Communication agent | `communication-agent` | Cosmos DB NoSQL account | Cosmos DB Built-in Data Contributor | Persist outbound communication state, reminders, and approval metadata. |
 | Communication agent | `communication-agent` | Service Bus namespace | Azure Service Bus Data Sender | Publish HITL reminders, escalations, and approval outcome events. |
 | Communication agent | `communication-agent` | Key Vault | Key Vault Secrets User | Read approved secrets needed for BC delegated auth or controlled operational exceptions. |
 | HITL web form | `hitl-webform` | Cosmos DB NoSQL account | Cosmos DB Built-in Data Contributor | Record operator decisions, comments, and audit timestamps. |
+| HITL web form | `hitl-webform` | Blob Storage account | Storage Blob Data Contributor | Generate User Delegation Keys and serve read-only SAS URLs for original PDFs without storage account keys. |
 | HITL web form | `hitl-webform` | Service Bus namespace | Azure Service Bus Data Sender | Resume workflows after human approval, rejection, or modification. |
 | HITL web form | `hitl-webform` | Key Vault | Key Vault Secrets User | Read approved secret-backed configuration without embedding credentials in code. |
 | Flow 0 worker | `flow0-worker` | Cosmos DB NoSQL account | Cosmos DB Built-in Data Contributor | Write deduplication records and initial ingestion state. |
 | Flow 0 worker | `flow0-worker` | Service Bus namespace | Azure Service Bus Data Sender | Publish `albaran.recibido` events after deduplication. |
 | Flow 0 worker | `flow0-worker` | Blob Storage account | Storage Blob Data Reader | Read source PDFs and blob metadata during ingestion. |
 | Flow 0 worker | `flow0-worker` | Key Vault | Key Vault Secrets User | Read approved non-MI exceptions from Key Vault without exposing them in deployments. |
+
+## HITL security controls
+
+- **Authentication:** the HITL web form validates Entra ID access tokens from the `Authorization` header against the tenant JWKS endpoint and enforces the `Verdecora.StoreManager` application role before allowing approve/reject/modify decisions.
+- **PDF access:** reviewers receive short-lived, read-only SAS URLs generated with a User Delegation Key obtained through managed identity; storage account keys remain disabled.
+- **Auditability:** every decision and every PDF access event is written to Cosmos DB with reviewer identity, IP address, action, and correlation ID.
+- **Email domain:** development environments use the ACS Azure-managed sender domain (`AzureManagedDomain` / `*.azurecomm.net`). Production should switch to a customer-managed sender domain with DNS validation.
 
 ## BC OAuth 2.0 + PKCE configuration guide
 
@@ -59,12 +68,13 @@
 | Secret | Rotation target | Policy recommendation |
 |---|---|---|
 | `bc-oauth-client-secret` | Every 90 days (or shorter if tenant policy requires it) | Maintain overlapping secret versions, rotate before expiry, validate the new secret in dev first, and alert at 30/7/1 days before expiration. |
-| `acs-connection-string` | Every 30 days until MI-based access is available | Treat as a temporary exception, scope usage to the communication workload only, and remove once the ACS integration supports a no-secret pattern. |
 | `github-runner-pat` | Every 7-30 days, bootstrap use only | Prefer GitHub App or OIDC as the long-term replacement; if PAT use is unavoidable, keep scopes minimal, short-lived, and monitored. |
 
 ### Operational controls
 
 - Enable Key Vault diagnostics to Log Analytics and alert on `SecretNearExpiry`, `SecretGet`, and unauthorized access patterns.
+- Monitor Entra sign-in logs for the HITL application and alert on denied requests caused by missing `Verdecora.StoreManager` role assignments.
+- Track Cosmos audit writes and SAS generation events with correlation IDs so every reviewer action can be reconstructed end-to-end.
 - Use Key Vault versioning so rotations do not require destructive updates.
 - Require dual control for production secret rotation and document the rollback procedure before each change window.
 - Review RBAC assignments quarterly to ensure every managed identity still needs its granted scope.

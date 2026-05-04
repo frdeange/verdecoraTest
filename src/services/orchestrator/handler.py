@@ -4,6 +4,8 @@ import asyncio
 import json
 from typing import Any
 
+from src.services.flow0_dedup.models import ForwardedExtractionMessage
+
 from .orchestration import OrchestrationError, OrchestrationRequest, OrchestrationResult, OrchestratorService
 
 
@@ -24,10 +26,37 @@ def deserialize_message(message: Any) -> OrchestrationRequest:
     else:
         payload = body
 
-    try:
-        return OrchestrationRequest.model_validate(payload)
-    except Exception as exc:  # pragma: no cover - defensive parsing path.
-        raise QueueMessageError("Invalid Service Bus payload for orchestration.") from exc
+    if isinstance(payload, dict) and "albaran_id" in payload:
+        try:
+            forwarded = ForwardedExtractionMessage.model_validate(payload)
+        except Exception as exc:  # pragma: no cover - defensive parsing path.
+            raise QueueMessageError("Invalid Service Bus payload for orchestration.") from exc
+    else:
+        try:
+            return OrchestrationRequest.model_validate(payload)
+        except Exception:
+            try:
+                forwarded = ForwardedExtractionMessage.model_validate(payload)
+            except Exception as exc:  # pragma: no cover - defensive parsing path.
+                raise QueueMessageError("Invalid Service Bus payload for orchestration.") from exc
+
+    metadata = dict(forwarded.metadata)
+    metadata.update(
+        {
+            "dedup_key": forwarded.dedup_key,
+            "blob_path": forwarded.blob_path,
+            "blob_name": forwarded.blob_name,
+            "blob_etag": forwarded.blob_etag,
+            "store_id": forwarded.store_id,
+            "event_id": forwarded.event_id,
+            "event_time": forwarded.event_time.isoformat(),
+        }
+    )
+    return OrchestrationRequest(
+        processing_id=forwarded.albaran_id,
+        blob_url=forwarded.blob_url,
+        metadata=metadata,
+    )
 
 
 async def handle_message(

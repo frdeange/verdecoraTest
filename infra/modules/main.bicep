@@ -113,6 +113,18 @@ module docIntell './docintell.bicep' = {
   ]
 }
 
+module acs './acs.bicep' = {
+  name: 'acs'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    environment: environment
+    location: location
+  }
+  dependsOn: [
+    rg
+  ]
+}
+
 module containerApps './container-apps.bicep' = {
   name: 'containerApps'
   scope: az.resourceGroup(resourceGroupName)
@@ -158,6 +170,7 @@ module identity './identity.bicep' = {
     serviceBusNamespaceName: serviceBus.outputs.serviceBusNamespaceName
     storageAccountName: storage.outputs.storageAccountName
     keyVaultName: keyVault.outputs.keyVaultName
+    communicationServiceName: acs.outputs.acsName
     openAiAccountName: openAi.outputs.openaiAccountName
     docIntellAccountName: docIntell.outputs.docIntellAccountName
     deployUserAssignedIdentities: false
@@ -214,6 +227,15 @@ output applicationInsightsId string = monitoring.outputs.applicationInsightsId
 
 @description('Application Insights connection string.')
 output applicationInsightsConnectionString string = monitoring.outputs.applicationInsightsConnectionString
+
+@description('Azure Communication Services resource id.')
+output acsId string = acs.outputs.acsId
+
+@description('Azure Communication Services endpoint.')
+output acsEndpoint string = acs.outputs.acsEndpoint
+
+@description('Azure-managed sender domain for HITL email.')
+output emailSenderDomain string = acs.outputs.emailSenderDomain
 
 @description('Azure OpenAI account id.')
 output openaiAccountId string = openAi.outputs.openaiAccountId

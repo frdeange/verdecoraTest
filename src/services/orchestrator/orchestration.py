@@ -259,6 +259,8 @@ class OrchestratorService:
             return "completed"
         if routing_decision == "hitl_review":
             return "hitl_pending"
+        if routing_decision == "reject":
+            return "rejected"
         return "failed"
 
     def _get_optional_str(self, payload: dict[str, Any], key: str) -> str | None:
