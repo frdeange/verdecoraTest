@@ -8,7 +8,7 @@ param location string = 'swedencentral'
 
 var resourceGroupName = 'rg-verdecoratest-${environment}'
 
-module resourceGroup './resource-group.bicep' = {
+module rg './resource-group.bicep' = {
   name: 'resourceGroup'
   params: {
     environment: environment
@@ -19,73 +19,73 @@ module resourceGroup './resource-group.bicep' = {
 
 module network './network.bicep' = {
   name: 'network'
-  scope: resourceGroup(resourceGroupName)
+  scope: az.resourceGroup(resourceGroupName)
   params: {
     environment: environment
     location: location
   }
   dependsOn: [
-    resourceGroup
+    rg
   ]
 }
 
 module serviceBus './servicebus.bicep' = {
   name: 'serviceBus'
-  scope: resourceGroup(resourceGroupName)
+  scope: az.resourceGroup(resourceGroupName)
   params: {
     environment: environment
     location: location
   }
   dependsOn: [
-    resourceGroup
+    rg
   ]
 }
 
 module cosmos './cosmos.bicep' = {
   name: 'cosmos'
-  scope: resourceGroup(resourceGroupName)
+  scope: az.resourceGroup(resourceGroupName)
   params: {
     environment: environment
     location: location
   }
   dependsOn: [
-    resourceGroup
+    rg
   ]
 }
 
 module storage './storage.bicep' = {
   name: 'storage'
-  scope: resourceGroup(resourceGroupName)
+  scope: az.resourceGroup(resourceGroupName)
   params: {
     environment: environment
     location: location
   }
   dependsOn: [
-    resourceGroup
+    rg
   ]
 }
 
 module keyVault './keyvault.bicep' = {
   name: 'keyVault'
-  scope: resourceGroup(resourceGroupName)
+  scope: az.resourceGroup(resourceGroupName)
   params: {
     environment: environment
     location: location
   }
   dependsOn: [
-    resourceGroup
+    rg
   ]
 }
 
 module monitoring './monitoring.bicep' = {
   name: 'monitoring'
-  scope: resourceGroup(resourceGroupName)
+  scope: az.resourceGroup(resourceGroupName)
   params: {
     environment: environment
     location: location
   }
   dependsOn: [
-    resourceGroup
+    rg
   ]
 }
 
