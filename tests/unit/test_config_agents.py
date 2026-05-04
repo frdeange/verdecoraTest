@@ -21,6 +21,8 @@ def test_agents_config_defaults() -> None:
     assert config.models.extractor_model == "gpt-5"
     assert config.models.triage_model == "gpt-5-mini"
     assert config.models.coherence_model == "gpt-5-mini"
+    assert config.models.validator_model == "gpt-5-mini"
+    assert config.models.inventory_model == "gpt-5-mini"
     assert config.thresholds.triage_manual_review_threshold == pytest.approx(0.65)
     assert config.thresholds.low_value_coherence_threshold == pytest.approx(250.0)
     assert config.skip_triage_suppliers == ()
@@ -50,6 +52,8 @@ def test_agents_config_reads_environment_overrides() -> None:
     assert config.models.extractor_model == "gpt-5-custom"
     assert config.models.triage_model == "gpt-5-mini-custom"
     assert config.models.coherence_model == "gpt-5-mini-custom"
+    assert config.models.validator_model == "gpt-5-mini-custom"
+    assert config.models.inventory_model == "gpt-5-mini-custom"
     assert config.thresholds.triage_manual_review_threshold == pytest.approx(0.7)
     assert config.thresholds.low_value_coherence_threshold == pytest.approx(99.5)
     assert config.skip_triage_suppliers == ("HERSTERA", "ROYAL CANIN")

@@ -1,0 +1,41 @@
+from __future__ import annotations
+
+import json
+from typing import Any
+
+from src.config.agents import AgentsConfig, get_agents_config
+from src.models.inventory import PostingResult
+
+from ._maf_compat import create_structured_agent
+from .prompts import INVENTORY_SYSTEM_PROMPT
+
+DEFAULT_INVENTORY_TOOL_NAMES: tuple[str, ...] = (
+    "bc.create_purchase_receipt",
+    "bc.post_purchase_receipt_lines",
+)
+
+
+def _build_inventory_instructions(tool_names: tuple[str, ...]) -> str:
+    schema = json.dumps(PostingResult.model_json_schema(), ensure_ascii=False, indent=2)
+    tool_hint = "\nAvailable MCP tools: " + ", ".join(tool_names) if tool_names else ""
+    return INVENTORY_SYSTEM_PROMPT.format(schema=schema) + tool_hint
+
+
+def create_inventory_agent(
+    client: Any,
+    config: AgentsConfig | None = None,
+    *,
+    tools: list[Any] | None = None,
+) -> Any:
+    resolved_config = config or get_agents_config()
+    resolved_tools = list(tools or [])
+    tool_names = tuple(getattr(tool, "name", str(tool)) for tool in resolved_tools) or DEFAULT_INVENTORY_TOOL_NAMES
+    return create_structured_agent(
+        client=client,
+        name="a5-inventory",
+        model=resolved_config.models.inventory_model,
+        instructions=_build_inventory_instructions(tool_names),
+        structured_output=PostingResult,
+        tools=resolved_tools,
+        handoffs=["user"],
+    )

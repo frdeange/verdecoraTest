@@ -7,8 +7,13 @@ from src.models import (
     AlbaranHeader,
     CoherenceCheckResult,
     DocumentType,
+    LineComparison,
     LineItem,
+    PostingLineItem,
+    PostingResult,
+    PurchaseReceiptPosting,
     TriageResult,
+    ValidationResult,
 )
 
 
@@ -178,6 +183,74 @@ def sample_fansa_extraction() -> AlbaranExtraction:
     return sample_extraction(supplier_name="FANSA")
 
 
+def sample_validation_result(
+    *,
+    is_valid: bool = True,
+    overall_match_pct: float = 0.98,
+    recommendation: str = "approve",
+    po_found: bool = True,
+    po_number: str | None = "PO-2026-0456",
+    discrepancies: list[str] | None = None,
+) -> ValidationResult:
+    return ValidationResult(
+        is_valid=is_valid,
+        overall_match_pct=overall_match_pct,
+        line_comparisons=[
+            LineComparison(
+                line_number=1,
+                field="quantity",
+                extracted_value="3.0",
+                bc_value="3.0",
+                difference_pct=0.0,
+                status="match",
+            )
+        ],
+        header_match=True,
+        po_found=po_found,
+        po_number=po_number,
+        total_lines_matched=2,
+        total_lines_mismatched=0 if is_valid else 1,
+        total_lines_within_tolerance=0,
+        discrepancies=list(discrepancies or []),
+        recommendation=recommendation,
+        reasoning="Line items align with the purchase order.",
+    )
+
+
+def sample_purchase_receipt_posting() -> PurchaseReceiptPosting:
+    return PurchaseReceiptPosting(
+        vendor_number="HERSTERA",
+        purchase_order_number="PO-2026-0456",
+        posting_date=date(2026, 1, 16),
+        line_items=[
+            PostingLineItem(
+                item_number="HER-001",
+                description="Maceta cerámica 20cm",
+                quantity=3.0,
+                unit_cost=8.0,
+                line_amount=24.0,
+            )
+        ],
+        total_amount=24.0,
+    )
+
+
+def sample_posting_result(
+    *,
+    success: bool = True,
+    receipt_number: str | None = "RCPT-2026-0012",
+    posted_lines: int = 2,
+    errors: list[str] | None = None,
+) -> PostingResult:
+    return PostingResult(
+        success=success,
+        receipt_number=receipt_number,
+        posted_lines=posted_lines,
+        errors=list(errors or []),
+        bc_document_url="https://businesscentral/purchaseReceipts/RCPT-2026-0012" if receipt_number else None,
+    )
+
+
 def sample_royal_canin_extraction() -> AlbaranExtraction:
     return sample_extraction(supplier_name="Royal Canin")
 
@@ -198,6 +271,9 @@ __all__ = [
     "sample_extraction",
     "sample_triage_result",
     "sample_coherence_result",
+    "sample_validation_result",
+    "sample_purchase_receipt_posting",
+    "sample_posting_result",
     "sample_herstera_extraction",
     "sample_fansa_extraction",
     "sample_royal_canin_extraction",

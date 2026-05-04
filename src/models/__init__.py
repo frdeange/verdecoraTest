@@ -8,12 +8,19 @@ from .albaran import (
     LineItem,
     TriageResult,
 )
+from .inventory import PostingLineItem, PostingResult, PurchaseReceiptPosting
+from .validation import LineComparison, ValidationResult
 
 __all__ = [
     "AlbaranExtraction",
     "AlbaranHeader",
     "CoherenceCheckResult",
     "DocumentType",
+    "LineComparison",
     "LineItem",
+    "PostingLineItem",
+    "PostingResult",
+    "PurchaseReceiptPosting",
     "TriageResult",
+    "ValidationResult",
 ]

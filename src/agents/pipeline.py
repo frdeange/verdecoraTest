@@ -7,11 +7,13 @@ from pydantic import BaseModel, Field
 
 from src.config.agents import AgentsConfig, get_agents_config
 from src.models.albaran import AlbaranExtraction, CoherenceCheckResult, TriageResult
+from src.models.inventory import PostingResult
+from src.models.validation import ValidationResult
 
 from ._maf_compat import build_sequential_workflow, coerce_model, ensure_workflow_available, event_payload
 from .factory import ToolRegistry, create_all_agents
 
-T = TypeVar("T", TriageResult, AlbaranExtraction, CoherenceCheckResult)
+T = TypeVar("T", TriageResult, AlbaranExtraction, CoherenceCheckResult, ValidationResult, PostingResult)
 
 
 class PipelineDocumentInput(BaseModel):
@@ -28,6 +30,8 @@ class PipelineRunResult(BaseModel):
     triage: TriageResult | None = None
     extraction: AlbaranExtraction | None = None
     coherence: CoherenceCheckResult | None = None
+    validation: ValidationResult | None = None
+    inventory: PostingResult | None = None
     routing_decision: str
     skipped_steps: list[str] = Field(default_factory=list)
 
@@ -63,8 +67,9 @@ class AlbaranPipeline:
         if not self._should_skip_triage(input_data):
             participants.append(self.agents["triage"])
         participants.append(self.agents["extractor"])
-        if not self._should_skip_coherence(input_data):
-            participants.append(self.agents["coherence"])
+        if self._should_skip_coherence(input_data):
+            return build_sequential_workflow(name="albaran-processing", participants=participants)
+        participants.extend([self.agents["coherence"], self.agents["validator"], self.agents["inventory"]])
         return build_sequential_workflow(name="albaran-processing", participants=participants)
 
     async def _run_workflow_for_model(self, workflow: Any, payload: Any, model_type: type[T]) -> T | None:
@@ -97,7 +102,7 @@ class AlbaranPipeline:
                 return PipelineRunResult(
                     triage=triage_result,
                     routing_decision=triage_result.routing_decision,
-                    skipped_steps=skipped_steps + ["extractor", "coherence"],
+                    skipped_steps=skipped_steps + ["extractor", "coherence", "validation", "inventory"],
                 )
 
         extraction_workflow = build_sequential_workflow(
@@ -111,7 +116,7 @@ class AlbaranPipeline:
         )
 
         if self._should_skip_coherence(normalized_input):
-            skipped_steps.append("coherence")
+            skipped_steps.extend(["coherence", "validation", "inventory"])
             return PipelineRunResult(
                 triage=triage_result,
                 extraction=extraction_result,
@@ -128,11 +133,45 @@ class AlbaranPipeline:
         coherence_result = await self._run_workflow_for_model(
             coherence_workflow, coherence_payload, CoherenceCheckResult
         )
-        routing_decision = triage_result.routing_decision if triage_result is not None else "extract"
+
+        validation_workflow = build_sequential_workflow(
+            name="albaran-validation", participants=[self.agents["validator"]]
+        )
+        validation_payload = {
+            "extraction": extraction_result.model_dump(mode="json") if extraction_result is not None else None,
+            "coherence": coherence_result.model_dump(mode="json") if coherence_result is not None else None,
+        }
+        validation_result = await self._run_workflow_for_model(
+            validation_workflow, validation_payload, ValidationResult
+        )
+
+        if validation_result is None or validation_result.recommendation != "approve":
+            skipped_steps.append("inventory")
+            routing_decision = validation_result.recommendation if validation_result is not None else "hitl_review"
+            return PipelineRunResult(
+                triage=triage_result,
+                extraction=extraction_result,
+                coherence=coherence_result,
+                validation=validation_result,
+                routing_decision=routing_decision,
+                skipped_steps=skipped_steps,
+            )
+
+        inventory_workflow = build_sequential_workflow(
+            name="albaran-inventory", participants=[self.agents["inventory"]]
+        )
+        inventory_payload = {
+            "validation": validation_result.model_dump(mode="json"),
+            "extraction": extraction_result.model_dump(mode="json") if extraction_result is not None else None,
+        }
+        inventory_result = await self._run_workflow_for_model(inventory_workflow, inventory_payload, PostingResult)
+        routing_decision = "posted" if inventory_result is not None and inventory_result.success else "hitl_review"
         return PipelineRunResult(
             triage=triage_result,
             extraction=extraction_result,
             coherence=coherence_result,
+            validation=validation_result,
+            inventory=inventory_result,
             routing_decision=routing_decision,
             skipped_steps=skipped_steps,
         )
