@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from src.config.agents import AgentsConfig, get_agents_config
-from src.models.validation import ValidationResult
+from src.models.validation import ValidationResult, compare_line_values, recommend_validation_action
 
 from ._maf_compat import create_structured_agent
 from .prompts import VALIDATOR_SYSTEM_PROMPT
@@ -40,3 +40,11 @@ def create_validator_agent(
         tools=resolved_tools,
         handoffs=["a5-inventory", "user"],
     )
+
+
+__all__ = [
+    "DEFAULT_VALIDATOR_TOOL_NAMES",
+    "compare_line_values",
+    "create_validator_agent",
+    "recommend_validation_action",
+]

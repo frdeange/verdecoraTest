@@ -7,5 +7,7 @@ Complete documentation for the project:
   - [Core agents technical specification](architecture/agents-technical-spec.md)
   - [Prompt engineering for core agents](architecture/prompt-engineering.md)
   - [Core agent data models](architecture/data-models.md)
+  - [Validation + inventory specification](architecture/validation-inventory-spec.md)
+  - [Orchestrator ACA application specification](architecture/orchestrator-spec.md)
 - **operations/** - Runbooks and operational procedures
 - **user/** - User manuals and guides
