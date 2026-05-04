@@ -50,3 +50,6 @@ output applicationInsightsId string = appInsights.id
 
 @description('Application Insights connection string.')
 output applicationInsightsConnectionString string = appInsights.properties.ConnectionString
+
+@description('Application Insights instrumentation key.')
+output applicationInsightsInstrumentationKey string = appInsights.properties.InstrumentationKey

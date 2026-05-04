@@ -12,8 +12,8 @@ param infrastructureSubnetId string
 @description('Name of the Log Analytics workspace used by the Container Apps environment.')
 param logAnalyticsWorkspaceName string = 'log-albaranes-${environment}'
 
-@description('Azure OpenAI endpoint exposed to the orchestrator runtime.')
-param openAiEndpoint string
+@description('Azure AI Foundry endpoint exposed to the orchestrator runtime.')
+param aiServicesEndpoint string
 
 @description('Cosmos DB endpoint exposed to the workloads.')
 param cosmosEndpoint string
@@ -33,6 +33,21 @@ param ingestionQueueName string = 'extraccion-queue'
 @description('Queue name consumed by the main orchestrator app.')
 param extractionQueueName string = 'extraccion-in'
 
+@description('Topic name used by the HITL webform to publish review decisions.')
+param hitlDecisionsTopicName string = 'hitl-decisions'
+
+@description('Storage account blob endpoint exposed to the workloads.')
+param storageAccountUrl string
+
+@description('Azure Communication Services endpoint exposed to the workloads.')
+param acsEndpoint string
+
+@description('Key Vault endpoint exposed to the workloads.')
+param keyVaultUrl string
+
+@description('Microsoft Entra tenant id used for token validation.')
+param tenantId string
+
 @description('Container image used by the orchestrator app.')
 param orchestratorImage string = 'ghcr.io/frdeange/verdecora-orchestrator:latest'
 
@@ -41,6 +56,9 @@ param dedupJobImage string = 'ghcr.io/frdeange/verdecora-flow0-dedup:latest'
 
 @description('Container image used by the HITL web form placeholder.')
 param hitlWebformImage string = 'ghcr.io/frdeange/verdecora-hitl-webform:latest'
+
+@description('Container image used by the escalation timer ACA Job.')
+param escalationTimerJobImage string = 'ghcr.io/frdeange/verdecora-escalation-timer:latest'
 
 var tags = {
   project: 'verdecora-albaranes'
@@ -104,7 +122,7 @@ resource orchestratorApp 'Microsoft.App/containerApps@2025-01-01' = {
           env: [
             {
               name: 'AZURE_OPENAI_ENDPOINT'
-              value: openAiEndpoint
+              value: aiServicesEndpoint
             }
             {
               name: 'COSMOS_ENDPOINT'
@@ -112,6 +130,10 @@ resource orchestratorApp 'Microsoft.App/containerApps@2025-01-01' = {
             }
             {
               name: 'DOCINTELL_ENDPOINT'
+              value: docIntellEndpoint
+            }
+            {
+              name: 'DOCUMENT_INTELLIGENCE_ENDPOINT'
               value: docIntellEndpoint
             }
             {
@@ -125,6 +147,22 @@ resource orchestratorApp 'Microsoft.App/containerApps@2025-01-01' = {
             {
               name: 'SERVICEBUS_QUEUE_NAME'
               value: extractionQueueName
+            }
+            {
+              name: 'EXTRACTION_QUEUE_NAME'
+              value: extractionQueueName
+            }
+            {
+              name: 'STORAGE_ACCOUNT_URL'
+              value: storageAccountUrl
+            }
+            {
+              name: 'ACS_ENDPOINT'
+              value: acsEndpoint
+            }
+            {
+              name: 'KEY_VAULT_URL'
+              value: keyVaultUrl
             }
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
@@ -223,6 +261,10 @@ resource flow0DedupJob 'Microsoft.App/jobs@2025-01-01' = {
               value: extractionQueueName
             }
             {
+              name: 'STORAGE_ACCOUNT_URL'
+              value: storageAccountUrl
+            }
+            {
               name: 'COSMOS_DATABASE_NAME'
               value: 'albaranes-db'
             }
@@ -282,6 +324,26 @@ resource hitlWebformApp 'Microsoft.App/containerApps@2025-01-01' = {
               name: 'COSMOS_ENDPOINT'
               value: cosmosEndpoint
             }
+            {
+              name: 'STORAGE_ACCOUNT_URL'
+              value: storageAccountUrl
+            }
+            {
+              name: 'ACS_ENDPOINT'
+              value: acsEndpoint
+            }
+            {
+              name: 'HITL_DECISIONS_TOPIC_NAME'
+              value: hitlDecisionsTopicName
+            }
+            {
+              name: 'KEY_VAULT_URL'
+              value: keyVaultUrl
+            }
+            {
+              name: 'AZURE_TENANT_ID'
+              value: tenantId
+            }
           ]
           resources: {
             cpu: json('0.25')
@@ -293,6 +355,56 @@ resource hitlWebformApp 'Microsoft.App/containerApps@2025-01-01' = {
         minReplicas: 0
         maxReplicas: 1
       }
+    }
+  }
+}
+
+resource escalationTimerJob 'Microsoft.App/jobs@2025-01-01' = {
+  name: 'verdecora-escalation-timer-${environment}'
+  location: location
+  tags: union(tags, {
+    service: 'escalation-timer'
+  })
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    environmentId: managedEnvironment.id
+    configuration: {
+      triggerType: 'Schedule'
+      replicaTimeout: 1800
+      replicaRetryLimit: 1
+      scheduleTriggerConfig: {
+        cronExpression: '0 * * * *'
+        parallelism: 1
+        replicaCompletionCount: 1
+      }
+    }
+    template: {
+      containers: [
+        {
+          name: 'escalation-timer'
+          image: escalationTimerJobImage
+          env: [
+            {
+              name: 'COSMOS_ENDPOINT'
+              value: cosmosEndpoint
+            }
+            {
+              name: 'ACS_ENDPOINT'
+              value: acsEndpoint
+            }
+            {
+              name: 'SERVICE_BUS_NAMESPACE'
+              value: serviceBusNamespaceName
+            }
+          ]
+          resources: {
+            cpu: json('0.25')
+            memory: '0.5Gi'
+          }
+        }
+      ]
     }
   }
 }
@@ -320,3 +432,9 @@ output hitlWebformAppId string = hitlWebformApp.id
 
 @description('HITL web form managed identity principal id.')
 output hitlWebformPrincipalId string = hitlWebformApp.identity.principalId
+
+@description('Escalation timer ACA Job id.')
+output escalationTimerJobId string = escalationTimerJob.id
+
+@description('Escalation timer ACA Job managed identity principal id.')
+output escalationTimerPrincipalId string = escalationTimerJob.identity.principalId
