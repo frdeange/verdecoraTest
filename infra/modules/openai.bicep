@@ -70,6 +70,9 @@ resource gpt5MiniDeployment 'Microsoft.CognitiveServices/accounts/deployments@20
 @description('Azure OpenAI account id.')
 output openaiAccountId string = openAiAccount.id
 
+@description('Azure OpenAI account name.')
+output openaiAccountName string = openAiAccount.name
+
 @description('Azure OpenAI endpoint.')
 output openaiEndpoint string = 'https://${openAiCustomSubdomainName}.openai.azure.com/'
 

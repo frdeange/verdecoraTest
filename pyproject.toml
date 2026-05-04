@@ -16,6 +16,7 @@ dependencies = [
     "azure-ai-documentintelligence>=1.0.2",
     "azure-cosmos>=4.9.0",
     "azure-identity>=1.20.0",
+    "azure-servicebus>=7.13.0",
     "mcp>=1.12.4",
     "pydantic>=2.11.0",
 ]

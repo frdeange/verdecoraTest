@@ -32,5 +32,8 @@ resource docIntellAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
 @description('Document Intelligence account id.')
 output docIntellId string = docIntellAccount.id
 
+@description('Document Intelligence account name.')
+output docIntellAccountName string = docIntellAccount.name
+
 @description('Document Intelligence endpoint.')
 output docIntellEndpoint string = 'https://${docIntellCustomSubdomainName}.cognitiveservices.azure.com/'

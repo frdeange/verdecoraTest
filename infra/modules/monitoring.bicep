@@ -47,3 +47,6 @@ output logAnalyticsWorkspaceId string = logAnalytics.id
 
 @description('Application Insights id.')
 output applicationInsightsId string = appInsights.id
+
+@description('Application Insights connection string.')
+output applicationInsightsConnectionString string = appInsights.properties.ConnectionString
