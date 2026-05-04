@@ -22,10 +22,8 @@ import argparse
 import asyncio
 import json
 import os
-import sys
 
 from .orchestrator import run_full_poc
-
 
 # ---------------------------------------------------------------------------
 # Chat client factory
@@ -79,7 +77,7 @@ class _MockChatClient:
 
 async def _dry_run_poc(albaran_input: str) -> dict:
     """Simulate the full PoC without an LLM by invoking tools directly."""
-    from .stub_agents import extract_document, validate_against_po, post_inventory_receipt
+    from .stub_agents import extract_document, post_inventory_receipt, validate_against_po
 
     print("\n" + "=" * 60)
     print("DRY-RUN MODE — Calling tools directly (no LLM)")

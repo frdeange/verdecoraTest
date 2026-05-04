@@ -21,6 +21,12 @@ param keyVaultName string
 @description('Name of the Azure Communication Services resource used for HITL email.')
 param communicationServiceName string
 
+@description('Optional Azure OpenAI account name for granting data-plane access to the ACA identity.')
+param openAiAccountName string = ''
+
+@description('Optional Document Intelligence account name for granting data-plane access to the ACA identity.')
+param docIntellAccountName string = ''
+
 @description('Optional suffix appended to the managed identity names.')
 param nameSuffix string = ''
 
@@ -30,6 +36,8 @@ var serviceBusDataReceiverRoleDefinitionId = subscriptionResourceId('Microsoft.A
 var storageBlobDataReaderRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')
 var keyVaultSecretsUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
 var communicationServicesContributorRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2495237a-0d06-4fc0-b5ef-8a60a7cb5773')
+var cognitiveServicesOpenAIUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
+var cognitiveServicesUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
 
 var agenticOrchestratorIdentityName = empty(nameSuffix) ? 'agentic-orchestrator' : 'agentic-orchestrator-${nameSuffix}'
 var communicationAgentIdentityName = empty(nameSuffix) ? 'communication-agent' : 'communication-agent-${nameSuffix}'
@@ -54,6 +62,14 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
 
 resource communicationService 'Microsoft.Communication/communicationServices@2023-04-01' existing = {
   name: communicationServiceName
+}
+
+resource openAiAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = if (!empty(openAiAccountName)) {
+  name: openAiAccountName
+}
+
+resource docIntellAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = if (!empty(docIntellAccountName)) {
+  name: docIntellAccountName
 }
 
 resource agenticOrchestratorIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
@@ -249,6 +265,26 @@ resource communicationAgentCommunicationServicesContributorRoleAssignment 'Micro
     principalId: communicationAgentIdentity.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: communicationServicesContributorRoleDefinitionId
+  }
+}
+
+resource agenticOrchestratorOpenAiUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(openAiAccountName)) {
+  name: guid(openAiAccount.id, agenticOrchestratorIdentity.name, cognitiveServicesOpenAIUserRoleDefinitionId)
+  scope: openAiAccount
+  properties: {
+    principalId: agenticOrchestratorIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: cognitiveServicesOpenAIUserRoleDefinitionId
+  }
+}
+
+resource agenticOrchestratorDocIntellUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(docIntellAccountName)) {
+  name: guid(docIntellAccount.id, agenticOrchestratorIdentity.name, cognitiveServicesUserRoleDefinitionId)
+  scope: docIntellAccount
+  properties: {
+    principalId: agenticOrchestratorIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: cognitiveServicesUserRoleDefinitionId
   }
 }
 

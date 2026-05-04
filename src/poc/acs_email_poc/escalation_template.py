@@ -4,7 +4,6 @@ from html import escape
 
 from .email_templates import HitlEmailContext, build_action_url
 
-
 ESCALATION_NOTICE = (
     "This escalation is intended for the responsible approver and their backup contact. "
     "If no action is recorded, operations should intervene."

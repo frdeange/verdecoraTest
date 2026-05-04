@@ -52,7 +52,10 @@ def get_keyvault_secret(
         credential=credential or get_managed_identity_credential(),
     )
 
-    return client.get_secret(secret_name, version=version).value
+    secret_value = client.get_secret(secret_name, version=version).value
+    if secret_value is None:
+        raise RuntimeError(f"Secret '{secret_name}' has no value.")
+    return str(secret_value)
 
 
 def get_cosmos_client(*, endpoint: str | None = None, credential: Any | None = None) -> Any:

@@ -8,20 +8,17 @@ Demonstrates two orchestration patterns from agent_framework:
 Also sets up OpenTelemetry with console exporter for local testing.
 """
 
-import asyncio
 
+from agent_framework.orchestrations import HandoffBuilder, SequentialBuilder
 from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import (
     BatchSpanProcessor,
     ConsoleSpanExporter,
 )
-from opentelemetry.sdk.resources import Resource
 
-from agent_framework.orchestrations import SequentialBuilder, HandoffBuilder
-
-from .stub_agents import create_extractor, create_validator, create_inventory
-
+from .stub_agents import create_extractor, create_inventory, create_validator
 
 # ---------------------------------------------------------------------------
 # Telemetry setup (console exporter for local dev)

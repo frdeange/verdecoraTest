@@ -15,7 +15,6 @@ from typing import Annotated
 
 from agent_framework import Agent, tool
 
-
 # ---------------------------------------------------------------------------
 # Mock tools (replace with MCPStreamableHTTPTool in production)
 # ---------------------------------------------------------------------------
