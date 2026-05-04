@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping
 
+from src.config.security import get_managed_identity_credential
+
 from .email_templates import HitlEmailContext, render_hitl_email
 
 
@@ -15,18 +17,14 @@ class ACSMessageConfig:
     cc: tuple[str, ...] = field(default_factory=tuple)
     bcc: tuple[str, ...] = field(default_factory=tuple)
     reply_to: tuple[str, ...] = field(default_factory=tuple)
-    connection_string: str | None = None
+    credential: Any | None = None
 
 
 def _create_email_client(config: ACSMessageConfig) -> Any:
-    from azure.communication.email import EmailClient
+    from azure.communication.email import EmailClient  # type: ignore[import-untyped]
 
-    if config.connection_string:
-        return EmailClient.from_connection_string(config.connection_string)
-
-    from azure.identity import DefaultAzureCredential
-
-    return EmailClient(config.endpoint, DefaultAzureCredential())
+    credential = config.credential or get_managed_identity_credential()
+    return EmailClient(config.endpoint, credential)
 
 
 def build_hitl_email_message(context: HitlEmailContext, config: ACSMessageConfig) -> dict[str, Any]:
