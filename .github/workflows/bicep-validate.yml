@@ -32,7 +32,7 @@ jobs:
           for file in infra/**/*.bicep; do
             if [ -f "$file" ]; then
               echo "Validating $file..."
-              az bicep build --file "$file"
+              az bicep build --file "$file" 2>&1 | tee /tmp/bicep_output.txt; if grep -q "Error BCP" /tmp/bicep_output.txt; then echo "Errors found"; exit 1; fi
               if [ $? -ne 0 ]; then
                 echo "❌ Validation failed for $file"
                 exit 1
