@@ -29,13 +29,14 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
-def pytest_collection_modifyitems(
-    config: pytest.Config, items: list[pytest.Item]
-) -> None:
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     skip_integration = pytest.mark.skip(reason="need --run-integration option to run")
     skip_e2e = pytest.mark.skip(reason="need --run-e2e option to run")
-    run_integration = config.getoption("--run-integration")
-    run_e2e = config.getoption("--run-e2e")
+    invocation_args = [str(arg).replace("\\", "/") for arg in config.invocation_params.args]
+    explicit_integration_selection = any("tests/integration" in arg for arg in invocation_args)
+    explicit_e2e_selection = any("tests/e2e" in arg for arg in invocation_args)
+    run_integration = config.getoption("--run-integration") or explicit_integration_selection
+    run_e2e = config.getoption("--run-e2e") or explicit_e2e_selection
 
     for item in items:
         item_path = Path(str(item.path))
@@ -69,9 +70,7 @@ def bc_mcp_read_client(sample_po_data: dict[str, object]) -> SimpleNamespace:
     first_line = sample_po_data["purchaseLines"][0]
     return SimpleNamespace(
         get_purchase_order=AsyncMock(return_value=sample_po_data),
-        get_purchase_order_lines=AsyncMock(
-            return_value=sample_po_data["purchaseLines"]
-        ),
+        get_purchase_order_lines=AsyncMock(return_value=sample_po_data["purchaseLines"]),
         get_vendor=AsyncMock(
             return_value={
                 "number": sample_po_data["vendorNumber"],
@@ -90,16 +89,12 @@ def bc_mcp_read_client(sample_po_data: dict[str, object]) -> SimpleNamespace:
 @pytest.fixture()
 def bc_mcp_write_client() -> SimpleNamespace:
     return SimpleNamespace(
-        post_purchase_receipt=AsyncMock(
-            return_value={"status": "posted", "posted_receipt_id": "PR-2026-000123"}
-        )
+        post_purchase_receipt=AsyncMock(return_value={"status": "posted", "posted_receipt_id": "PR-2026-000123"})
     )
 
 
 @pytest.fixture()
-def bc_mcp_clients(
-    bc_mcp_read_client: SimpleNamespace, bc_mcp_write_client: SimpleNamespace
-) -> SimpleNamespace:
+def bc_mcp_clients(bc_mcp_read_client: SimpleNamespace, bc_mcp_write_client: SimpleNamespace) -> SimpleNamespace:
     return SimpleNamespace(read=bc_mcp_read_client, write=bc_mcp_write_client)
 
 
@@ -112,9 +107,7 @@ def cosmos_db_client(sample_albaran_data: dict[str, object]) -> SimpleNamespace:
         query_items=MagicMock(return_value=[sample_albaran_data]),
     )
     database = SimpleNamespace(get_container_client=MagicMock(return_value=container))
-    return SimpleNamespace(
-        get_database_client=MagicMock(return_value=database), close=AsyncMock()
-    )
+    return SimpleNamespace(get_database_client=MagicMock(return_value=database), close=AsyncMock())
 
 
 @pytest.fixture()
