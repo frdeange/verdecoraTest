@@ -9,4 +9,4 @@
 
 ## Learnings
 
-_No learnings recorded yet._
+- 2026-05-04: Set up pytest defaults so only unit tests run unless `--run-integration` or `--run-e2e` is explicitly passed. Added reusable mocks for BC MCP, Cosmos DB, ACS Email, and Service Bus plus JSON fixtures for albarán and PO payloads.
