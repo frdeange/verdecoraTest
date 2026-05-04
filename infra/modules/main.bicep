@@ -128,6 +128,48 @@ module acs './acs.bicep' = {
   ]
 }
 
+/*
+Dev deployments keep public endpoints and direct egress enabled for faster inner-loop debugging.
+The private endpoint and NAT gateway modules below automatically enable when environment == 'prod'.
+*/
+var enableProductionNetworkHardening = environment == 'prod'
+
+module natGateway './nat-gateway.bicep' = if (enableProductionNetworkHardening) {
+  name: 'natGateway'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    environment: environment
+    location: location
+    subnetId: network.outputs.subnetAcaEnvId
+  }
+  dependsOn: [
+    rg
+    network
+  ]
+}
+
+module privateEndpoints './private-endpoints.bicep' = if (enableProductionNetworkHardening) {
+  name: 'privateEndpoints'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    environment: environment
+    location: location
+    virtualNetworkId: network.outputs.virtualNetworkId
+    subnetId: network.outputs.subnetPeId
+    storageResourceId: storage.outputs.storageAccountId
+    cosmosResourceId: cosmos.outputs.cosmosAccountId
+    keyVaultResourceId: keyVault.outputs.keyVaultId
+    serviceBusResourceId: serviceBus.outputs.serviceBusNamespaceId
+    openAiResourceId: openAi.outputs.openaiAccountId
+    documentIntelligenceResourceId: docIntell.outputs.docIntellId
+    acsResourceId: acs.outputs.acsId
+  }
+  dependsOn: [
+    rg
+    network
+  ]
+}
+
 module containerApps './container-apps.bicep' = {
   name: 'containerApps'
   scope: az.resourceGroup(resourceGroupName)
@@ -146,6 +188,8 @@ module containerApps './container-apps.bicep' = {
   }
   dependsOn: [
     rg
+    natGateway
+    privateEndpoints
   ]
 }
 
@@ -283,6 +327,9 @@ output flow0DedupJobId string = containerApps.outputs.flow0DedupJobId
 
 @description('HITL web form container app id.')
 output hitlWebformAppId string = containerApps.outputs.hitlWebformAppId
+
+@description('Whether production-only network hardening is enabled.')
+output productionNetworkHardeningEnabled bool = enableProductionNetworkHardening
 
 @description('Event Grid system topic id.')
 output eventGridSystemTopicId string = eventGrid.outputs.systemTopicId
