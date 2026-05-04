@@ -6,6 +6,9 @@ param environment string
 @description('Azure region for all resources.')
 param location string = 'swedencentral'
 
+@description('Ops team email notified by Azure Monitor action groups.')
+param opsEmailAddress string = 'ops@verdecora.example.com'
+
 var resourceGroupName = 'rg-verdecoratest-${environment}'
 
 module rg './resource-group.bicep' = {
@@ -183,6 +186,20 @@ module identity './identity.bicep' = {
   ]
 }
 
+module alerts './alerts.bicep' = {
+  name: 'alerts'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    environment: environment
+    location: location
+    applicationInsightsId: monitoring.outputs.applicationInsightsId
+    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
+    serviceBusNamespaceId: serviceBus.outputs.serviceBusNamespaceId
+    processingQueueName: serviceBus.outputs.extraccionQueueName
+    opsEmailAddress: opsEmailAddress
+  }
+}
+
 @description('Resource group id.')
 output resourceGroupId string = rg.outputs.resourceGroupId
 
@@ -251,6 +268,9 @@ output docIntellId string = docIntell.outputs.docIntellId
 
 @description('Document Intelligence endpoint.')
 output docIntellEndpoint string = docIntell.outputs.docIntellEndpoint
+
+@description('Azure Monitor action group id.')
+output opsActionGroupId string = alerts.outputs.actionGroupId
 
 @description('Container Apps environment id.')
 output containerAppsEnvironmentId string = containerApps.outputs.managedEnvironmentId

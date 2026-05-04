@@ -1,0 +1,189 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "swedencentral",
+      "metadata": {
+        "description": "Azure region where the workbook resource will be stored."
+      }
+    },
+    "workbookDisplayName": {
+      "type": "string",
+      "defaultValue": "Verdecora - Observabilidad general",
+      "metadata": {
+        "description": "Workbook display name shown in Azure Monitor."
+      }
+    },
+    "workbookSourceId": {
+      "type": "string",
+      "defaultValue": "Azure Monitor",
+      "metadata": {
+        "description": "Primary resource id associated to the workbook (typically the Log Analytics workspace id)."
+      }
+    },
+    "logAnalyticsWorkspaceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Log Analytics workspace id used by workbook KQL queries."
+      }
+    },
+    "appInsightsComponentId": {
+      "type": "string",
+      "metadata": {
+        "description": "Application Insights component id used as a fallback data source."
+      }
+    }
+  },
+  "variables": {
+    "workbookResourceName": "[guid(resourceGroup().id, parameters('workbookDisplayName'))]",
+    "workbookDefinition": {
+      "version": "Notebook/1.0",
+      "isLocked": false,
+      "fallbackResourceIds": [
+        "[parameters('workbookSourceId')]",
+        "[parameters('logAnalyticsWorkspaceId')]",
+        "[parameters('appInsightsComponentId')]"
+      ],
+      "items": [
+        {
+          "name": "title",
+          "type": 1,
+          "content": {
+            "json": "# Verdecora · Observabilidad operativa\n\nSeguimiento de volumen, éxito, errores, latencia de agentes y backlog HITL para el flujo de albaranes."
+          }
+        },
+        {
+          "name": "processing-volume-hourly",
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "AppEvents\n| where TimeGenerated >= ago(24h)\n| extend dims = column_ifexists(\"Properties\", dynamic({}))\n| extend albaranId = coalesce(tostring(dims[\"albaran_id\"]), tostring(dims[\"albaranId\"]), OperationId)\n| summarize Albaranes = dcount(albaranId) by bin(TimeGenerated, 1h)\n| order by TimeGenerated asc",
+            "size": 0,
+            "title": "Albaranes procesados por hora",
+            "timeContext": {
+              "durationMs": 86400000
+            },
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "resourceIds": [
+              "[parameters('logAnalyticsWorkspaceId')]"
+            ],
+            "visualization": "timechart"
+          }
+        },
+        {
+          "name": "processing-volume-daily",
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "AppEvents\n| where TimeGenerated >= ago(14d)\n| extend dims = column_ifexists(\"Properties\", dynamic({}))\n| extend albaranId = coalesce(tostring(dims[\"albaran_id\"]), tostring(dims[\"albaranId\"]), OperationId)\n| summarize Albaranes = dcount(albaranId) by bin(TimeGenerated, 1d)\n| order by TimeGenerated asc",
+            "size": 0,
+            "title": "Albaranes procesados por día",
+            "timeContext": {
+              "durationMs": 1209600000
+            },
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "resourceIds": [
+              "[parameters('logAnalyticsWorkspaceId')]"
+            ],
+            "visualization": "barchart"
+          }
+        },
+        {
+          "name": "success-rates",
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "AppEvents\n| where TimeGenerated >= ago(24h)\n| extend dims = column_ifexists(\"Properties\", dynamic({}))\n| extend result = coalesce(tostring(dims[\"result\"]), tostring(dims[\"routing_decision\"]), Name)\n| extend Resultado = case(result in (\"approve\", \"posted\", \"success\"), \"Éxito\", result in (\"hitl_review\", \"pending_hitl\", \"manual_review\"), \"HITL\", \"Fallo\")\n| summarize Eventos = count() by Resultado",
+            "size": 0,
+            "title": "Ratio de éxito, fallo y HITL",
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "resourceIds": [
+              "[parameters('logAnalyticsWorkspaceId')]"
+            ],
+            "visualization": "piechart"
+          }
+        },
+        {
+          "name": "agent-latency",
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "AppDependencies\n| where TimeGenerated >= ago(24h)\n| extend dims = column_ifexists(\"Properties\", dynamic({}))\n| extend customDimensions = column_ifexists(\"CustomDimensions\", dynamic({}))\n| extend agentName = coalesce(tostring(customDimensions[\"agent_name\"]), tostring(customDimensions[\"agent_id\"]), tostring(dims[\"agent_name\"]), tostring(dims[\"agent_id\"]), Name)\n| where agentName has_any (\"A1\", \"A2\", \"A3\", \"A4\", \"A5\", \"A6\", \"extractor\", \"triage\", \"coherence\", \"validator\", \"inventory\", \"communication\")\n| summarize Avg_ms = avg(DurationMs), P95_ms = percentile(DurationMs, 95), Total = count() by agentName\n| order by P95_ms desc",
+            "size": 0,
+            "title": "Latencia por agente (A1-A6)",
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "resourceIds": [
+              "[parameters('logAnalyticsWorkspaceId')]"
+            ],
+            "visualization": "table"
+          }
+        },
+        {
+          "name": "top-errors",
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "AppTraces\n| where TimeGenerated >= ago(24h)\n| where SeverityLevel >= 3\n| extend dims = column_ifexists(\"Properties\", dynamic({}))\n| extend ErrorType = coalesce(tostring(dims[\"error_type\"]), tostring(dims[\"exception_type\"]), Message)\n| summarize Errores = count() by ErrorType\n| top 10 by Errores desc",
+            "size": 0,
+            "title": "Top tipos de error",
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "resourceIds": [
+              "[parameters('logAnalyticsWorkspaceId')]"
+            ],
+            "visualization": "table"
+          }
+        },
+        {
+          "name": "hitl-backlog",
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "AppEvents\n| where TimeGenerated >= ago(7d)\n| extend dims = column_ifexists(\"Properties\", dynamic({}))\n| extend reviewStatus = coalesce(tostring(dims[\"review_status\"]), tostring(dims[\"status\"]), Name)\n| extend createdAt = todatetime(coalesce(tostring(dims[\"created_at\"]), tostring(dims[\"createdAt\"]), TimeGenerated))\n| where reviewStatus in (\"pending\", \"reminded\", \"escalated\")\n| summarize Pendientes = count(), MasAntiguo = min(createdAt)",
+            "size": 0,
+            "title": "Revisiones HITL pendientes activas",
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "resourceIds": [
+              "[parameters('logAnalyticsWorkspaceId')]"
+            ],
+            "visualization": "table"
+          }
+        }
+      ]
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/workbooks",
+      "apiVersion": "2023-06-01",
+      "name": "[variables('workbookResourceName')]",
+      "location": "[parameters('location')]",
+      "kind": "shared",
+      "properties": {
+        "category": "workbook",
+        "displayName": "[parameters('workbookDisplayName')]",
+        "description": "Operational overview for Verdecora AI Agents albarán processing.",
+        "sourceId": "[parameters('workbookSourceId')]",
+        "version": "Notebook/1.0",
+        "serializedData": "[string(variables('workbookDefinition'))]"
+      }
+    }
+  ],
+  "outputs": {
+    "workbookResourceId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Insights/workbooks', variables('workbookResourceName'))]"
+    },
+    "workbookName": {
+      "type": "string",
+      "value": "[parameters('workbookDisplayName')]"
+    }
+  }
+}
