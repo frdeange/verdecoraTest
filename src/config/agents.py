@@ -29,6 +29,7 @@ class AgentModelSettings(BaseModel):
     coherence_model: str = Field(default_factory=lambda: os.getenv("GPT5_MINI_DEPLOYMENT", "gpt-5-mini"))
     validator_model: str = Field(default_factory=lambda: os.getenv("GPT5_MINI_DEPLOYMENT", "gpt-5-mini"))
     inventory_model: str = Field(default_factory=lambda: os.getenv("GPT5_MINI_DEPLOYMENT", "gpt-5-mini"))
+    communication_model: str = Field(default_factory=lambda: os.getenv("GPT5_MINI_DEPLOYMENT", "gpt-5-mini"))
 
 
 class AgentThresholdSettings(BaseModel):
