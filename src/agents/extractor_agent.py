@@ -8,6 +8,7 @@ from src.models.albaran import AlbaranExtraction
 
 from ._maf_compat import create_structured_agent
 from .prompts import EXTRACTOR_SYSTEM_PROMPT
+from .security import harden_system_prompt
 
 DEFAULT_EXTRACTOR_TOOL_NAMES: tuple[str, ...] = (
     "content_understanding.analyze_document",
@@ -18,7 +19,7 @@ DEFAULT_EXTRACTOR_TOOL_NAMES: tuple[str, ...] = (
 def _build_extractor_instructions(tool_names: tuple[str, ...]) -> str:
     schema = json.dumps(AlbaranExtraction.model_json_schema(), ensure_ascii=False, indent=2)
     tool_hint = "\nAvailable MCP tools: " + ", ".join(tool_names) if tool_names else ""
-    return EXTRACTOR_SYSTEM_PROMPT.format(schema=schema) + tool_hint
+    return harden_system_prompt(EXTRACTOR_SYSTEM_PROMPT.format(schema=schema) + tool_hint)
 
 
 def create_extractor_agent(

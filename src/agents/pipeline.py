@@ -12,6 +12,7 @@ from src.models.validation import ValidationResult
 
 from ._maf_compat import build_sequential_workflow, coerce_model, ensure_workflow_available, event_payload
 from .factory import ToolRegistry, create_all_agents
+from .security import sanitize_untrusted_payload
 
 T = TypeVar("T", TriageResult, AlbaranExtraction, CoherenceCheckResult, ValidationResult, PostingResult)
 
@@ -86,10 +87,39 @@ class AlbaranPipeline:
         resolved = await run_result if inspect.isawaitable(run_result) else run_result
         return coerce_model(model_type, resolved)
 
+    def _sanitize_input(self, input_data: PipelineDocumentInput) -> PipelineDocumentInput:
+        sanitized_raw_text = sanitize_untrusted_payload(input_data.raw_text)
+        sanitized_ocr_payload = sanitize_untrusted_payload(input_data.ocr_payload)
+        sanitized_supplier_id = sanitize_untrusted_payload(input_data.supplier_id)
+        sanitized_supplier_hint = sanitize_untrusted_payload(input_data.supplier_hint)
+        sanitized_metadata = sanitize_untrusted_payload(input_data.metadata)
+
+        if (
+            sanitized_raw_text == input_data.raw_text
+            and sanitized_ocr_payload == input_data.ocr_payload
+            and sanitized_supplier_id == input_data.supplier_id
+            and sanitized_supplier_hint == input_data.supplier_hint
+            and sanitized_metadata == input_data.metadata
+        ):
+            return input_data
+
+        metadata = dict(sanitized_metadata)
+        metadata["input_sanitized"] = True
+        return input_data.model_copy(
+            update={
+                "raw_text": sanitized_raw_text,
+                "ocr_payload": sanitized_ocr_payload,
+                "supplier_id": sanitized_supplier_id,
+                "supplier_hint": sanitized_supplier_hint,
+                "metadata": metadata,
+            }
+        )
+
     async def run(self, input_data: PipelineDocumentInput | dict[str, Any]) -> PipelineRunResult:
         normalized_input = input_data
         if not isinstance(input_data, PipelineDocumentInput):
             normalized_input = PipelineDocumentInput.model_validate(input_data)
+        normalized_input = self._sanitize_input(normalized_input)
 
         skipped_steps: list[str] = []
         triage_result: TriageResult | None = None

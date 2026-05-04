@@ -1,25 +1,63 @@
 from __future__ import annotations
 
+from functools import lru_cache
+
+from fastapi import HTTPException, status
 from pydantic import BaseModel
+
+from .config import HITLWebformConfig
+from .security import EntraTokenValidator, TokenClaims, TokenValidationError, extract_bearer_token
 
 
 class AuthenticatedReviewer(BaseModel):
     email: str
-    subject: str = "placeholder-reviewer"
-    display_name: str = "Reviewer"
+    subject: str
+    display_name: str
+    roles: tuple[str, ...] = ()
 
 
-def extract_bearer_token(authorization_header: str | None) -> str:
+@lru_cache(maxsize=8)
+def get_token_validator(tenant_id: str, expected_audience: str) -> EntraTokenValidator:
+    return EntraTokenValidator(tenant_id=tenant_id, client_id=expected_audience)
+
+
+def _build_authenticated_reviewer(claims: TokenClaims) -> AuthenticatedReviewer:
+    display_name = claims.email.split("@", maxsplit=1)[0].replace(".", " ").title()
+    return AuthenticatedReviewer(
+        email=claims.email,
+        subject=claims.subject,
+        display_name=display_name,
+        roles=claims.roles,
+    )
+
+
+async def validate_entra_token(
+    authorization_header: str | None,
+    *,
+    config: HITLWebformConfig,
+) -> AuthenticatedReviewer:
     if authorization_header is None:
-        raise ValueError("Missing Authorization header.")
-    scheme, _, token = authorization_header.partition(" ")
-    if scheme.casefold() != "bearer" or not token.strip():
-        raise ValueError("Authorization header must use the Bearer scheme.")
-    return token.strip()
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Authorization header.")
 
+    try:
+        token = extract_bearer_token(authorization_header)
+    except TokenValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
-def validate_entra_token(authorization_header: str | None) -> AuthenticatedReviewer:
-    token = extract_bearer_token(authorization_header)
-    if "@" in token:
-        return AuthenticatedReviewer(email=token, subject=token, display_name=token.split("@", maxsplit=1)[0])
-    return AuthenticatedReviewer(email="reviewer@verdecora.example.com", subject=token, display_name="Reviewer")
+    if config.allow_local_email_bearer and "@" in token:
+        local_part = token.split("@", maxsplit=1)[0]
+        return AuthenticatedReviewer(email=token.casefold(), subject=token, display_name=local_part.title())
+
+    validator = get_token_validator(config.tenant_id, config.expected_audience)
+    try:
+        claims = await validator.validate_token(token)
+    except TokenValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+
+    if not validator.require_role(claims, config.reviewer_role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The reviewer is missing the required HITL role.",
+        )
+
+    return _build_authenticated_reviewer(claims)

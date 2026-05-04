@@ -14,6 +14,7 @@ from src.models.communication import EscalationLevel, HITLNotification
 
 from ._maf_compat import create_structured_agent
 from .prompts import COMMUNICATION_SYSTEM_PROMPT
+from .security import harden_system_prompt
 
 
 class CommunicationSummary(BaseModel):
@@ -23,7 +24,7 @@ class CommunicationSummary(BaseModel):
 
 def _build_communication_instructions() -> str:
     schema = json.dumps(CommunicationSummary.model_json_schema(), ensure_ascii=False, indent=2)
-    return COMMUNICATION_SYSTEM_PROMPT.format(schema=schema)
+    return harden_system_prompt(COMMUNICATION_SYSTEM_PROMPT.format(schema=schema))
 
 
 def create_communication_agent(

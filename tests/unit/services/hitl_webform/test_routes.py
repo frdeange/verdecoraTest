@@ -4,6 +4,8 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
+import src.services.hitl_webform.routes as routes
+from src.services.hitl_webform.auth import AuthenticatedReviewer
 from src.services.hitl_webform.main import create_app
 
 
@@ -46,7 +48,17 @@ class FakePublisher:
         self.decisions.append(decision.model_dump(mode="json"))
 
 
-def test_hitl_webform_routes_render_review_and_publish_decision() -> None:
+async def _fake_validate_entra_token(*_: Any, **__: Any) -> AuthenticatedReviewer:
+    return AuthenticatedReviewer(
+        email="reviewer@verdecora.example.com",
+        subject="reviewer-123",
+        display_name="Reviewer",
+        roles=("Verdecora.StoreManager",),
+    )
+
+
+def test_hitl_webform_routes_render_review_and_publish_decision(monkeypatch) -> None:
+    monkeypatch.setattr(routes, "validate_entra_token", _fake_validate_entra_token)
     store = FakeReviewStore()
     publisher = FakePublisher()
     app = create_app(review_store=store, decision_publisher=publisher)
@@ -55,11 +67,11 @@ def test_hitl_webform_routes_render_review_and_publish_decision() -> None:
         health_response = client.get("/health")
         review_response = client.get(
             "/review/alb-003",
-            headers={"Authorization": "Bearer reviewer@verdecora.example.com"},
+            headers={"Authorization": "Bearer signed.jwt"},
         )
         decision_response = client.post(
             "/review/alb-003/decide",
-            headers={"Authorization": "Bearer reviewer@verdecora.example.com"},
+            headers={"Authorization": "Bearer signed.jwt"},
             json={
                 "decision": "modify",
                 "modified_lines": [{"line_number": 1, "quantity": 4}],
