@@ -6,10 +6,14 @@ from unittest.mock import patch
 
 import pytest
 
-from src.agents.inventory_agent import create_inventory_agent
+from src.agents.inventory_agent import (
+    build_posting_failure_result,
+    create_inventory_agent,
+    should_process_inventory,
+)
 from src.config.agents import AgentsConfig
 from src.models import PostingResult
-from tests.fixtures.sample_albarans import sample_posting_result
+from tests.fixtures.sample_validations import sample_posting_result, sample_validation
 from tests.unit.agent_test_helpers import StructuredAgentStub, build_structured_agent_stub
 
 pytestmark = pytest.mark.unit
@@ -63,3 +67,18 @@ def test_inventory_agent_respects_custom_model_config(mock_factory: Any) -> None
     create_inventory_agent(client=object(), config=config)
 
     assert mock_factory.call_args.kwargs["model"] == "inventory-local"
+
+
+def test_inventory_agent_only_processes_approved_validations() -> None:
+    assert should_process_inventory(sample_validation(overall_match_pct=0.98, recommendation="approve")) is True
+    assert should_process_inventory(sample_validation(overall_match_pct=0.9, recommendation="hitl_review")) is False
+    assert should_process_inventory(sample_validation(overall_match_pct=0.7, recommendation="reject")) is False
+
+
+def test_inventory_agent_returns_failure_payload_on_bc_posting_error() -> None:
+    result = build_posting_failure_result(RuntimeError("Business Central posting failed"), receipt_number="TEMP-001")
+
+    assert result.success is False
+    assert result.receipt_number == "TEMP-001"
+    assert result.posted_lines == 0
+    assert result.errors == ["Business Central posting failed"]
