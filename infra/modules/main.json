@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "12032765836809404992"
+      "templateHash": "4335735284261144565"
     }
   },
   "parameters": {
@@ -27,6 +27,34 @@
       "defaultValue": "ops@verdecora.example.com",
       "metadata": {
         "description": "Ops team email notified by Azure Monitor action groups."
+      }
+    },
+    "orchestratorImage": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional override for the orchestrator image during infrastructure deployments."
+      }
+    },
+    "dedupJobImage": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional override for the Flow 0 dedup job image during infrastructure deployments."
+      }
+    },
+    "hitlWebformImage": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional override for the HITL webform image during infrastructure deployments."
+      }
+    },
+    "escalationTimerJobImage": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional override for the escalation timer job image during infrastructure deployments."
       }
     }
   },
@@ -147,7 +175,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "3222054638033683653"
+              "templateHash": "14441465333506807893"
             }
           },
           "parameters": {
@@ -270,7 +298,15 @@
                       "addressPrefix": "10.10.4.0/27",
                       "networkSecurityGroup": {
                         "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-runners-albaranes-{0}', parameters('environment')))]"
-                      }
+                      },
+                      "delegations": [
+                        {
+                          "name": "acaDelegation",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ]
                     }
                   },
                   {
@@ -835,7 +871,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "4946335736448079367"
+              "templateHash": "6455998563186825921"
             }
           },
           "parameters": {
@@ -877,7 +913,7 @@
                 "allowBlobPublicAccess": false,
                 "allowSharedKeyAccess": false,
                 "minimumTlsVersion": "TLS1_2",
-                "publicNetworkAccess": "Enabled",
+                "publicNetworkAccess": "Disabled",
                 "supportsHttpsTrafficOnly": true,
                 "networkAcls": {
                   "defaultAction": "Deny",
@@ -1010,6 +1046,138 @@
         }
       },
       "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/deployments', 'resourceGroup')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "acr",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "agentPoolSubnetId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'network'), '2025-04-01').outputs.subnetEgressId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "13902642366212421110"
+            }
+          },
+          "parameters": {
+            "environment": {
+              "type": "string",
+              "metadata": {
+                "description": "Deployment environment name (dev/test/prod)."
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for Container Registry resources."
+              }
+            },
+            "agentPoolSubnetId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional subnet resource id used by the ACR dedicated build agent pool."
+              }
+            },
+            "agentPoolName": {
+              "type": "string",
+              "defaultValue": "[format('buildpool-{0}', parameters('environment'))]",
+              "metadata": {
+                "description": "Name of the dedicated ACR build agent pool."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ContainerRegistry/registries",
+              "apiVersion": "2023-07-01",
+              "name": "[format('acralbaranes{0}', parameters('environment'))]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Premium"
+              },
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "adminUserEnabled": false,
+                "publicNetworkAccess": "Disabled",
+                "networkRuleBypassOptions": "AzureServices",
+                "dataEndpointEnabled": false
+              }
+            },
+            {
+              "condition": "[not(empty(parameters('agentPoolSubnetId')))]",
+              "type": "Microsoft.ContainerRegistry/registries/agentPools",
+              "apiVersion": "2025-03-01-preview",
+              "name": "[format('{0}/{1}', format('acralbaranes{0}', parameters('environment')), parameters('agentPoolName'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "count": 1,
+                "os": "Linux",
+                "tier": "S2",
+                "virtualNetworkSubnetResourceId": "[parameters('agentPoolSubnetId')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ContainerRegistry/registries', format('acralbaranes{0}', parameters('environment')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "acrId": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure Container Registry resource id."
+              },
+              "value": "[resourceId('Microsoft.ContainerRegistry/registries', format('acralbaranes{0}', parameters('environment')))]"
+            },
+            "acrName": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure Container Registry name."
+              },
+              "value": "[format('acralbaranes{0}', parameters('environment'))]"
+            },
+            "acrLoginServer": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure Container Registry login server."
+              },
+              "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', format('acralbaranes{0}', parameters('environment'))), '2023-07-01').loginServer]"
+            },
+            "agentPoolName": {
+              "type": "string",
+              "metadata": {
+                "description": "Dedicated ACR build agent pool name."
+              },
+              "value": "[if(not(empty(parameters('agentPoolSubnetId'))), parameters('agentPoolName'), '')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'network')]",
         "[subscriptionResourceId('Microsoft.Resources/deployments', 'resourceGroup')]"
       ]
     },
@@ -1335,7 +1503,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "17371232297114908280"
+              "templateHash": "14905635210217695359"
             }
           },
           "parameters": {
@@ -1401,11 +1569,12 @@
               },
               "properties": {
                 "customSubDomainName": "[variables('aiServicesName')]",
-                "publicNetworkAccess": "Enabled",
+                "publicNetworkAccess": "Disabled",
                 "disableLocalAuth": true,
                 "allowProjectManagement": true,
                 "networkAcls": {
-                  "defaultAction": "Allow",
+                  "bypass": "AzureServices",
+                  "defaultAction": "Deny",
                   "virtualNetworkRules": [],
                   "ipRules": []
                 }
@@ -1607,7 +1776,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "2943380942133245437"
+              "templateHash": "7775414336174077395"
             }
           },
           "parameters": {
@@ -1647,7 +1816,7 @@
               "properties": {
                 "customSubDomainName": "[variables('docIntellCustomSubdomainName')]",
                 "disableLocalAuth": true,
-                "publicNetworkAccess": "Enabled"
+                "publicNetworkAccess": "Disabled"
               }
             }
           ],
@@ -1953,6 +2122,9 @@
           "cosmosResourceId": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cosmos'), '2025-04-01').outputs.cosmosAccountId.value]"
           },
+          "acrResourceId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr'), '2025-04-01').outputs.acrId.value]"
+          },
           "keyVaultResourceId": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'keyVault'), '2025-04-01').outputs.keyVaultId.value]"
           },
@@ -1973,7 +2145,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "2873149454633588090"
+              "templateHash": "3019912691098139228"
             }
           },
           "parameters": {
@@ -2027,6 +2199,13 @@
               "defaultValue": "",
               "metadata": {
                 "description": "Service Bus namespace resource id."
+              }
+            },
+            "acrResourceId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Azure Container Registry resource id."
               }
             },
             "aiServicesResourceId": {
@@ -2093,6 +2272,14 @@
               "type": "Microsoft.Network/privateDnsZones",
               "apiVersion": "2020-06-01",
               "name": "privatelink.servicebus.windows.net",
+              "location": "global",
+              "tags": "[variables('tags')]"
+            },
+            {
+              "condition": "[not(empty(parameters('acrResourceId')))]",
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.azurecr.io",
               "location": "global",
               "tags": "[variables('tags')]"
             },
@@ -2166,6 +2353,22 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.servicebus.windows.net')]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('acrResourceId')))]",
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}-link', 'privatelink.azurecr.io', variables('virtualNetworkName'))]",
+              "location": "global",
+              "properties": {
+                "virtualNetwork": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]"
+                },
+                "registrationEnabled": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azurecr.io')]"
               ]
             },
             {
@@ -2361,6 +2564,50 @@
               ]
             },
             {
+              "condition": "[not(empty(parameters('acrResourceId')))]",
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2023-04-01",
+              "name": "[format('pe-acr-{0}', parameters('environment'))]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('tags')]",
+              "properties": {
+                "subnet": {
+                  "id": "[variables('privateEndpointSubnetResourceId')]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "acr-registry",
+                    "properties": {
+                      "privateLinkServiceId": "[parameters('acrResourceId')]",
+                      "groupIds": [
+                        "registry"
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "condition": "[not(empty(parameters('acrResourceId')))]",
+              "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+              "apiVersion": "2023-04-01",
+              "name": "[format('{0}/{1}', format('pe-acr-{0}', parameters('environment')), 'default')]",
+              "properties": {
+                "privateDnsZoneConfigs": [
+                  {
+                    "name": "acr-registry",
+                    "properties": {
+                      "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azurecr.io')]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azurecr.io')]",
+                "[resourceId('Microsoft.Network/privateEndpoints', format('pe-acr-{0}', parameters('environment')))]"
+              ]
+            },
+            {
               "condition": "[not(empty(parameters('aiServicesResourceId')))]",
               "type": "Microsoft.Network/privateEndpoints",
               "apiVersion": "2023-04-01",
@@ -2461,6 +2708,7 @@
         }
       },
       "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'aiFoundry')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cosmos')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'docIntell')]",
@@ -2469,6 +2717,404 @@
         "[subscriptionResourceId('Microsoft.Resources/deployments', 'resourceGroup')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'serviceBus')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "runners",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "infrastructureSubnetId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'network'), '2025-04-01').outputs.subnetRunnersId.value]"
+          },
+          "keyVaultName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'keyVault'), '2025-04-01').outputs.keyVaultName.value]"
+          },
+          "githubPatSecretUri": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'keyVault'), '2025-04-01').outputs.githubPatSecretUri.value]"
+          },
+          "repoUrl": {
+            "value": "https://github.com/frdeange/verdecoraTest"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "3376295907626684768"
+            }
+          },
+          "parameters": {
+            "environment": {
+              "type": "string",
+              "metadata": {
+                "description": "Deployment environment name (dev/test/prod)."
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for runner resources."
+              }
+            },
+            "infrastructureSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Subnet resource ID used by the internal ACA managed environment."
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Existing Key Vault name that stores the GitHub PAT secret."
+              }
+            },
+            "githubPatSecretUri": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault secret URI for the GitHub PAT used by the KEDA scaler and runner bootstrap."
+              }
+            },
+            "repoUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Repository URL that the runner pool will serve."
+              }
+            },
+            "runnerNamePrefix": {
+              "type": "string",
+              "defaultValue": "verdecora",
+              "metadata": {
+                "description": "Prefix applied to GitHub runner names for easier discovery."
+              }
+            },
+            "runnerImage": {
+              "type": "string",
+              "defaultValue": "ghcr.io/actions/actions-runner:latest",
+              "metadata": {
+                "description": "Container image used for the runner job. Override with a hardened custom image when available."
+              }
+            },
+            "runnerEnvironmentName": {
+              "type": "string",
+              "defaultValue": "[format('acae-runners-{0}', parameters('environment'))]",
+              "metadata": {
+                "description": "ACA managed environment name for runner jobs."
+              }
+            },
+            "runnerJobName": {
+              "type": "string",
+              "defaultValue": "[format('job-gha-runner-{0}', parameters('environment'))]",
+              "metadata": {
+                "description": "ACA Job name for the GitHub runner pool."
+              }
+            },
+            "runnerIdentityName": {
+              "type": "string",
+              "defaultValue": "[format('id-gha-runner-{0}', parameters('environment'))]",
+              "metadata": {
+                "description": "User-assigned managed identity name for the runner job."
+              }
+            },
+            "logAnalyticsWorkspaceName": {
+              "type": "string",
+              "defaultValue": "[format('log-runners-{0}', parameters('environment'))]",
+              "metadata": {
+                "description": "Log Analytics workspace name used by the runner environment."
+              }
+            },
+            "minExecutions": {
+              "type": "int",
+              "defaultValue": 0,
+              "metadata": {
+                "description": "Minimum number of job executions kept warm by the scaler."
+              }
+            },
+            "maxExecutions": {
+              "type": "int",
+              "defaultValue": 10,
+              "metadata": {
+                "description": "Maximum number of concurrent job executions created by the scaler."
+              }
+            },
+            "pollingInterval": {
+              "type": "int",
+              "defaultValue": 30,
+              "metadata": {
+                "description": "Scale-rule polling interval in seconds."
+              }
+            },
+            "replicaTimeout": {
+              "type": "int",
+              "defaultValue": 1800,
+              "metadata": {
+                "description": "Maximum execution time in seconds per runner job execution."
+              }
+            },
+            "replicaRetryLimit": {
+              "type": "int",
+              "defaultValue": 0,
+              "metadata": {
+                "description": "Retry attempts per job execution."
+              }
+            },
+            "cpu": {
+              "type": "int",
+              "defaultValue": 2,
+              "metadata": {
+                "description": "CPU cores allocated to the runner container."
+              }
+            },
+            "memory": {
+              "type": "string",
+              "defaultValue": "4Gi",
+              "metadata": {
+                "description": "Memory allocated to the runner container."
+              }
+            }
+          },
+          "variables": {
+            "tags": {
+              "project": "verdecora-albaranes",
+              "env": "[parameters('environment')]",
+              "workload": "github-runners",
+              "managed-by": "bicep"
+            },
+            "normalizedRepoUrl": "[replace(replace(replace(parameters('repoUrl'), 'https://github.com/', ''), 'http://github.com/', ''), '.git', '')]",
+            "repoSegments": "[split(variables('normalizedRepoUrl'), '/')]",
+            "repoOwner": "[variables('repoSegments')[0]]",
+            "repoName": "[variables('repoSegments')[1]]",
+            "githubApiUrl": "https://api.github.com",
+            "registrationTokenApiUrl": "[format('{0}/repos/{1}/{2}/actions/runners/registration-token', variables('githubApiUrl'), variables('repoOwner'), variables('repoName'))]",
+            "removeTokenApiUrl": "[format('{0}/repos/{1}/{2}/actions/runners/remove-token', variables('githubApiUrl'), variables('repoOwner'), variables('repoName'))]",
+            "runnerStartupScript": "set -euo pipefail; request_runner_token() { local url=\"$1\"; curl -fsSL -X POST -H \"Accept: application/vnd.github+json\" -H \"Authorization: Bearer $GITHUB_PAT\" -H \"X-GitHub-Api-Version: 2022-11-28\" \"$url\" | sed -n \"s/.*\\\"token\\\"[[:space:]]*:[[:space:]]*\\\"\\([^\\\"]*\\)\\\".*/\\1/p\"; }; RUNNER_DIR=\"$(dirname \"$(find /home/runner /actions-runner -maxdepth 3 -name config.sh 2>/dev/null | head -n 1)\")\"; if [ -z \"$RUNNER_DIR\" ]; then echo \"Unable to locate config.sh in the runner image.\"; exit 1; fi; RUNNER_NAME=\"$(printf \"%s-%s-%s\" \"$RUNNER_NAME_PREFIX\" \"$(hostname)\" \"$(date +%s)\")\"; REGISTRATION_TOKEN=\"$(request_runner_token \"$REGISTRATION_TOKEN_API_URL\")\"; if [ -z \"$REGISTRATION_TOKEN\" ]; then echo \"Failed to acquire a GitHub registration token.\"; exit 1; fi; cleanup() { if [ -f \"$RUNNER_DIR/.runner\" ]; then REMOVE_TOKEN=\"$(request_runner_token \"$REMOVE_TOKEN_API_URL\" || true)\"; if [ -n \"$REMOVE_TOKEN\" ]; then \"$RUNNER_DIR/config.sh\" remove --unattended --token \"$REMOVE_TOKEN\" || true; fi; fi; }; trap cleanup EXIT INT TERM; cd \"$RUNNER_DIR\"; echo \"Configuring runner $RUNNER_NAME for $GH_URL\"; ./config.sh --unattended --replace --ephemeral --url \"$GH_URL\" --token \"$REGISTRATION_TOKEN\" --name \"$RUNNER_NAME\" --work \"_work\"; echo \"Runner $RUNNER_NAME registered; waiting for a job.\"; ./run.sh",
+            "keyVaultSecretsUserRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2022-10-01",
+              "name": "[parameters('logAnalyticsWorkspaceName')]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('tags')]",
+              "properties": {
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled"
+              },
+              "sku": {
+                "name": "PerGB2018"
+              }
+            },
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[parameters('runnerIdentityName')]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('tags')]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), parameters('runnerIdentityName'), variables('keyVaultSecretsUserRoleDefinitionId'))]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('runnerIdentityName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('keyVaultSecretsUserRoleDefinitionId')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('runnerIdentityName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/managedEnvironments",
+              "apiVersion": "2025-01-01",
+              "name": "[parameters('runnerEnvironmentName')]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('tags')]",
+              "properties": {
+                "appLogsConfiguration": {
+                  "destination": "log-analytics",
+                  "logAnalyticsConfiguration": {
+                    "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2022-10-01').customerId]",
+                    "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2022-10-01').primarySharedKey]"
+                  }
+                },
+                "vnetConfiguration": {
+                  "infrastructureSubnetId": "[parameters('infrastructureSubnetId')]",
+                  "internal": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/jobs",
+              "apiVersion": "2025-01-01",
+              "name": "[parameters('runnerJobName')]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('tags')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('runnerIdentityName')))]": {}
+                }
+              },
+              "properties": {
+                "environmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('runnerEnvironmentName'))]",
+                "configuration": {
+                  "triggerType": "Event",
+                  "replicaTimeout": "[parameters('replicaTimeout')]",
+                  "replicaRetryLimit": "[parameters('replicaRetryLimit')]",
+                  "secrets": [
+                    {
+                      "name": "github-pat",
+                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('runnerIdentityName'))]",
+                      "keyVaultUrl": "[parameters('githubPatSecretUri')]"
+                    }
+                  ],
+                  "eventTriggerConfig": {
+                    "parallelism": 1,
+                    "replicaCompletionCount": 1,
+                    "scale": {
+                      "minExecutions": "[parameters('minExecutions')]",
+                      "maxExecutions": "[parameters('maxExecutions')]",
+                      "pollingInterval": "[parameters('pollingInterval')]",
+                      "rules": [
+                        {
+                          "name": "github-runner",
+                          "type": "github-runner",
+                          "metadata": {
+                            "githubAPIURL": "[variables('githubApiUrl')]",
+                            "owner": "[variables('repoOwner')]",
+                            "repos": "[variables('repoName')]",
+                            "runnerScope": "repo",
+                            "targetWorkflowQueueLength": "1"
+                          },
+                          "auth": [
+                            {
+                              "secretRef": "github-pat",
+                              "triggerParameter": "personalAccessToken"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "github-runner",
+                      "image": "[parameters('runnerImage')]",
+                      "command": [
+                        "/bin/bash"
+                      ],
+                      "args": [
+                        "-lc",
+                        "[variables('runnerStartupScript')]"
+                      ],
+                      "env": [
+                        {
+                          "name": "GITHUB_PAT",
+                          "secretRef": "github-pat"
+                        },
+                        {
+                          "name": "REPO_URL",
+                          "value": "[parameters('repoUrl')]"
+                        },
+                        {
+                          "name": "RUNNER_NAME_PREFIX",
+                          "value": "[parameters('runnerNamePrefix')]"
+                        },
+                        {
+                          "name": "GH_URL",
+                          "value": "[format('https://github.com/{0}/{1}', variables('repoOwner'), variables('repoName'))]"
+                        },
+                        {
+                          "name": "REGISTRATION_TOKEN_API_URL",
+                          "value": "[variables('registrationTokenApiUrl')]"
+                        },
+                        {
+                          "name": "REMOVE_TOKEN_API_URL",
+                          "value": "[variables('removeTokenApiUrl')]"
+                        }
+                      ],
+                      "resources": {
+                        "cpu": "[parameters('cpu')]",
+                        "memory": "[parameters('memory')]"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), parameters('runnerIdentityName'), variables('keyVaultSecretsUserRoleDefinitionId')))]",
+                "[resourceId('Microsoft.App/managedEnvironments', parameters('runnerEnvironmentName'))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('runnerIdentityName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "runnerEnvironmentName": {
+              "type": "string",
+              "metadata": {
+                "description": "Runner managed environment name."
+              },
+              "value": "[parameters('runnerEnvironmentName')]"
+            },
+            "runnerJobName": {
+              "type": "string",
+              "metadata": {
+                "description": "Runner job name."
+              },
+              "value": "[parameters('runnerJobName')]"
+            },
+            "runnerIdentityId": {
+              "type": "string",
+              "metadata": {
+                "description": "Runner managed identity resource ID."
+              },
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('runnerIdentityName'))]"
+            },
+            "runnerIdentityPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Runner managed identity principal ID."
+              },
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('runnerIdentityName')), '2023-01-31').principalId]"
+            },
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace resource ID for the runner environment."
+              },
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'keyVault')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'network')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'privateEndpoints')]",
+        "[subscriptionResourceId('Microsoft.Resources/deployments', 'resourceGroup')]"
       ]
     },
     {
@@ -2529,6 +3175,21 @@
           },
           "tenantId": {
             "value": "[subscription().tenantId]"
+          },
+          "acrLoginServer": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr'), '2025-04-01').outputs.acrLoginServer.value]"
+          },
+          "orchestratorImage": {
+            "value": "[parameters('orchestratorImage')]"
+          },
+          "dedupJobImage": {
+            "value": "[parameters('dedupJobImage')]"
+          },
+          "hitlWebformImage": {
+            "value": "[parameters('hitlWebformImage')]"
+          },
+          "escalationTimerJobImage": {
+            "value": "[parameters('escalationTimerJobImage')]"
           }
         },
         "template": {
@@ -2538,7 +3199,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "15661746240082036658"
+              "templateHash": "1508615338088884100"
             }
           },
           "parameters": {
@@ -2642,32 +3303,38 @@
                 "description": "Microsoft Entra tenant id used for token validation."
               }
             },
+            "acrLoginServer": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure Container Registry login server used for workload images."
+              }
+            },
             "orchestratorImage": {
               "type": "string",
-              "defaultValue": "mcr.microsoft.com/k8se/quickstart:latest",
+              "defaultValue": "",
               "metadata": {
-                "description": "Container image used by the orchestrator app."
+                "description": "Optional override for the orchestrator app image."
               }
             },
             "dedupJobImage": {
               "type": "string",
-              "defaultValue": "mcr.microsoft.com/k8se/quickstart:latest",
+              "defaultValue": "",
               "metadata": {
-                "description": "Container image used by the Flow 0 dedup ACA Job."
+                "description": "Optional override for the Flow 0 dedup ACA Job image."
               }
             },
             "hitlWebformImage": {
               "type": "string",
-              "defaultValue": "mcr.microsoft.com/k8se/quickstart:latest",
+              "defaultValue": "",
               "metadata": {
-                "description": "Container image used by the HITL web form placeholder."
+                "description": "Optional override for the HITL web form image."
               }
             },
             "escalationTimerJobImage": {
               "type": "string",
-              "defaultValue": "mcr.microsoft.com/k8se/quickstart:latest",
+              "defaultValue": "",
               "metadata": {
-                "description": "Container image used by the escalation timer ACA Job."
+                "description": "Optional override for the escalation timer ACA Job image."
               }
             }
           },
@@ -2678,7 +3345,11 @@
               "managed-by": "bicep"
             },
             "managedEnvironmentName": "[format('acae-verdecora-{0}', parameters('environment'))]",
-            "serviceBusFullyQualifiedNamespace": "[format('{0}.servicebus.windows.net', parameters('serviceBusNamespaceName'))]"
+            "serviceBusFullyQualifiedNamespace": "[format('{0}.servicebus.windows.net', parameters('serviceBusNamespaceName'))]",
+            "resolvedOrchestratorImage": "[if(empty(parameters('orchestratorImage')), format('{0}/verdecora-orchestrator:latest', parameters('acrLoginServer')), parameters('orchestratorImage'))]",
+            "resolvedDedupJobImage": "[if(empty(parameters('dedupJobImage')), format('{0}/verdecora-flow0-dedup:latest', parameters('acrLoginServer')), parameters('dedupJobImage'))]",
+            "resolvedHitlWebformImage": "[if(empty(parameters('hitlWebformImage')), format('{0}/verdecora-hitl-webform:latest', parameters('acrLoginServer')), parameters('hitlWebformImage'))]",
+            "resolvedEscalationTimerJobImage": "[if(empty(parameters('escalationTimerJobImage')), format('{0}/verdecora-escalation-timer:latest', parameters('acrLoginServer')), parameters('escalationTimerJobImage'))]"
           },
           "resources": [
             {
@@ -2717,6 +3388,12 @@
                   "dapr": {
                     "enabled": false
                   },
+                  "registries": [
+                    {
+                      "server": "[parameters('acrLoginServer')]",
+                      "identity": "system"
+                    }
+                  ],
                   "ingress": {
                     "external": false,
                     "targetPort": 8080,
@@ -2727,7 +3404,7 @@
                   "containers": [
                     {
                       "name": "orchestrator",
-                      "image": "[parameters('orchestratorImage')]",
+                      "image": "[variables('resolvedOrchestratorImage')]",
                       "env": [
                         {
                           "name": "AZURE_OPENAI_ENDPOINT",
@@ -2820,6 +3497,12 @@
               "properties": {
                 "environmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('managedEnvironmentName'))]",
                 "configuration": {
+                  "registries": [
+                    {
+                      "server": "[parameters('acrLoginServer')]",
+                      "identity": "system"
+                    }
+                  ],
                   "triggerType": "Event",
                   "replicaTimeout": 1800,
                   "replicaRetryLimit": 1,
@@ -2849,7 +3532,7 @@
                   "containers": [
                     {
                       "name": "flow0-dedup",
-                      "image": "[parameters('dedupJobImage')]",
+                      "image": "[variables('resolvedDedupJobImage')]",
                       "env": [
                         {
                           "name": "COSMOS_ENDPOINT",
@@ -2912,6 +3595,12 @@
                   "dapr": {
                     "enabled": false
                   },
+                  "registries": [
+                    {
+                      "server": "[parameters('acrLoginServer')]",
+                      "identity": "system"
+                    }
+                  ],
                   "ingress": {
                     "external": true,
                     "allowInsecure": false,
@@ -2923,7 +3612,7 @@
                   "containers": [
                     {
                       "name": "hitl-webform",
-                      "image": "[parameters('hitlWebformImage')]",
+                      "image": "[variables('resolvedHitlWebformImage')]",
                       "env": [
                         {
                           "name": "SERVICE_BUS_NAMESPACE",
@@ -2986,6 +3675,12 @@
               "properties": {
                 "environmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('managedEnvironmentName'))]",
                 "configuration": {
+                  "registries": [
+                    {
+                      "server": "[parameters('acrLoginServer')]",
+                      "identity": "system"
+                    }
+                  ],
                   "triggerType": "Schedule",
                   "replicaTimeout": 1800,
                   "replicaRetryLimit": 1,
@@ -2999,7 +3694,7 @@
                   "containers": [
                     {
                       "name": "escalation-timer",
-                      "image": "[parameters('escalationTimerJobImage')]",
+                      "image": "[variables('resolvedEscalationTimerJobImage')]",
                       "env": [
                         {
                           "name": "COSMOS_ENDPOINT",
@@ -3102,6 +3797,7 @@
         }
       },
       "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acs')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'aiFoundry')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cosmos')]",
@@ -3314,6 +4010,9 @@
           "docIntellAccountName": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'docIntell'), '2025-04-01').outputs.docIntellAccountName.value]"
           },
+          "acrName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr'), '2025-04-01').outputs.acrName.value]"
+          },
           "orchestratorPrincipalId": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'containerApps'), '2025-04-01').outputs.orchestratorPrincipalId.value]"
           },
@@ -3334,7 +4033,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "8199834930396475625"
+              "templateHash": "144572381153987395"
             }
           },
           "parameters": {
@@ -3384,6 +4083,13 @@
                 "description": "Optional Document Intelligence account name for granting data-plane access to the ACA identity."
               }
             },
+            "acrName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional Azure Container Registry name for granting image pull access to ACA identities."
+              }
+            },
             "orchestratorPrincipalId": {
               "type": "string",
               "defaultValue": "",
@@ -3422,6 +4128,7 @@
             "storageBlobDelegatorRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'db58b8e5-c6ad-4a2a-8342-4190687cbf4a')]",
             "keyVaultSecretsUserRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
             "contributorRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
+            "acrPullRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
             "cognitiveServicesOpenAIUserRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')]",
             "cognitiveServicesUserRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')]"
           },
@@ -3673,6 +4380,54 @@
                 "principalType": "ServicePrincipal",
                 "roleDefinitionId": "[variables('contributorRoleDefinitionId')]"
               }
+            },
+            {
+              "condition": "[and(not(empty(parameters('orchestratorPrincipalId'))), not(empty(parameters('acrName'))))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName'))]",
+              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName')), parameters('orchestratorPrincipalId'), variables('acrPullRoleDefinitionId'), 'system')]",
+              "properties": {
+                "principalId": "[parameters('orchestratorPrincipalId')]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('acrPullRoleDefinitionId')]"
+              }
+            },
+            {
+              "condition": "[and(not(empty(parameters('flow0WorkerPrincipalId'))), not(empty(parameters('acrName'))))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName'))]",
+              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName')), parameters('flow0WorkerPrincipalId'), variables('acrPullRoleDefinitionId'), 'system')]",
+              "properties": {
+                "principalId": "[parameters('flow0WorkerPrincipalId')]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('acrPullRoleDefinitionId')]"
+              }
+            },
+            {
+              "condition": "[and(not(empty(parameters('hitlWebformPrincipalId'))), not(empty(parameters('acrName'))))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName'))]",
+              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName')), parameters('hitlWebformPrincipalId'), variables('acrPullRoleDefinitionId'), 'system')]",
+              "properties": {
+                "principalId": "[parameters('hitlWebformPrincipalId')]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('acrPullRoleDefinitionId')]"
+              }
+            },
+            {
+              "condition": "[and(not(empty(parameters('escalationTimerPrincipalId'))), not(empty(parameters('acrName'))))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName'))]",
+              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName')), parameters('escalationTimerPrincipalId'), variables('acrPullRoleDefinitionId'), 'system')]",
+              "properties": {
+                "principalId": "[parameters('escalationTimerPrincipalId')]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('acrPullRoleDefinitionId')]"
+              }
             }
           ],
           "outputs": {
@@ -3689,6 +4444,7 @@
         }
       },
       "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acs')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'aiFoundry')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'containerApps')]",
@@ -4362,6 +5118,20 @@
         "description": "Container Apps environment id."
       },
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'containerApps'), '2025-04-01').outputs.managedEnvironmentId.value]"
+    },
+    "runnersEnvironmentName": {
+      "type": "string",
+      "metadata": {
+        "description": "GitHub runner ACA environment name."
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'runners'), '2025-04-01').outputs.runnerEnvironmentName.value]"
+    },
+    "runnersJobName": {
+      "type": "string",
+      "metadata": {
+        "description": "GitHub runner ACA job name."
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'runners'), '2025-04-01').outputs.runnerJobName.value]"
     },
     "orchestratorAppId": {
       "type": "string",

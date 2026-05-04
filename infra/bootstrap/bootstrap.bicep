@@ -22,10 +22,6 @@ param runnerImage string = 'ghcr.io/actions/actions-runner:latest'
 @secure()
 param githubPat string
 
-@description('Log Analytics shared key used by the runner ACA environment (pass via Key Vault reference).')
-@secure()
-param logAnalyticsSharedKey string
-
 var deploymentSuffix = uniqueString(resourceGroupName, repoUrl)
 
 module resourceGroupModule '../modules/resource-group.bicep' = {
@@ -74,7 +70,6 @@ module runners '../modules/runners.bicep' = {
     infrastructureSubnetId: network.outputs.subnetRunnersId
     keyVaultName: keyVault.outputs.keyVaultName
     githubPatSecretUri: keyVault.outputs.githubPatSecretUri
-    logAnalyticsSharedKey: logAnalyticsSharedKey
     repoUrl: repoUrl
     runnerNamePrefix: runnerNamePrefix
     runnerImage: runnerImage

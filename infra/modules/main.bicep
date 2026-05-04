@@ -199,6 +199,23 @@ module privateEndpoints './private-endpoints.bicep' = if (enableNetworkHardening
   ]
 }
 
+module runners './runners.bicep' = {
+  name: 'runners'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    environment: environment
+    location: location
+    infrastructureSubnetId: network.outputs.subnetRunnersId
+    keyVaultName: keyVault.outputs.keyVaultName
+    githubPatSecretUri: keyVault.outputs.githubPatSecretUri
+    repoUrl: 'https://github.com/frdeange/verdecoraTest'
+  }
+  dependsOn: [
+    rg
+    privateEndpoints
+  ]
+}
+
 module containerApps './container-apps.bicep' = {
   name: 'containerApps'
   scope: az.resourceGroup(resourceGroupName)
@@ -381,6 +398,12 @@ output opsActionGroupId string = alerts.outputs.actionGroupId
 
 @description('Container Apps environment id.')
 output containerAppsEnvironmentId string = containerApps.outputs.managedEnvironmentId
+
+@description('GitHub runner ACA environment name.')
+output runnersEnvironmentName string = runners.outputs.runnerEnvironmentName
+
+@description('GitHub runner ACA job name.')
+output runnersJobName string = runners.outputs.runnerJobName
 
 @description('Main orchestrator container app id.')
 output orchestratorAppId string = containerApps.outputs.orchestratorAppId

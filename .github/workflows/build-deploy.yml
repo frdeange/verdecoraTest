@@ -4,6 +4,7 @@ on:
   push:
     branches: [master]
     paths:
+      - '.github/workflows/build-deploy.yml'
       - 'src/**'
       - 'docker/**'
       - 'pyproject.toml'
@@ -19,15 +20,78 @@ env:
   ACA_ESCALATION_JOB: verdecora-escalation-timer-dev
 
 jobs:
-  build-and-push:
+  detect-changes:
     runs-on: self-hosted
-    strategy:
-      matrix:
-        service:
-          - { name: orchestrator, dockerfile: docker/orchestrator/Dockerfile }
-          - { name: flow0-dedup, dockerfile: docker/flow0-dedup/Dockerfile }
-          - { name: hitl-webform, dockerfile: docker/hitl-webform/Dockerfile }
-          - { name: escalation-timer, dockerfile: docker/escalation-timer/Dockerfile }
+    outputs:
+      orchestrator: ${{ steps.manual.outputs.orchestrator || steps.filter.outputs.orchestrator }}
+      hitl: ${{ steps.manual.outputs.hitl || steps.filter.outputs.hitl }}
+      dedup: ${{ steps.manual.outputs.dedup || steps.filter.outputs.dedup }}
+      escalation: ${{ steps.manual.outputs.escalation || steps.filter.outputs.escalation }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Force all services on manual dispatch
+        if: github.event_name == 'workflow_dispatch'
+        id: manual
+        shell: bash
+        run: |
+          echo 'orchestrator=true' >> "$GITHUB_OUTPUT"
+          echo 'hitl=true' >> "$GITHUB_OUTPUT"
+          echo 'dedup=true' >> "$GITHUB_OUTPUT"
+          echo 'escalation=true' >> "$GITHUB_OUTPUT"
+
+      - name: Detect changed services
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            orchestrator:
+              - '.github/workflows/build-deploy.yml'
+              - 'docker/.dockerignore'
+              - 'docker/orchestrator/**'
+              - 'pyproject.toml'
+              - 'src/agents/**'
+              - 'src/config/**'
+              - 'src/mcp/**'
+              - 'src/models/**'
+              - 'src/services/orchestrator/**'
+              - 'src/services/security/**'
+            hitl:
+              - '.github/workflows/build-deploy.yml'
+              - 'docker/.dockerignore'
+              - 'docker/hitl-webform/**'
+              - 'pyproject.toml'
+              - 'src/config/**'
+              - 'src/mcp/**'
+              - 'src/models/**'
+              - 'src/services/hitl_webform/**'
+              - 'src/services/security/**'
+            dedup:
+              - '.github/workflows/build-deploy.yml'
+              - 'docker/.dockerignore'
+              - 'docker/flow0-dedup/**'
+              - 'pyproject.toml'
+              - 'src/config/**'
+              - 'src/mcp/**'
+              - 'src/models/**'
+              - 'src/services/flow0_dedup/**'
+            escalation:
+              - '.github/workflows/build-deploy.yml'
+              - 'docker/.dockerignore'
+              - 'docker/escalation-timer/**'
+              - 'pyproject.toml'
+              - 'src/config/**'
+              - 'src/mcp/**'
+              - 'src/models/**'
+              - 'src/services/escalation/**'
+
+  build-orchestrator:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.orchestrator == 'true'
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
@@ -36,18 +100,85 @@ jobs:
         with:
           auth-type: IDENTITY
 
-      - name: Build and push to ACR
+      - name: Build and push orchestrator image
         run: |
           az acr build \
             --registry ${{ env.ACR_NAME }} \
             --agent-pool ${{ env.ACR_AGENT_POOL }} \
-            --image verdecora-${{ matrix.service.name }}:${{ github.sha }} \
-            --image verdecora-${{ matrix.service.name }}:latest \
-            --file ${{ matrix.service.dockerfile }} \
+            --image verdecora-orchestrator:${{ github.sha }} \
+            --image verdecora-orchestrator:latest \
+            --file docker/orchestrator/Dockerfile \
             .
 
-  deploy:
-    needs: build-and-push
+  build-hitl:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.hitl == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          auth-type: IDENTITY
+
+      - name: Build and push HITL webform image
+        run: |
+          az acr build \
+            --registry ${{ env.ACR_NAME }} \
+            --agent-pool ${{ env.ACR_AGENT_POOL }} \
+            --image verdecora-hitl-webform:${{ github.sha }} \
+            --image verdecora-hitl-webform:latest \
+            --file docker/hitl-webform/Dockerfile \
+            .
+
+  build-dedup:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.dedup == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          auth-type: IDENTITY
+
+      - name: Build and push Flow0 dedup image
+        run: |
+          az acr build \
+            --registry ${{ env.ACR_NAME }} \
+            --agent-pool ${{ env.ACR_AGENT_POOL }} \
+            --image verdecora-flow0-dedup:${{ github.sha }} \
+            --image verdecora-flow0-dedup:latest \
+            --file docker/flow0-dedup/Dockerfile \
+            .
+
+  build-escalation:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.escalation == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          auth-type: IDENTITY
+
+      - name: Build and push escalation timer image
+        run: |
+          az acr build \
+            --registry ${{ env.ACR_NAME }} \
+            --agent-pool ${{ env.ACR_AGENT_POOL }} \
+            --image verdecora-escalation-timer:${{ github.sha }} \
+            --image verdecora-escalation-timer:latest \
+            --file docker/escalation-timer/Dockerfile \
+            .
+
+  deploy-orchestrator:
+    needs: build-orchestrator
+    if: needs.build-orchestrator.result == 'success'
     runs-on: self-hosted
     steps:
       - name: Azure Login
@@ -62,6 +193,16 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR_NAME }}.azurecr.io/verdecora-orchestrator:${{ github.sha }}
 
+  deploy-hitl:
+    needs: build-hitl
+    if: needs.build-hitl.result == 'success'
+    runs-on: self-hosted
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          auth-type: IDENTITY
+
       - name: Deploy HITL webform
         run: |
           az containerapp update \
@@ -69,12 +210,32 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR_NAME }}.azurecr.io/verdecora-hitl-webform:${{ github.sha }}
 
+  deploy-dedup:
+    needs: build-dedup
+    if: needs.build-dedup.result == 'success'
+    runs-on: self-hosted
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          auth-type: IDENTITY
+
       - name: Deploy Flow0 dedup job
         run: |
           az containerapp job update \
             --name ${{ env.ACA_DEDUP_JOB }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR_NAME }}.azurecr.io/verdecora-flow0-dedup:${{ github.sha }}
+
+  deploy-escalation:
+    needs: build-escalation
+    if: needs.build-escalation.result == 'success'
+    runs-on: self-hosted
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          auth-type: IDENTITY
 
       - name: Deploy escalation timer job
         run: |
