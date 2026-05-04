@@ -1,0 +1,62 @@
+{
+  "id": "7bb53961-c2c1-4d57-8a4d-8ac0c35d8f93",
+  "pk": "tienda_007_2026_05",
+  "tienda_id": "tienda_007",
+  "blob_etag": "0x8DC0FFEE1234567",
+  "blob_path": "albaranes-raw/2026/05/tienda_007/2026-05-04T08-12-33Z_a17.pdf",
+  "supplier_id": "S00123",
+  "numero_albaran": "A-2026-001234",
+  "ref_pedido_bc": "PO-9001234",
+  "fecha": "2026-05-04",
+  "estado": "extraido",
+  "events": [
+    {
+      "ts": "2026-05-04T08:12:33Z",
+      "from": "recibido",
+      "to": "extraido",
+      "by": "agent1"
+    }
+  ],
+  "extracted": {
+    "lineas": [
+      {
+        "linea": 10000,
+        "sku": "ITEM-1000",
+        "descripcion": "Rosa roja premium",
+        "cantidad": 12,
+        "unidad": "BOX",
+        "precio_unitario": 18.5,
+        "importe": 222.0
+      },
+      {
+        "linea": 20000,
+        "sku": "ITEM-2000",
+        "descripcion": "Maceta cerámica 30cm",
+        "cantidad": 8,
+        "unidad": "PCS",
+        "precio_unitario": 11.25,
+        "importe": 90.0
+      }
+    ],
+    "totales": {
+      "subtotal": 312.0,
+      "impuestos": 32.76,
+      "total": 344.76
+    },
+    "confianza_global": 0.97
+  },
+  "hitl": {
+    "user_upn": null,
+    "decision": null,
+    "ip": null,
+    "ts": null,
+    "email_msg_id": null
+  },
+  "bc": {
+    "posted_receipt_id": null
+  },
+  "audit": {
+    "trace_id": "7bb53961-c2c1-4d57-8a4d-8ac0c35d8f93",
+    "version": 7
+  }
+}
