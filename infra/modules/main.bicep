@@ -134,26 +134,25 @@ module acs './acs.bicep' = {
 }
 
 /*
-Dev deployments keep public endpoints and direct egress enabled for faster inner-loop debugging.
-The private endpoint and NAT gateway modules below automatically enable when environment == 'prod'.
+Network hardening (Private Endpoints + NAT Gateway) is always deployed.
+The 'environment' parameter is kept for future dev/prod differentiation
+but the current PoC deploys a production-grade setup in all environments.
 */
-var enableProductionNetworkHardening = environment == 'prod'
+var enableNetworkHardening = true // Always on — this PoC simulates a real production environment
 
-module natGateway './nat-gateway.bicep' = if (enableProductionNetworkHardening) {
+module natGateway './nat-gateway.bicep' = if (enableNetworkHardening) {
   name: 'natGateway'
   scope: az.resourceGroup(resourceGroupName)
   params: {
     environment: environment
     location: location
-    subnetId: network.outputs.subnetAcaEnvId
   }
   dependsOn: [
     rg
-    network
   ]
 }
 
-module privateEndpoints './private-endpoints.bicep' = if (enableProductionNetworkHardening) {
+module privateEndpoints './private-endpoints.bicep' = if (enableNetworkHardening) {
   name: 'privateEndpoints'
   scope: az.resourceGroup(resourceGroupName)
   params: {
@@ -167,7 +166,7 @@ module privateEndpoints './private-endpoints.bicep' = if (enableProductionNetwor
     serviceBusResourceId: serviceBus.outputs.serviceBusNamespaceId
     aiServicesResourceId: aiFoundry.outputs.aiServicesId
     documentIntelligenceResourceId: docIntell.outputs.docIntellId
-    acsResourceId: acs.outputs.acsId
+    // ACS does not support Private Endpoints — secured via MI RBAC only
   }
   dependsOn: [
     rg
@@ -365,7 +364,7 @@ output hitlWebformAppId string = containerApps.outputs.hitlWebformAppId
 output escalationTimerJobId string = containerApps.outputs.escalationTimerJobId
 
 @description('Whether production-only network hardening is enabled.')
-output productionNetworkHardeningEnabled bool = enableProductionNetworkHardening
+output networkHardeningEnabled bool = enableNetworkHardening
 
 @description('Event Grid system topic id.')
 output eventGridSystemTopicId string = eventGrid.outputs.systemTopicId

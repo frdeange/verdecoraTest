@@ -19,8 +19,9 @@ resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2022-10-01-preview
   location: location
   tags: tags
   sku: {
-    name: 'Standard'
-    tier: 'Standard'
+    name: 'Premium'
+    tier: 'Premium'
+    capacity: 1
   }
   properties: {
     disableLocalAuth: true
@@ -31,25 +32,19 @@ resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2022-10-01-preview
 resource ingestionQueue 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-preview' = {
   parent: serviceBusNamespace
   name: 'extraccion-queue'
-  properties: {
-    enablePartitioning: true
-  }
+  properties: {}
 }
 
 resource extraccionQueue 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-preview' = {
   parent: serviceBusNamespace
   name: 'extraccion-in'
-  properties: {
-    enablePartitioning: true
-  }
+  properties: {}
 }
 
 resource albaranEventsTopic 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-preview' = {
   parent: serviceBusNamespace
   name: 'albaran-events'
-  properties: {
-    enablePartitioning: true
-  }
+  properties: {}
 }
 
 resource albaranRecibidoSubscription 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2022-10-01-preview' = {
@@ -71,9 +66,7 @@ resource albaranValidadoSubscription 'Microsoft.ServiceBus/namespaces/topics/sub
 resource hitlDecisionsTopic 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-preview' = {
   parent: serviceBusNamespace
   name: 'hitl-decisions'
-  properties: {
-    enablePartitioning: true
-  }
+  properties: {}
 }
 
 resource hitlDecisionsSubscription 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2022-10-01-preview' = {

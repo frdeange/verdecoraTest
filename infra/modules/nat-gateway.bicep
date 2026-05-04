@@ -6,19 +6,11 @@ param environment string
 @description('Azure region for the NAT gateway resources.')
 param location string
 
-@description('Subnet id associated with the Container Apps environment.')
-param subnetId string
-
 var tags = {
   project: 'verdecora-albaranes'
   env: environment
   'managed-by': 'bicep'
 }
-
-var subnetSegments = split(subnetId, '/')
-var virtualNetworkName = subnetSegments[8]
-var subnetName = subnetSegments[10]
-var existingSubnet = reference(subnetId, '2023-04-01', 'Full')
 
 resource natGatewayPublicIp 'Microsoft.Network/publicIPAddresses@2023-04-01' = {
   name: 'pip-nat-albaranes-${environment}'
@@ -51,14 +43,8 @@ resource natGateway 'Microsoft.Network/natGateways@2023-04-01' = {
   }
 }
 
-resource acaSubnetWithNat 'Microsoft.Network/virtualNetworks/subnets@2023-04-01' = {
-  name: '${virtualNetworkName}/${subnetName}'
-  properties: union(existingSubnet.properties, {
-    natGateway: {
-      id: natGateway.id
-    }
-  })
-}
+// Note: NAT Gateway <-> Subnet association is handled in network.bicep
+// to avoid circular dependencies with Container Apps.
 
 @description('NAT gateway id.')
 output natGatewayId string = natGateway.id
