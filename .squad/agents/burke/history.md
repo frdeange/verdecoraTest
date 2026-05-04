@@ -17,3 +17,10 @@
 - Confirmed the standard `purchaseOrder` API exposes the bound action **`receiveAndInvoice`**, but not a standard receive-only bound action.
 - Documented that the correct receiving flow is **location-driven**: direct PO receipt for non-warehouse locations, Warehouse Receipt for locations that require receipt/put-away.
 - Wrote detailed findings to `prerequisites/analysis/burke-bc-analysis.md`.
+
+### 2026-05-04 — BC MCP validation against CRONUS
+- Validated live native BC MCP discovery against `CRONUS USA, Inc.` using the configured production MCP endpoint in read-only mode.
+- Confirmed native MCP discovery/actions for standard `PAG300xx` purchase orders, purchase order lines, vendors, items, and posted purchase receipts, plus multiple legacy/alternate vendor and item list pages.
+- Successfully read the first 5 purchase orders, vendors, items, and posted purchase receipts; read PO `106030`; read 59 lines for PO `106030`; and read lines for posted receipt `107239`.
+- Observed that semantic search is noisy for broad prompts (`inventory`, `receipt`) and that `orderNumber` filtering on posted purchase receipts is not reliable in CRONUS demo data.
+- Wrote the validation report to `docs/poc/bc-mcp-validation.md` and the reusable PoC artifacts to `src/poc/bc_mcp_poc/`.
