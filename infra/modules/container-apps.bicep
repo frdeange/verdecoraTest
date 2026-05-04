@@ -63,6 +63,12 @@ param hitlWebformImage string = ''
 @description('Optional override for the escalation timer ACA Job image.')
 param escalationTimerJobImage string = ''
 
+@description('Optional override for the reconciliation ACA Job image.')
+param reconciliationJobImage string = ''
+
+@description('Optional override for the learning ACA Job image.')
+param learningJobImage string = ''
+
 var tags = {
   project: 'verdecora-albaranes'
   env: environment
@@ -75,6 +81,8 @@ var resolvedOrchestratorImage = empty(orchestratorImage) ? '${acrLoginServer}/ve
 var resolvedDedupJobImage = empty(dedupJobImage) ? '${acrLoginServer}/verdecora-flow0-dedup:latest' : dedupJobImage
 var resolvedHitlWebformImage = empty(hitlWebformImage) ? '${acrLoginServer}/verdecora-hitl-webform:latest' : hitlWebformImage
 var resolvedEscalationTimerJobImage = empty(escalationTimerJobImage) ? '${acrLoginServer}/verdecora-escalation-timer:latest' : escalationTimerJobImage
+var resolvedReconciliationJobImage = empty(reconciliationJobImage) ? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' : reconciliationJobImage
+var resolvedLearningJobImage = empty(learningJobImage) ? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' : learningJobImage
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
   name: logAnalyticsWorkspaceName
@@ -440,6 +448,118 @@ resource escalationTimerJob 'Microsoft.App/jobs@2025-01-01' = {
   }
 }
 
+resource reconciliationJob 'Microsoft.App/jobs@2025-01-01' = {
+  name: 'verdecora-reconciliation-${environment}'
+  location: location
+  tags: union(tags, {
+    service: 'reconciliation'
+  })
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    environmentId: managedEnvironment.id
+    configuration: {
+      registries: [
+        {
+          server: acrLoginServer
+          identity: 'system'
+        }
+      ]
+      triggerType: 'Schedule'
+      replicaTimeout: 1800
+      replicaRetryLimit: 1
+      scheduleTriggerConfig: {
+        cronExpression: '0 6 * * *'
+        parallelism: 1
+        replicaCompletionCount: 1
+      }
+    }
+    template: {
+      containers: [
+        {
+          name: 'reconciliation'
+          image: resolvedReconciliationJobImage
+          env: [
+            {
+              name: 'COSMOS_ENDPOINT'
+              value: cosmosEndpoint
+            }
+            {
+              name: 'SERVICE_BUS_NAMESPACE'
+              value: serviceBusNamespaceName
+            }
+            {
+              name: 'ACS_ENDPOINT'
+              value: acsEndpoint
+            }
+            {
+              name: 'AZURE_AI_PROJECT_ENDPOINT'
+              value: aiServicesEndpoint
+            }
+          ]
+          resources: {
+            cpu: json('0.25')
+            memory: '0.5Gi'
+          }
+        }
+      ]
+    }
+  }
+}
+
+resource learningJob 'Microsoft.App/jobs@2025-01-01' = {
+  name: 'verdecora-learning-${environment}'
+  location: location
+  tags: union(tags, {
+    service: 'learning'
+  })
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    environmentId: managedEnvironment.id
+    configuration: {
+      registries: [
+        {
+          server: acrLoginServer
+          identity: 'system'
+        }
+      ]
+      triggerType: 'Schedule'
+      replicaTimeout: 1800
+      replicaRetryLimit: 1
+      scheduleTriggerConfig: {
+        cronExpression: '0 4 * * 0'
+        parallelism: 1
+        replicaCompletionCount: 1
+      }
+    }
+    template: {
+      containers: [
+        {
+          name: 'learning'
+          image: resolvedLearningJobImage
+          env: [
+            {
+              name: 'COSMOS_ENDPOINT'
+              value: cosmosEndpoint
+            }
+            {
+              name: 'AZURE_AI_PROJECT_ENDPOINT'
+              value: aiServicesEndpoint
+            }
+          ]
+          resources: {
+            cpu: json('0.25')
+            memory: '0.5Gi'
+          }
+        }
+      ]
+    }
+  }
+}
+
 @description('Container Apps managed environment id.')
 output managedEnvironmentId string = managedEnvironment.id
 
@@ -469,3 +589,15 @@ output escalationTimerJobId string = escalationTimerJob.id
 
 @description('Escalation timer ACA Job managed identity principal id.')
 output escalationTimerPrincipalId string = escalationTimerJob.identity.principalId
+
+@description('Reconciliation ACA Job id.')
+output reconciliationJobId string = reconciliationJob.id
+
+@description('Reconciliation ACA Job managed identity principal id.')
+output reconciliationPrincipalId string = reconciliationJob.identity.principalId
+
+@description('Learning ACA Job id.')
+output learningJobId string = learningJob.id
+
+@description('Learning ACA Job managed identity principal id.')
+output learningPrincipalId string = learningJob.identity.principalId

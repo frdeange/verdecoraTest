@@ -9,6 +9,8 @@ import pytest
 from src.agents.factory import create_agents, create_clients
 from src.models.albaran import AlbaranExtraction, CoherenceCheckResult, TriageResult
 from src.models.inventory import PostingResult
+from src.models.learning import LearningReport
+from src.models.reconciliation import ReconciliationReport
 from src.models.validation import ValidationResult
 from tests.unit.agent_test_helpers import StructuredAgentStub, build_structured_agent_stub
 
@@ -48,12 +50,23 @@ def test_create_agents_returns_expected_keys_and_models(mock_agent: Any) -> None
         "validator": [NamedTool("bc.get_purchase_order_lines")],
         "inventory": [NamedTool("bc.post_purchase_receipt_lines")],
         "communication": [NamedTool("acs.send_hitl_notification")],
+        "reconciliation": [NamedTool("cosmos.query_documents")],
+        "learning": [NamedTool("feature_flags.set_supplier_config")],
     }
 
     agents = create_agents("gpt5-client", "gpt5-mini-client", mcp_tools=tool_registry)
 
-    assert set(agents) == {"triage", "extractor", "coherence", "validator", "inventory", "communication"}
-    assert mock_agent.call_count == 6
+    assert set(agents) == {
+        "triage",
+        "extractor",
+        "coherence",
+        "validator",
+        "inventory",
+        "communication",
+        "reconciliation",
+        "learning",
+    }
+    assert mock_agent.call_count == 8
 
     triage = agents["triage"]
     extractor = agents["extractor"]
@@ -61,6 +74,8 @@ def test_create_agents_returns_expected_keys_and_models(mock_agent: Any) -> None
     validator = agents["validator"]
     inventory = agents["inventory"]
     communication = agents["communication"]
+    reconciliation = agents["reconciliation"]
+    learning = agents["learning"]
 
     assert isinstance(triage, StructuredAgentStub)
     assert triage.kwargs["chat_client"] == "gpt5-mini-client"
@@ -84,6 +99,12 @@ def test_create_agents_returns_expected_keys_and_models(mock_agent: Any) -> None
     assert communication.kwargs["tools"] == tool_registry["communication"]
     assert "español" in communication.kwargs["instructions"]
 
+    assert reconciliation.kwargs["response_format"] is ReconciliationReport
+    assert "cosmos.query_documents" in reconciliation.kwargs["instructions"]
+
+    assert learning.kwargs["response_format"] is LearningReport
+    assert "feature_flags.set_supplier_config" in learning.kwargs["instructions"]
+
 
 def test_create_agents_omits_optional_tool_lists_when_not_provided() -> None:
     captured_calls: list[dict[str, Any]] = []
@@ -95,6 +116,15 @@ def test_create_agents_omits_optional_tool_lists_when_not_provided() -> None:
     with patch("src.agents.factory.Agent", side_effect=fake_agent):
         agents = create_agents("gpt5-client", "gpt5-mini-client")
 
-    assert set(agents) == {"triage", "extractor", "coherence", "validator", "inventory", "communication"}
+    assert set(agents) == {
+        "triage",
+        "extractor",
+        "coherence",
+        "validator",
+        "inventory",
+        "communication",
+        "reconciliation",
+        "learning",
+    }
     tool_payloads = [call.get("tools") for call in captured_calls if "tools" in call]
     assert all(isinstance(payload, Sequence) for payload in tool_payloads)

@@ -9,6 +9,8 @@ from agent_framework import ChatAgent as Agent
 
 from src.models.albaran import AlbaranExtraction, CoherenceCheckResult, TriageResult
 from src.models.inventory import PostingResult
+from src.models.learning import LearningReport
+from src.models.reconciliation import ReconciliationReport
 from src.models.validation import ValidationResult
 
 from .communication_agent import CommunicationSummary
@@ -17,6 +19,8 @@ from .prompts import (
     build_communication_instructions,
     build_extractor_instructions,
     build_inventory_instructions,
+    build_learning_instructions,
+    build_reconciliation_instructions,
     build_triage_instructions,
     build_validator_instructions,
 )
@@ -64,6 +68,8 @@ def create_agents(
     validator_tools = tools.get("validator", [])
     inventory_tools = tools.get("inventory", [])
     communication_tools = tools.get("communication", [])
+    reconciliation_tools = tools.get("reconciliation", [])
+    learning_tools = tools.get("learning", [])
 
     return {
         "triage": Agent(
@@ -106,6 +112,20 @@ def create_agents(
             instructions=build_communication_instructions(),
             response_format=CommunicationSummary,
             tools=communication_tools,
+        ),
+        "reconciliation": Agent(
+            chat_client=gpt5_mini,
+            name="Reconciliation",
+            instructions=build_reconciliation_instructions(_resolve_tool_names(reconciliation_tools)),
+            response_format=ReconciliationReport,
+            tools=reconciliation_tools,
+        ),
+        "learning": Agent(
+            chat_client=gpt5_mini,
+            name="Learning",
+            instructions=build_learning_instructions(_resolve_tool_names(learning_tools)),
+            response_format=LearningReport,
+            tools=learning_tools,
         ),
     }
 

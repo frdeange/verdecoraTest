@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -10,10 +10,16 @@ from src.models import (
     AlbaranHeader,
     CoherenceCheckResult,
     DocumentType,
+    DriftItem,
+    DriftType,
+    LearningInsight,
+    LearningReport,
     LineComparison,
     LineItem,
     PostingLineItem,
     PurchaseReceiptPosting,
+    ReconciliationReport,
+    SupplierReputation,
     TriageResult,
     ValidationResult,
 )
@@ -245,3 +251,61 @@ def test_supporting_models_accept_numeric_values() -> None:
     assert comparison.difference_pct == 0.0
     assert posting_line.quantity == 3.0
     assert posting_line.unit_cost == 8.0
+
+
+def test_reconciliation_report_round_trip() -> None:
+    report = ReconciliationReport(
+        report_date=date(2026, 5, 5),
+        total_cosmos_records=2,
+        total_bc_records=2,
+        drifts_found=1,
+        drift_items=[
+            DriftItem(
+                albaran_id="ALB-1",
+                supplier_name="Herstera Garden",
+                drift_type=DriftType.MISSING_IN_BC,
+                cosmos_total=100.0,
+                suggested_action="repost",
+            )
+        ],
+        auto_fixable=1,
+        needs_review=0,
+        summary="One BC drift detected.",
+    )
+
+    restored = ReconciliationReport.model_validate(report.model_dump(mode="json"))
+
+    assert restored == report
+    assert restored.drift_items[0].drift_type is DriftType.MISSING_IN_BC
+
+
+def test_learning_report_round_trip() -> None:
+    report = LearningReport(
+        report_date=datetime(2026, 5, 5, 12, 0, tzinfo=UTC),
+        suppliers_analyzed=1,
+        insights=[
+            LearningInsight(
+                insight_type="recommendation",
+                supplier_id="SUP-1",
+                description="Supplier can be auto-approved.",
+                confidence=0.95,
+                suggested_flag_update={"supplier.SUP-1.auto_approve": "true"},
+            )
+        ],
+        reputation_updates=[
+            SupplierReputation(
+                supplier_id="SUP-1",
+                supplier_name="Supplier 1",
+                total_albaranes_processed=4,
+                reliability_score=0.96,
+                auto_approve_eligible=True,
+            )
+        ],
+        feature_flag_proposals=[{"supplier.SUP-1.auto_approve": "true"}],
+        summary="Supplier 1 is reliable.",
+    )
+
+    restored = LearningReport.model_validate(report.model_dump(mode="json"))
+
+    assert restored == report
+    assert restored.reputation_updates[0].auto_approve_eligible is True
