@@ -46,7 +46,6 @@ class FakeWorkflow:
 
 def build_pipeline() -> AlbaranPipeline:
     return AlbaranPipeline(
-        client=object(),
         agents={
             "triage": object(),
             "extractor": object(),

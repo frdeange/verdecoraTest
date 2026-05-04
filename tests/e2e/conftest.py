@@ -259,7 +259,6 @@ def orchestrator_factory(
         service_bus_client = FakeAsyncServiceBusClient()
         service.dependencies = FakeDependencies(cosmos_store, service_bus_client)
         service.pipeline = AlbaranPipeline(
-            client=object(),
             agents={
                 "triage": object(),
                 "extractor": object(),

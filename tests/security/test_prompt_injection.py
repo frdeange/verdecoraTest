@@ -99,7 +99,6 @@ async def test_pipeline_sanitizes_prompt_injection_vectors_before_agent_executio
 
     config = AgentsConfig.model_validate({"thresholds": {"low_value_coherence_threshold": 10.0}})
     pipeline = AlbaranPipeline(
-        client=object(),
         config=config,
         agents={
             "triage": object(),

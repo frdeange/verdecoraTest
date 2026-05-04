@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import pytest
 
@@ -12,11 +12,12 @@ pytestmark = pytest.mark.unit
 
 
 def test_create_all_agents_returns_expected_keys() -> None:
-    agents = create_all_agents(client=object(), config=AgentsConfig())
+    agents = create_all_agents(config=AgentsConfig(), credential=object(), project_endpoint="https://foundry.example")
 
     assert set(agents) == {"triage", "extractor", "coherence", "validator", "inventory", "communication"}
 
 
+@patch("src.agents.factory.create_foundry_client", side_effect=["gpt5-client", "gpt5-mini-client"])
 @patch("src.agents.factory.create_communication_agent", return_value="communication-agent")
 @patch("src.agents.factory.create_inventory_agent", return_value="inventory-agent")
 @patch("src.agents.factory.create_validator_agent", return_value="validator-agent")
@@ -30,6 +31,7 @@ def test_create_all_agents_passes_tool_registry_to_each_agent(
     mock_validator: Any,
     mock_inventory: Any,
     mock_communication: Any,
+    mock_create_foundry_client: Any,
 ) -> None:
     config = AgentsConfig()
     tool_registry = {
@@ -41,7 +43,12 @@ def test_create_all_agents_passes_tool_registry_to_each_agent(
         "communication": ["communication-tool"],
     }
 
-    agents = create_all_agents(client="client", config=config, tool_registry=tool_registry)
+    agents = create_all_agents(
+        config=config,
+        credential="credential",
+        project_endpoint="https://foundry.example",
+        tool_registry=tool_registry,
+    )
 
     assert agents == {
         "triage": "triage-agent",
@@ -51,14 +58,29 @@ def test_create_all_agents_passes_tool_registry_to_each_agent(
         "inventory": "inventory-agent",
         "communication": "communication-agent",
     }
-    mock_triage.assert_called_once_with("client", config, tools=["triage-tool"])
-    mock_extractor.assert_called_once_with("client", config, tools=["extractor-tool"])
-    mock_coherence.assert_called_once_with("client", config, tools=["coherence-tool"])
-    mock_validator.assert_called_once_with("client", config, tools=["validator-tool"])
-    mock_inventory.assert_called_once_with("client", config, tools=["inventory-tool"])
-    mock_communication.assert_called_once_with("client", config, tools=["communication-tool"])
+    mock_create_foundry_client.assert_has_calls(
+        [
+            call(
+                project_endpoint="https://foundry.example",
+                model=config.models.gpt5_deployment,
+                credential="credential",
+            ),
+            call(
+                project_endpoint="https://foundry.example",
+                model=config.models.gpt5_mini_deployment,
+                credential="credential",
+            ),
+        ]
+    )
+    mock_triage.assert_called_once_with("gpt5-mini-client", config, tools=["triage-tool"])
+    mock_extractor.assert_called_once_with("gpt5-client", config, tools=["extractor-tool"])
+    mock_coherence.assert_called_once_with("gpt5-mini-client", config, tools=["coherence-tool"])
+    mock_validator.assert_called_once_with("gpt5-mini-client", config, tools=["validator-tool"])
+    mock_inventory.assert_called_once_with("gpt5-mini-client", config, tools=["inventory-tool"])
+    mock_communication.assert_called_once_with("gpt5-mini-client", config, tools=["communication-tool"])
 
 
+@patch("src.agents.factory.create_foundry_client", side_effect=["extractor-client", "shared-mini-client"])
 @patch("src.agents.factory.create_communication_agent", return_value="communication-local-agent")
 @patch("src.agents.factory.create_inventory_agent", return_value="inventory-local-agent")
 @patch("src.agents.factory.create_validator_agent", return_value="validator-local-agent")
@@ -72,21 +94,22 @@ def test_create_all_agents_respects_custom_config_overrides(
     mock_validator: Any,
     mock_inventory: Any,
     mock_communication: Any,
+    mock_create_foundry_client: Any,
 ) -> None:
     custom_config = AgentsConfig.model_validate(
         {
             "models": {
-                "triage_model": "triage-local",
-                "extractor_model": "extractor-local",
-                "coherence_model": "coherence-local",
-                "validator_model": "validator-local",
-                "inventory_model": "inventory-local",
-                "communication_model": "communication-local",
+                "gpt5_deployment": "extractor-local",
+                "gpt5_mini_deployment": "shared-mini-local",
             }
         }
     )
 
-    agents = create_all_agents(client="client", config=custom_config)
+    agents = create_all_agents(
+        config=custom_config,
+        credential="credential",
+        project_endpoint="https://foundry.example",
+    )
 
     assert agents == {
         "triage": "triage-local-agent",
@@ -96,9 +119,23 @@ def test_create_all_agents_respects_custom_config_overrides(
         "inventory": "inventory-local-agent",
         "communication": "communication-local-agent",
     }
-    assert mock_triage.call_args.args[1].models.triage_model == "triage-local"
-    assert mock_extractor.call_args.args[1].models.extractor_model == "extractor-local"
-    assert mock_coherence.call_args.args[1].models.coherence_model == "coherence-local"
-    assert mock_validator.call_args.args[1].models.validator_model == "validator-local"
-    assert mock_inventory.call_args.args[1].models.inventory_model == "inventory-local"
-    assert mock_communication.call_args.args[1].models.communication_model == "communication-local"
+    mock_create_foundry_client.assert_has_calls(
+        [
+            call(
+                project_endpoint="https://foundry.example",
+                model="extractor-local",
+                credential="credential",
+            ),
+            call(
+                project_endpoint="https://foundry.example",
+                model="shared-mini-local",
+                credential="credential",
+            ),
+        ]
+    )
+    assert mock_triage.call_args.args[1].models.gpt5_mini_deployment == "shared-mini-local"
+    assert mock_extractor.call_args.args[1].models.gpt5_deployment == "extractor-local"
+    assert mock_coherence.call_args.args[1].models.gpt5_mini_deployment == "shared-mini-local"
+    assert mock_validator.call_args.args[1].models.gpt5_mini_deployment == "shared-mini-local"
+    assert mock_inventory.call_args.args[1].models.gpt5_mini_deployment == "shared-mini-local"
+    assert mock_communication.call_args.args[1].models.gpt5_mini_deployment == "shared-mini-local"

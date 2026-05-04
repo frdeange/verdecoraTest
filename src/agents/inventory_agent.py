@@ -35,7 +35,7 @@ def create_inventory_agent(
     return create_structured_agent(
         client=client,
         name="a5-inventory",
-        model=resolved_config.models.inventory_model,
+        model=resolved_config.models.gpt5_mini_deployment,
         instructions=_build_inventory_instructions(tool_names),
         structured_output=PostingResult,
         tools=resolved_tools,

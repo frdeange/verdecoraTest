@@ -8,20 +8,18 @@ from src.models import DocumentType, TriageResult
 def test_agents_config_defaults() -> None:
     config = AgentsConfig()
 
-    assert config.endpoints.azure_openai_endpoint == "https://verdecora-openai-dev.openai.azure.com/"
+    assert config.endpoints.azure_ai_project_endpoint == (
+        "https://verdecora-ais-dev.services.ai.azure.com/api/projects/verdecora-project-dev"
+    )
     assert config.endpoints.document_intelligence_endpoint == (
         "https://verdecora-docintell-dev.cognitiveservices.azure.com/"
     )
-    assert config.models.extractor_model == "gpt-5"
-    assert config.models.triage_model == "gpt-5-mini"
-    assert config.models.coherence_model == "gpt-5-mini"
-    assert config.models.validator_model == "gpt-5-mini"
-    assert config.models.inventory_model == "gpt-5-mini"
-    assert config.models.communication_model == "gpt-5-mini"
+    assert config.models.gpt5_deployment == "gpt-5"
+    assert config.models.gpt5_mini_deployment == "gpt-5-mini"
 
 
 def test_pipeline_builds_with_default_agents() -> None:
-    pipeline = build_pipeline(client=object(), config=AgentsConfig())
+    pipeline = build_pipeline(config=AgentsConfig(), credential=object(), project_endpoint="https://foundry.example")
     workflow = pipeline.build_workflow(PipelineDocumentInput(document_reference="https://storage/doc.pdf"))
 
     assert set(pipeline.agents) == {"triage", "extractor", "coherence", "validator", "inventory", "communication"}

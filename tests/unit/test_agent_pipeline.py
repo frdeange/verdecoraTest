@@ -54,7 +54,6 @@ class FakeWorkflow:
 
 def test_pipeline_creation_with_all_agents() -> None:
     pipeline = AlbaranPipeline(
-        client=object(),
         agents={
             "triage": object(),
             "extractor": object(),
@@ -94,7 +93,6 @@ async def test_pipeline_run_with_mocked_agents() -> None:
         return workflows[name]
 
     pipeline = AlbaranPipeline(
-        client=object(),
         agents={
             "triage": object(),
             "extractor": object(),
@@ -139,7 +137,6 @@ async def test_pipeline_run_with_mocked_agents() -> None:
 @pytest.mark.asyncio
 async def test_pipeline_propagates_agent_failures() -> None:
     pipeline = AlbaranPipeline(
-        client=object(),
         agents={
             "triage": object(),
             "extractor": object(),
@@ -191,7 +188,6 @@ async def test_pipeline_skip_triage_flag_works() -> None:
         }[name]
 
     pipeline = AlbaranPipeline(
-        client=object(),
         config=config,
         agents={
             "triage": object(),
@@ -235,7 +231,6 @@ async def test_pipeline_stops_after_non_extract_triage_result() -> None:
         return {"albaran-triage": triage_workflow}[name]
 
     pipeline = AlbaranPipeline(
-        client=object(),
         agents={
             "triage": object(),
             "extractor": object(),
@@ -278,7 +273,6 @@ async def test_pipeline_routes_hitl_review_when_validation_requires_manual_revie
         }[name]
 
     pipeline = AlbaranPipeline(
-        client=object(),
         agents={
             "triage": object(),
             "extractor": object(),
@@ -306,7 +300,6 @@ async def test_pipeline_skips_validation_and_inventory_when_coherence_is_skipped
         return {"albaran-extraction": FakeWorkflow(extraction_result.model_dump(mode="json"))}[name]
 
     pipeline = AlbaranPipeline(
-        client=object(),
         config=AgentsConfig.model_validate(
             {
                 "skip_triage_suppliers": ["HERSTERA"],

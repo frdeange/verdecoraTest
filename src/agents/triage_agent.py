@@ -26,7 +26,7 @@ def create_triage_agent(
     return create_structured_agent(
         client=client,
         name="a2-triage",
-        model=resolved_config.models.triage_model,
+        model=resolved_config.models.gpt5_mini_deployment,
         instructions=_build_triage_instructions(),
         structured_output=TriageResult,
         tools=tools,
