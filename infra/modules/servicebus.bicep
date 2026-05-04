@@ -25,7 +25,10 @@ resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2022-10-01-preview
   properties: {
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
     disableLocalAuth: true
+>>>>>>> master
 >>>>>>> master
     publicNetworkAccess: 'Disabled'
   }

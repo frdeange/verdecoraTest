@@ -28,7 +28,10 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     allowBlobPublicAccess: false
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
     allowSharedKeyAccess: false
+>>>>>>> master
 >>>>>>> master
     minimumTlsVersion: 'TLS1_2'
     publicNetworkAccess: 'Disabled'
