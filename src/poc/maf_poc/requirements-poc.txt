@@ -1,0 +1,19 @@
+# MAF v1.0 PoC — Minimal dependencies
+# Install: pip install -r src/poc/maf_poc/requirements-poc.txt
+
+# Core framework
+agent-framework>=1.0.0
+
+# Chat client (pick one or both)
+# agent-framework[foundry]    # For FoundryChatClient (Azure AI Foundry)
+# agent-framework[openai]     # For OpenAIChatCompletionClient
+
+# Azure identity (needed for FoundryChatClient)
+azure-identity>=1.17.0
+
+# Telemetry (console exporter for local dev)
+opentelemetry-sdk>=1.25.0
+opentelemetry-exporter-otlp>=1.25.0
+
+# For production: Azure Monitor exporter
+# azure-monitor-opentelemetry>=1.6.0

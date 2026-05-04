@@ -1,0 +1,35 @@
+{
+  "@odata.context": "https://api.businesscentral.dynamics.com/v2.0/tenant/env/api/v2.0/$metadata#companies(company-id)/purchaseOrders/$entity",
+  "id": "4f51fc6e-84e0-4b36-89be-098304f7a4df",
+  "number": "PO-9001234",
+  "vendorNumber": "S00123",
+  "vendorName": "Viveros del Sur",
+  "buyFromVendorNumber": "S00123",
+  "currencyCode": "EUR",
+  "status": "Open",
+  "orderDate": "2026-05-02",
+  "postingDate": "2026-05-04",
+  "locationCode": "MADRID",
+  "purchaseLines": [
+    {
+      "id": "line-10000",
+      "sequence": 10000,
+      "lineType": "Item",
+      "lineObjectNumber": "ITEM-1000",
+      "description": "Rosa roja premium",
+      "unitOfMeasureCode": "BOX",
+      "quantity": 12,
+      "directUnitCost": 18.5
+    },
+    {
+      "id": "line-20000",
+      "sequence": 20000,
+      "lineType": "Item",
+      "lineObjectNumber": "ITEM-2000",
+      "description": "Maceta cerámica 30cm",
+      "unitOfMeasureCode": "PCS",
+      "quantity": 8,
+      "directUnitCost": 11.25
+    }
+  ]
+}
