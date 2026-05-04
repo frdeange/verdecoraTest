@@ -129,6 +129,12 @@ def to_supplier_config(document: dict[str, Any]) -> SupplierConfig:
     )
 
 
+def invalidate_supplier_config_cache(supplier_id: str) -> None:
+    """Remove cached supplier configuration values."""
+
+    _cache.pop(cache_key(SUPPLIER_CONFIG_DOCUMENT_TYPE, supplier_id), None)
+
+
 @mcp.tool()
 def get_flag(flag_name: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return a feature flag, applying the first matching override for the provided context."""
@@ -243,6 +249,39 @@ def get_supplier_config(supplier_id: str) -> dict[str, Any]:
         write_cached(cache_key(SUPPLIER_CONFIG_DOCUMENT_TYPE, normalized_supplier_id), supplier_config)
 
     return supplier_config.model_dump()
+
+
+@mcp.tool()
+def set_supplier_config(
+    supplier_id: str,
+    configuration: dict[str, Any],
+    description: str | None = None,
+) -> dict[str, Any]:
+    """Create or update a supplier-specific configuration document."""
+
+    normalized_supplier_id = supplier_id.strip()
+    if not normalized_supplier_id:
+        raise MCPValidationError("supplier_id must not be empty")
+
+    timestamp = datetime.now(tz=UTC).isoformat()
+    document = {
+        "id": normalized_supplier_id,
+        "supplier_id": normalized_supplier_id,
+        "document_type": SUPPLIER_CONFIG_DOCUMENT_TYPE,
+        "configuration": configuration,
+        "description": description,
+        "updated_at": timestamp,
+    }
+
+    try:
+        response = get_flags_container().upsert_item(body=document)
+    except exceptions.CosmosHttpResponseError as exc:
+        raise FeatureFlagsOperationError(
+            f"Failed to set supplier config '{normalized_supplier_id}': {exc.message}"
+        ) from exc
+
+    invalidate_supplier_config_cache(normalized_supplier_id)
+    return to_supplier_config(dict(response)).model_dump()
 
 
 def main() -> None:
