@@ -21,6 +21,9 @@ param aiServicesAccountName string = ''
 @description('Optional Document Intelligence account name for granting data-plane access to the ACA identity.')
 param docIntellAccountName string = ''
 
+@description('Optional Azure Container Registry name for granting image pull access to ACA identities.')
+param acrName string = ''
+
 @description('Optional system-assigned principal id for the agentic orchestrator ACA app.')
 param orchestratorPrincipalId string = ''
 
@@ -41,6 +44,7 @@ var storageBlobDataContributorRoleDefinitionId = subscriptionResourceId('Microso
 var storageBlobDelegatorRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'db58b8e5-c6ad-4a2a-8342-4190687cbf4a')
 var keyVaultSecretsUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
 var contributorRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')
+var acrPullRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
 var cognitiveServicesOpenAIUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
 var cognitiveServicesUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
 
@@ -70,6 +74,10 @@ resource aiServicesAccount 'Microsoft.CognitiveServices/accounts@2025-10-01-prev
 
 resource docIntellAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = if (!empty(docIntellAccountName)) {
   name: docIntellAccountName
+}
+
+resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = if (!empty(acrName)) {
+  name: acrName
 }
 
 resource orchestratorSystemAssignedCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = if (!empty(orchestratorPrincipalId)) {
@@ -280,6 +288,46 @@ resource escalationTimerSystemAssignedCommunicationServicesContributorRoleAssign
     principalId: escalationTimerPrincipalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: contributorRoleDefinitionId
+  }
+}
+
+resource orchestratorSystemAssignedAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(orchestratorPrincipalId) && !empty(acrName)) {
+  name: guid(acr.id, orchestratorPrincipalId, acrPullRoleDefinitionId, 'system')
+  scope: acr
+  properties: {
+    principalId: orchestratorPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: acrPullRoleDefinitionId
+  }
+}
+
+resource flow0SystemAssignedAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(flow0WorkerPrincipalId) && !empty(acrName)) {
+  name: guid(acr.id, flow0WorkerPrincipalId, acrPullRoleDefinitionId, 'system')
+  scope: acr
+  properties: {
+    principalId: flow0WorkerPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: acrPullRoleDefinitionId
+  }
+}
+
+resource hitlWebformSystemAssignedAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(hitlWebformPrincipalId) && !empty(acrName)) {
+  name: guid(acr.id, hitlWebformPrincipalId, acrPullRoleDefinitionId, 'system')
+  scope: acr
+  properties: {
+    principalId: hitlWebformPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: acrPullRoleDefinitionId
+  }
+}
+
+resource escalationTimerSystemAssignedAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(escalationTimerPrincipalId) && !empty(acrName)) {
+  name: guid(acr.id, escalationTimerPrincipalId, acrPullRoleDefinitionId, 'system')
+  scope: acr
+  properties: {
+    principalId: escalationTimerPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: acrPullRoleDefinitionId
   }
 }
 

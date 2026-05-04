@@ -1,0 +1,84 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/**'
+      - 'docker/**'
+      - 'pyproject.toml'
+  workflow_dispatch:
+
+env:
+  ACR_NAME: acralbaranesdev
+  ACR_AGENT_POOL: buildpool-dev
+  RESOURCE_GROUP: rg-verdecoratest-dev
+  ACA_ORCHESTRATOR: verdecora-orchestrator-dev
+  ACA_HITL: verdecora-hitl-webform-dev
+  ACA_DEDUP_JOB: verdecora-dedup-job-dev
+  ACA_ESCALATION_JOB: verdecora-escalation-timer-dev
+
+jobs:
+  build-and-push:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        service:
+          - { name: orchestrator, dockerfile: docker/orchestrator/Dockerfile }
+          - { name: flow0-dedup, dockerfile: docker/flow0-dedup/Dockerfile }
+          - { name: hitl-webform, dockerfile: docker/hitl-webform/Dockerfile }
+          - { name: escalation-timer, dockerfile: docker/escalation-timer/Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          auth-type: IDENTITY
+
+      - name: Build and push to ACR
+        run: |
+          az acr build \
+            --registry ${{ env.ACR_NAME }} \
+            --agent-pool ${{ env.ACR_AGENT_POOL }} \
+            --image verdecora-${{ matrix.service.name }}:${{ github.sha }} \
+            --image verdecora-${{ matrix.service.name }}:latest \
+            --file ${{ matrix.service.dockerfile }} \
+            .
+
+  deploy:
+    needs: build-and-push
+    runs-on: self-hosted
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          auth-type: IDENTITY
+
+      - name: Deploy orchestrator
+        run: |
+          az containerapp update \
+            --name ${{ env.ACA_ORCHESTRATOR }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/verdecora-orchestrator:${{ github.sha }}
+
+      - name: Deploy HITL webform
+        run: |
+          az containerapp update \
+            --name ${{ env.ACA_HITL }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/verdecora-hitl-webform:${{ github.sha }}
+
+      - name: Deploy Flow0 dedup job
+        run: |
+          az containerapp job update \
+            --name ${{ env.ACA_DEDUP_JOB }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/verdecora-flow0-dedup:${{ github.sha }}
+
+      - name: Deploy escalation timer job
+        run: |
+          az containerapp job update \
+            --name ${{ env.ACA_ESCALATION_JOB }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/verdecora-escalation-timer:${{ github.sha }}

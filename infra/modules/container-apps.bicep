@@ -48,17 +48,20 @@ param keyVaultUrl string
 @description('Microsoft Entra tenant id used for token validation.')
 param tenantId string
 
-@description('Container image used by the orchestrator app.')
-param orchestratorImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
+@description('Azure Container Registry login server used for workload images.')
+param acrLoginServer string
 
-@description('Container image used by the Flow 0 dedup ACA Job.')
-param dedupJobImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
+@description('Optional override for the orchestrator app image.')
+param orchestratorImage string = ''
 
-@description('Container image used by the HITL web form placeholder.')
-param hitlWebformImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
+@description('Optional override for the Flow 0 dedup ACA Job image.')
+param dedupJobImage string = ''
 
-@description('Container image used by the escalation timer ACA Job.')
-param escalationTimerJobImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
+@description('Optional override for the HITL web form image.')
+param hitlWebformImage string = ''
+
+@description('Optional override for the escalation timer ACA Job image.')
+param escalationTimerJobImage string = ''
 
 var tags = {
   project: 'verdecora-albaranes'
@@ -68,6 +71,10 @@ var tags = {
 
 var managedEnvironmentName = 'acae-verdecora-${environment}'
 var serviceBusFullyQualifiedNamespace = '${serviceBusNamespaceName}.servicebus.windows.net'
+var resolvedOrchestratorImage = empty(orchestratorImage) ? '${acrLoginServer}/verdecora-orchestrator:latest' : orchestratorImage
+var resolvedDedupJobImage = empty(dedupJobImage) ? '${acrLoginServer}/verdecora-flow0-dedup:latest' : dedupJobImage
+var resolvedHitlWebformImage = empty(hitlWebformImage) ? '${acrLoginServer}/verdecora-hitl-webform:latest' : hitlWebformImage
+var resolvedEscalationTimerJobImage = empty(escalationTimerJobImage) ? '${acrLoginServer}/verdecora-escalation-timer:latest' : escalationTimerJobImage
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
   name: logAnalyticsWorkspaceName
@@ -108,6 +115,12 @@ resource orchestratorApp 'Microsoft.App/containerApps@2025-01-01' = {
       dapr: {
         enabled: false
       }
+      registries: [
+        {
+          server: acrLoginServer
+          identity: 'system'
+        }
+      ]
       ingress: {
         external: false
         targetPort: 8080
@@ -118,7 +131,7 @@ resource orchestratorApp 'Microsoft.App/containerApps@2025-01-01' = {
       containers: [
         {
           name: 'orchestrator'
-          image: orchestratorImage
+          image: resolvedOrchestratorImage
           env: [
             {
               name: 'AZURE_OPENAI_ENDPOINT'
@@ -209,6 +222,12 @@ resource flow0DedupJob 'Microsoft.App/jobs@2025-01-01' = {
   properties: {
     environmentId: managedEnvironment.id
     configuration: {
+      registries: [
+        {
+          server: acrLoginServer
+          identity: 'system'
+        }
+      ]
       triggerType: 'Event'
       replicaTimeout: 1800
       replicaRetryLimit: 1
@@ -238,7 +257,7 @@ resource flow0DedupJob 'Microsoft.App/jobs@2025-01-01' = {
       containers: [
         {
           name: 'flow0-dedup'
-          image: dedupJobImage
+          image: resolvedDedupJobImage
           env: [
             {
               name: 'COSMOS_ENDPOINT'
@@ -299,6 +318,12 @@ resource hitlWebformApp 'Microsoft.App/containerApps@2025-01-01' = {
       dapr: {
         enabled: false
       }
+      registries: [
+        {
+          server: acrLoginServer
+          identity: 'system'
+        }
+      ]
       ingress: {
         external: true
         allowInsecure: false
@@ -310,7 +335,7 @@ resource hitlWebformApp 'Microsoft.App/containerApps@2025-01-01' = {
       containers: [
         {
           name: 'hitl-webform'
-          image: hitlWebformImage
+          image: resolvedHitlWebformImage
           env: [
             {
               name: 'SERVICE_BUS_NAMESPACE'
@@ -371,6 +396,12 @@ resource escalationTimerJob 'Microsoft.App/jobs@2025-01-01' = {
   properties: {
     environmentId: managedEnvironment.id
     configuration: {
+      registries: [
+        {
+          server: acrLoginServer
+          identity: 'system'
+        }
+      ]
       triggerType: 'Schedule'
       replicaTimeout: 1800
       replicaRetryLimit: 1
@@ -384,7 +415,7 @@ resource escalationTimerJob 'Microsoft.App/jobs@2025-01-01' = {
       containers: [
         {
           name: 'escalation-timer'
-          image: escalationTimerJobImage
+          image: resolvedEscalationTimerJobImage
           env: [
             {
               name: 'COSMOS_ENDPOINT'
