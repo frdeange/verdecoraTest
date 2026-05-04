@@ -36,10 +36,6 @@ param runnerIdentityName string = 'id-gha-runner-${environment}'
 @description('Log Analytics workspace name used by the runner environment.')
 param logAnalyticsWorkspaceName string = 'log-runners-${environment}'
 
-@description('Log Analytics shared key used for ACA log ingestion (pass via Key Vault reference).')
-@secure()
-param logAnalyticsSharedKey string
-
 @description('Minimum number of job executions kept warm by the scaler.')
 param minExecutions int = 0
 
@@ -74,6 +70,8 @@ var repoOwner = repoSegments[0]
 var repoName = repoSegments[1]
 var githubApiUrl = 'https://api.github.com'
 var registrationTokenApiUrl = '${githubApiUrl}/repos/${repoOwner}/${repoName}/actions/runners/registration-token'
+var removeTokenApiUrl = '${githubApiUrl}/repos/${repoOwner}/${repoName}/actions/runners/remove-token'
+var runnerStartupScript = 'set -euo pipefail; request_runner_token() { local url="$1"; curl -fsSL -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_PAT" -H "X-GitHub-Api-Version: 2022-11-28" "$url" | sed -n "s/.*\\"token\\"[[:space:]]*:[[:space:]]*\\"\\([^\\"]*\\)\\".*/\\1/p"; }; RUNNER_DIR="$(dirname "$(find /home/runner /actions-runner -maxdepth 3 -name config.sh 2>/dev/null | head -n 1)")"; if [ -z "$RUNNER_DIR" ]; then echo "Unable to locate config.sh in the runner image."; exit 1; fi; RUNNER_NAME="$(printf "%s-%s-%s" "$RUNNER_NAME_PREFIX" "$(hostname)" "$(date +%s)")"; REGISTRATION_TOKEN="$(request_runner_token "$REGISTRATION_TOKEN_API_URL")"; if [ -z "$REGISTRATION_TOKEN" ]; then echo "Failed to acquire a GitHub registration token."; exit 1; fi; cleanup() { if [ -f "$RUNNER_DIR/.runner" ]; then REMOVE_TOKEN="$(request_runner_token "$REMOVE_TOKEN_API_URL" || true)"; if [ -n "$REMOVE_TOKEN" ]; then "$RUNNER_DIR/config.sh" remove --unattended --token "$REMOVE_TOKEN" || true; fi; fi; }; trap cleanup EXIT INT TERM; cd "$RUNNER_DIR"; echo "Configuring runner $RUNNER_NAME for $GH_URL"; ./config.sh --unattended --replace --ephemeral --url "$GH_URL" --token "$REGISTRATION_TOKEN" --name "$RUNNER_NAME" --work "_work"; echo "Runner $RUNNER_NAME registered; waiting for a job."; ./run.sh'
 var keyVaultSecretsUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
@@ -118,7 +116,7 @@ resource managedEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
       destination: 'log-analytics'
       logAnalyticsConfiguration: {
         customerId: logAnalytics.properties.customerId
-        sharedKey: logAnalyticsSharedKey
+        sharedKey: logAnalytics.listKeys().primarySharedKey
       }
     }
     vnetConfiguration: {
@@ -185,6 +183,13 @@ resource runnerJob 'Microsoft.App/jobs@2025-01-01' = {
         {
           name: 'github-runner'
           image: runnerImage
+          command: [
+            '/bin/bash'
+          ]
+          args: [
+            '-lc'
+            runnerStartupScript
+          ]
           env: [
             {
               name: 'GITHUB_PAT'
@@ -205,6 +210,10 @@ resource runnerJob 'Microsoft.App/jobs@2025-01-01' = {
             {
               name: 'REGISTRATION_TOKEN_API_URL'
               value: registrationTokenApiUrl
+            }
+            {
+              name: 'REMOVE_TOKEN_API_URL'
+              value: removeTokenApiUrl
             }
           ]
           resources: {
