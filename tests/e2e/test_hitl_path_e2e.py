@@ -28,16 +28,16 @@ async def test_hitl_path_e2e_stops_pipeline_and_notifies_hitl_queue(
     validation_result = sample_validation(overall_match_pct=0.88, recommendation="hitl_review")
     workflows, fake_build = workflow_factory(
         {
-            "albaran-triage": [sample_triage_result().model_dump(mode="json")],
-            "albaran-extraction": sample_extraction().model_dump(mode="json"),
-            "albaran-coherence": sample_coherence_result().model_dump(mode="json"),
-            "albaran-validation": validation_result.model_dump(mode="json"),
+            "triage": [sample_triage_result().model_dump(mode="json")],
+            "extractor": sample_extraction().model_dump(mode="json"),
+            "coherence": sample_coherence_result().model_dump(mode="json"),
+            "validator": validation_result.model_dump(mode="json"),
         }
     )
     orchestrator, service_bus_client = orchestrator_factory()
     message = FakeReceivedMessage(forwarded_payload)
 
-    with patch("src.agents.pipeline.build_sequential_workflow", side_effect=fake_build):
+    with patch("src.agents.pipeline.SequentialBuilder", side_effect=fake_build):
         result = await handle_message(orchestrator, receiver=fake_receiver, message=message)
 
     assert result.status == "hitl_pending"
@@ -48,4 +48,4 @@ async def test_hitl_path_e2e_stops_pipeline_and_notifies_hitl_queue(
     assert len(service_bus_client.sent_messages) == 1
     assert service_bus_client.sent_messages[0]["queue_name"] == orchestrator.config.hitl_queue_name
     assert service_bus_client.sent_messages[0]["payload"]["processing_id"] == result.processing_id
-    assert workflows["albaran-validation"].payloads
+    assert workflows["validator"].payloads

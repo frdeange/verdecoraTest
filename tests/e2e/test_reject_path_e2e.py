@@ -31,11 +31,11 @@ async def test_reject_path_e2e_stops_after_triage_and_marks_record_rejected(
         routing_decision="reject",
         reasoning="Documento desconocido; no corresponde a un albarán.",
     )
-    workflows, fake_build = workflow_factory({"albaran-triage": [rejected_triage.model_dump(mode="json")]})
+    workflows, fake_build = workflow_factory({"triage": [rejected_triage.model_dump(mode="json")]})
     orchestrator, service_bus_client = orchestrator_factory()
     message = FakeReceivedMessage(forwarded_payload)
 
-    with patch("src.agents.pipeline.build_sequential_workflow", side_effect=fake_build):
+    with patch("src.agents.pipeline.SequentialBuilder", side_effect=fake_build):
         result = await handle_message(orchestrator, receiver=fake_receiver, message=message)
 
     assert result.status == "rejected"
@@ -44,5 +44,5 @@ async def test_reject_path_e2e_stops_after_triage_and_marks_record_rejected(
     assert result.pipeline_result["validation"] is None
     assert cosmos_store.items[result.processing_id]["status"] == "rejected"
     assert fake_receiver.completed_messages == [message]
-    assert workflows["albaran-triage"].payloads
+    assert workflows["triage"].payloads
     assert not service_bus_client.sent_messages

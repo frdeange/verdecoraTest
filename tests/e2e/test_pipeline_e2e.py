@@ -31,19 +31,19 @@ async def test_pipeline_e2e_happy_path_updates_cosmos_and_preserves_agent_handof
     coherence_result = sample_coherence_result()
     validation_result = sample_validation(overall_match_pct=0.99, recommendation="approve")
     posting_result = sample_posting_result(success=True)
-    workflows, fake_build = workflow_factory(
+    workflows, fake_builder = workflow_factory(
         {
-            "albaran-triage": [triage_result.model_dump(mode="json")],
-            "albaran-extraction": extraction_result.model_dump(mode="json"),
-            "albaran-coherence": coherence_result.model_dump(mode="json"),
-            "albaran-validation": validation_result.model_dump(mode="json"),
-            "albaran-inventory": posting_result.model_dump(mode="json"),
+            "triage": [triage_result.model_dump(mode="json")],
+            "extractor": extraction_result.model_dump(mode="json"),
+            "coherence": coherence_result.model_dump(mode="json"),
+            "validator": validation_result.model_dump(mode="json"),
+            "inventory": posting_result.model_dump(mode="json"),
         }
     )
     orchestrator, service_bus_client = orchestrator_factory()
     message = FakeReceivedMessage(forwarded_payload)
 
-    with patch("src.agents.pipeline.build_sequential_workflow", side_effect=fake_build):
+    with patch("src.agents.pipeline.SequentialBuilder", side_effect=fake_builder):
         result = await handle_message(orchestrator, receiver=fake_receiver, message=message)
 
     assert result.processing_id == forwarded_payload["albaran_id"]
@@ -54,16 +54,16 @@ async def test_pipeline_e2e_happy_path_updates_cosmos_and_preserves_agent_handof
     assert fake_receiver.completed_messages == [message]
     assert not service_bus_client.sent_messages
 
-    assert workflows["albaran-triage"].payloads == [ocr_payload["content"]]
-    assert workflows["albaran-extraction"].payloads == [ocr_payload]
-    assert workflows["albaran-coherence"].payloads == [extraction_result.model_dump(mode="json")]
-    assert workflows["albaran-validation"].payloads == [
+    assert workflows["triage"].payloads == [ocr_payload["content"]]
+    assert workflows["extractor"].payloads == [ocr_payload]
+    assert workflows["coherence"].payloads == [extraction_result.model_dump(mode="json")]
+    assert workflows["validator"].payloads == [
         {
             "extraction": extraction_result.model_dump(mode="json"),
             "coherence": coherence_result.model_dump(mode="json"),
         }
     ]
-    assert workflows["albaran-inventory"].payloads == [
+    assert workflows["inventory"].payloads == [
         {
             "validation": validation_result.model_dump(mode="json"),
             "extraction": extraction_result.model_dump(mode="json"),

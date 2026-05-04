@@ -1,65 +1,113 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+import importlib
+import os
+from collections.abc import Mapping, Sequence
+from typing import Any
 
-from src.config.agents import AgentsConfig, get_agents_config
+from agent_framework import ChatAgent as Agent
 
-from ._maf_compat import create_foundry_client
-from .coherence_agent import create_coherence_agent
-from .communication_agent import create_communication_agent
-from .extractor_agent import create_extractor_agent
-from .inventory_agent import create_inventory_agent
-from .triage_agent import create_triage_agent
-from .validator_agent import create_validator_agent
+from src.models.albaran import AlbaranExtraction, CoherenceCheckResult, TriageResult
+from src.models.inventory import PostingResult
+from src.models.validation import ValidationResult
 
-ToolRegistry = Mapping[str, list[Any]]
+from .communication_agent import CommunicationSummary
+from .prompts import (
+    build_coherence_instructions,
+    build_communication_instructions,
+    build_extractor_instructions,
+    build_inventory_instructions,
+    build_triage_instructions,
+    build_validator_instructions,
+)
+
+ToolRegistry = Mapping[str, Sequence[Any]]
 
 
-def _get_tools(tool_registry: ToolRegistry | None, key: str) -> list[Any] | None:
-    if tool_registry is None:
-        return None
-    return list(tool_registry.get(key, []))
+def _load_foundry_chat_client() -> type[Any]:
+    module = importlib.import_module("agent_framework_foundry")
+    return module.FoundryChatClient
 
 
-def create_all_agents(
-    config: AgentsConfig | None = None,
+def _resolve_tool_names(tools: Sequence[Any]) -> tuple[str, ...]:
+    return tuple(getattr(tool, "name", str(tool)) for tool in tools)
+
+
+def create_clients(project_endpoint: str, credential: Any) -> tuple[Any, Any]:
+    """Create GPT-5 and GPT-5-mini Foundry chat clients."""
+
+    foundry_chat_client = _load_foundry_chat_client()
+    gpt5 = foundry_chat_client(
+        project_endpoint=project_endpoint,
+        model=os.getenv("GPT5_DEPLOYMENT", "gpt-5"),
+        credential=credential,
+    )
+    gpt5_mini = foundry_chat_client(
+        project_endpoint=project_endpoint,
+        model=os.getenv("GPT5_MINI_DEPLOYMENT", "gpt-5-mini"),
+        credential=credential,
+    )
+    return gpt5, gpt5_mini
+
+
+def create_agents(
+    gpt5: Any,
+    gpt5_mini: Any,
     *,
-    credential: Any | None = None,
-    project_endpoint: str | None = None,
-    gpt5_client: Any | None = None,
-    gpt5_mini_client: Any | None = None,
-    tool_registry: ToolRegistry | None = None,
-) -> dict[str, Any]:
-    resolved_config = config or get_agents_config()
-    resolved_project_endpoint = project_endpoint or resolved_config.endpoints.azure_ai_project_endpoint
-    resolved_credential = credential or resolved_config.create_credential()
-    resolved_gpt5_client = gpt5_client or create_foundry_client(
-        project_endpoint=resolved_project_endpoint,
-        model=resolved_config.models.gpt5_deployment,
-        credential=resolved_credential,
-    )
-    resolved_gpt5_mini_client = gpt5_mini_client or create_foundry_client(
-        project_endpoint=resolved_project_endpoint,
-        model=resolved_config.models.gpt5_mini_deployment,
-        credential=resolved_credential,
-    )
+    mcp_tools: ToolRegistry | None = None,
+) -> dict[str, Agent]:
+    """Create all MAF agents for the albarán pipeline."""
+
+    tools = {key: list(value) for key, value in (mcp_tools or {}).items()}
+    extractor_tools = tools.get("extractor", [])
+    coherence_tools = tools.get("coherence", [])
+    validator_tools = tools.get("validator", [])
+    inventory_tools = tools.get("inventory", [])
+    communication_tools = tools.get("communication", [])
+
     return {
-        "triage": create_triage_agent(
-            resolved_gpt5_mini_client, resolved_config, tools=_get_tools(tool_registry, "triage")
+        "triage": Agent(
+            chat_client=gpt5_mini,
+            name="Triage",
+            instructions=build_triage_instructions(),
+            response_format=TriageResult,
         ),
-        "extractor": create_extractor_agent(
-            resolved_gpt5_client, resolved_config, tools=_get_tools(tool_registry, "extractor")
+        "extractor": Agent(
+            chat_client=gpt5,
+            name="Extractor",
+            instructions=build_extractor_instructions(_resolve_tool_names(extractor_tools)),
+            response_format=AlbaranExtraction,
+            tools=extractor_tools,
         ),
-        "coherence": create_coherence_agent(
-            resolved_gpt5_mini_client, resolved_config, tools=_get_tools(tool_registry, "coherence")
+        "coherence": Agent(
+            chat_client=gpt5_mini,
+            name="Coherence",
+            instructions=build_coherence_instructions(_resolve_tool_names(coherence_tools)),
+            response_format=CoherenceCheckResult,
+            tools=coherence_tools,
         ),
-        "validator": create_validator_agent(
-            resolved_gpt5_mini_client, resolved_config, tools=_get_tools(tool_registry, "validator")
+        "validator": Agent(
+            chat_client=gpt5_mini,
+            name="Validator",
+            instructions=build_validator_instructions(_resolve_tool_names(validator_tools)),
+            response_format=ValidationResult,
+            tools=validator_tools,
         ),
-        "inventory": create_inventory_agent(
-            resolved_gpt5_mini_client, resolved_config, tools=_get_tools(tool_registry, "inventory")
+        "inventory": Agent(
+            chat_client=gpt5_mini,
+            name="Inventory",
+            instructions=build_inventory_instructions(_resolve_tool_names(inventory_tools)),
+            response_format=PostingResult,
+            tools=inventory_tools,
         ),
-        "communication": create_communication_agent(
-            resolved_gpt5_mini_client, resolved_config, tools=_get_tools(tool_registry, "communication")
+        "communication": Agent(
+            chat_client=gpt5_mini,
+            name="Communication",
+            instructions=build_communication_instructions(),
+            response_format=CommunicationSummary,
+            tools=communication_tools,
         ),
     }
+
+
+__all__ = ["Agent", "ToolRegistry", "create_agents", "create_clients"]

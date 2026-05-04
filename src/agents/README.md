@@ -9,10 +9,9 @@ MAF-based agent implementations for the Verdecora albarán flow.
 - `a6-communication` prepares Spanish HITL notification summaries and escalation handoffs.
 
 ## Key modules
-- `factory.py` centralises FoundryChatClient creation, model selection, and MCP tool binding.
-- `pipeline.py` builds the sequential MAF workflow and supports config-driven stage skipping.
-- `prompts/` stores the system prompts used by each agent.
-- `_maf_compat.py` returns placeholder specs when `agent-framework` is unavailable so imports remain safe in local dev.
+- `factory.py` creates `ChatAgent` instances directly and binds MCP tools without extra builder wrappers.
+- `pipeline.py` wires `SequentialBuilder(participants=[...]).build()` directly for the albarán stages.
+- `prompts/` stores raw prompts plus schema-aware prompt builders with shared security hardening.
 
 ## Configuration
 Use `src.config.agents.get_agents_config()` to load defaults from environment variables:
@@ -28,16 +27,16 @@ All Azure access should rely on `DefaultAzureCredential` / managed identity only
 
 ## FoundryChatClient pattern
 ```python
-from src.agents import build_pipeline
+from src.agents import AlbaranPipeline
 from src.config import get_agents_config
 
 config = get_agents_config()
 credential = config.create_credential()
-pipeline = build_pipeline(
+pipeline = AlbaranPipeline(
     config=config,
     project_endpoint=config.endpoints.azure_ai_project_endpoint,
     credential=credential,
-    tool_registry={
+    mcp_tools={
         "extractor": [content_understanding_mcp],
         "coherence": [bc_mcp],
     },
@@ -49,4 +48,4 @@ The pipeline creates one `FoundryChatClient` per model:
 - `gpt-5` for `a1-extractor`
 - `gpt-5-mini` for `a2-triage`, `a3-coherence`, `a4-validator`, `a5-inventory`, and `a6-communication`
 
-You can also pass pre-built `gpt5_client` and `gpt5_mini_client` instances into `build_pipeline()` or `AlbaranPipeline()`.
+You can also pass pre-built `gpt5_client` and `gpt5_mini_client` instances directly into `AlbaranPipeline()`.

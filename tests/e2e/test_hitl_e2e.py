@@ -13,6 +13,7 @@ from src.models.inventory import PostingResult
 from src.services.escalation.config import EscalationConfig
 from src.services.escalation.scheduler import EscalationScheduler
 from src.services.hitl_webform.callbacks import HITLCallbackHandler
+from src.services.hitl_webform.config import HITLWebformConfig
 from src.services.hitl_webform.main import create_app
 from src.services.orchestrator.handler import handle_message
 from tests.e2e.conftest import FakeReceivedMessage
@@ -44,7 +45,9 @@ class InMemoryReviewStore:
         return dict(document)
 
     async def list_pending_reviews(self) -> list[dict[str, Any]]:
-        return [dict(item) for item in self.items.values() if item.get("status") in {"pending", "reminded", "escalated"}]
+        return [
+            dict(item) for item in self.items.values() if item.get("status") in {"pending", "reminded", "escalated"}
+        ]
 
 
 class FakeDecisionPublisher:
@@ -71,16 +74,16 @@ async def test_hitl_e2e_discrepancy_email_approve_inventory_posted(
     validation_result = sample_validation(overall_match_pct=0.88, recommendation="hitl_review")
     workflows, fake_build = workflow_factory(
         {
-            "albaran-triage": [sample_triage_result().model_dump(mode="json")],
-            "albaran-extraction": sample_extraction().model_dump(mode="json"),
-            "albaran-coherence": sample_coherence_result().model_dump(mode="json"),
-            "albaran-validation": validation_result.model_dump(mode="json"),
+            "triage": [sample_triage_result().model_dump(mode="json")],
+            "extractor": sample_extraction().model_dump(mode="json"),
+            "coherence": sample_coherence_result().model_dump(mode="json"),
+            "validator": validation_result.model_dump(mode="json"),
         }
     )
     orchestrator, _service_bus_client = orchestrator_factory()
     message = FakeReceivedMessage(forwarded_payload)
 
-    with patch("src.agents.pipeline.build_sequential_workflow", side_effect=fake_build):
+    with patch("src.agents.pipeline.SequentialBuilder", side_effect=fake_build):
         orchestration_result = await handle_message(orchestrator, receiver=fake_receiver, message=message)
 
     assert orchestration_result.status == "hitl_pending"
@@ -105,7 +108,11 @@ async def test_hitl_e2e_discrepancy_email_approve_inventory_posted(
     notification = await communication_service.handle_hitl_review(review_record)
 
     publisher = FakeDecisionPublisher()
-    app = create_app(review_store=review_store, decision_publisher=publisher)
+    app = create_app(
+        config=HITLWebformConfig(allow_local_email_bearer=True),
+        review_store=review_store,
+        decision_publisher=publisher,
+    )
     with TestClient(app) as client:
         response = client.post(
             f"/review/{orchestration_result.processing_id}/decide",
@@ -129,7 +136,7 @@ async def test_hitl_e2e_discrepancy_email_approve_inventory_posted(
     assert posted_payloads[0]["decision"]["decision"] == "approve"
     assert callback_result["status"] == "completed"
     assert callback_result["inventory_result"]["receipt_number"] == "RCPT-2026-2001"
-    assert workflows["albaran-validation"].payloads
+    assert workflows["validator"].payloads
 
 
 @pytest.mark.asyncio
@@ -146,17 +153,17 @@ async def test_hitl_e2e_discrepancy_email_rejects_albaran(
 
     workflows, fake_build = workflow_factory(
         {
-            "albaran-triage": [sample_triage_result().model_dump(mode="json")],
-            "albaran-extraction": sample_extraction().model_dump(mode="json"),
-            "albaran-coherence": sample_coherence_result().model_dump(mode="json"),
-            "albaran-validation": sample_validation(overall_match_pct=0.86, recommendation="hitl_review").model_dump(
+            "triage": [sample_triage_result().model_dump(mode="json")],
+            "extractor": sample_extraction().model_dump(mode="json"),
+            "coherence": sample_coherence_result().model_dump(mode="json"),
+            "validator": sample_validation(overall_match_pct=0.86, recommendation="hitl_review").model_dump(
                 mode="json"
             ),
         }
     )
     orchestrator, _service_bus_client = orchestrator_factory()
 
-    with patch("src.agents.pipeline.build_sequential_workflow", side_effect=fake_build):
+    with patch("src.agents.pipeline.SequentialBuilder", side_effect=fake_build):
         orchestration_result = await handle_message(
             orchestrator,
             receiver=fake_receiver,
@@ -180,10 +187,16 @@ async def test_hitl_e2e_discrepancy_email_rejects_albaran(
         records_container=review_store,
         now_provider=lambda: datetime(2026, 5, 4, 9, 0, tzinfo=UTC),
     )
-    await communication_service.handle_hitl_review(await review_store.get_review_record(orchestration_result.processing_id) or {})
+    await communication_service.handle_hitl_review(
+        await review_store.get_review_record(orchestration_result.processing_id) or {}
+    )
 
     publisher = FakeDecisionPublisher()
-    app = create_app(review_store=review_store, decision_publisher=publisher)
+    app = create_app(
+        config=HITLWebformConfig(allow_local_email_bearer=True),
+        review_store=review_store,
+        decision_publisher=publisher,
+    )
     with TestClient(app) as client:
         response = client.post(
             f"/review/{orchestration_result.processing_id}/decide",
@@ -201,7 +214,7 @@ async def test_hitl_e2e_discrepancy_email_rejects_albaran(
     assert callback_result["status"] == "rejected"
     assert callback_result["routing_decision"] == "reject"
     assert callback_result["inventory_result"] is None
-    assert workflows["albaran-validation"].payloads
+    assert workflows["validator"].payloads
 
 
 @pytest.mark.asyncio

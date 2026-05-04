@@ -2,35 +2,19 @@ from __future__ import annotations
 
 import json
 from typing import Any
-from unittest.mock import patch
 
 import pytest
 
-from src.agents.triage_agent import _build_triage_instructions, create_triage_agent
-from src.config.agents import AgentsConfig
+from src.agents.prompts import build_triage_instructions
 from src.models import DocumentType, TriageResult
 from tests.fixtures.sample_albarans import sample_triage_result
-from tests.unit.agent_test_helpers import StructuredAgentStub, build_structured_agent_stub
+from tests.unit.agent_test_helpers import StructuredAgentStub
 
 pytestmark = pytest.mark.unit
 
 
-@patch("src.agents.triage_agent.create_structured_agent", side_effect=build_structured_agent_stub)
-def test_create_triage_agent_uses_expected_model_and_prompt(mock_factory: Any) -> None:
-    agent = create_triage_agent(client=object())
-
-    assert isinstance(agent, StructuredAgentStub)
-    kwargs = mock_factory.call_args.kwargs
-    assert kwargs["name"] == "a2-triage"
-    assert kwargs["model"] == "gpt-5-mini"
-    assert kwargs["structured_output"] is TriageResult
-    assert kwargs["handoffs"] == ["a1-extractor", "user"]
-    assert "document triage specialist" in kwargs["instructions"]
-    assert '"routing_decision"' in kwargs["instructions"]
-
-
 def test_build_triage_instructions_embeds_json_schema() -> None:
-    instructions = _build_triage_instructions()
+    instructions = build_triage_instructions()
 
     assert "Respond with a JSON object matching this schema" in instructions
     assert '"document_type"' in instructions
@@ -41,11 +25,7 @@ def test_build_triage_instructions_embeds_json_schema() -> None:
 @pytest.mark.parametrize(
     ("payload", "expected_language", "expected_routing"),
     [
-        (
-            sample_triage_result(language="es", confidence=0.93).model_dump(mode="json"),
-            "es",
-            "extract",
-        ),
+        (sample_triage_result(language="es", confidence=0.93).model_dump(mode="json"), "es", "extract"),
         (
             sample_triage_result(language="it", supplier_id="FANSA", confidence=0.89).model_dump(mode="json"),
             "it",
@@ -58,10 +38,10 @@ def test_build_triage_instructions_embeds_json_schema() -> None:
         ),
     ],
 )
-def test_triage_agent_decodes_supported_languages(
+def test_triage_prompt_output_decodes_supported_languages(
     payload: dict[str, Any], expected_language: str, expected_routing: str
 ) -> None:
-    agent = StructuredAgentStub(structured_output=TriageResult, kwargs={})
+    agent = StructuredAgentStub(response_format=TriageResult, kwargs={})
 
     decoded = agent.decode(json.dumps(payload))
 
@@ -78,10 +58,10 @@ def test_triage_agent_decodes_supported_languages(
         (DocumentType.ALBARAN, 0.41, "manual_review"),
     ],
 )
-def test_triage_agent_handles_routing_decisions(
+def test_triage_prompt_handles_routing_decisions(
     document_type: DocumentType, confidence: float, routing_decision: str
 ) -> None:
-    agent = StructuredAgentStub(structured_output=TriageResult, kwargs={})
+    agent = StructuredAgentStub(response_format=TriageResult, kwargs={})
     payload = sample_triage_result(
         document_type=document_type,
         confidence=confidence,
@@ -95,12 +75,3 @@ def test_triage_agent_handles_routing_decisions(
     assert decoded.document_type is document_type
     assert decoded.confidence == pytest.approx(confidence)
     assert decoded.routing_decision == routing_decision
-
-
-@patch("src.agents.triage_agent.create_structured_agent", side_effect=build_structured_agent_stub)
-def test_triage_agent_respects_custom_model_config(mock_factory: Any) -> None:
-    config = AgentsConfig.model_validate({"models": {"gpt5_mini_deployment": "triage-local"}})
-
-    create_triage_agent(client=object(), config=config)
-
-    assert mock_factory.call_args.kwargs["model"] == "triage-local"

@@ -1,22 +1,59 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import Any
 
 from pydantic import BaseModel
 
 
 class StructuredAgentStub:
-    def __init__(self, *, structured_output: type[BaseModel], kwargs: dict[str, Any]) -> None:
-        self.structured_output = structured_output
+    def __init__(self, *, response_format: type[BaseModel], kwargs: dict[str, Any]) -> None:
+        self.response_format = response_format
         self.kwargs = kwargs
 
     def decode(self, payload: str | dict[str, Any] | BaseModel) -> BaseModel:
-        if isinstance(payload, self.structured_output):
+        if isinstance(payload, self.response_format):
             return payload
         if isinstance(payload, str):
-            return self.structured_output.model_validate_json(payload)
-        return self.structured_output.model_validate(payload)
+            return self.response_format.model_validate_json(payload)
+        return self.response_format.model_validate(payload)
+
+
+class WorkflowResult:
+    def __init__(self, text: str) -> None:
+        self.text = text
+
+
+class FakeEvent:
+    def __init__(self, data: Any) -> None:
+        self.data = data
+
+
+class FakeAsyncStream:
+    def __init__(self, events: list[Any]) -> None:
+        self._events = iter(events)
+
+    def __aiter__(self) -> AsyncIterator[Any]:
+        return self
+
+    async def __anext__(self) -> Any:
+        try:
+            return next(self._events)
+        except StopIteration as exc:
+            raise StopAsyncIteration from exc
+
+
+class FakeWorkflow:
+    def __init__(self, response: Any) -> None:
+        self.response = response
+        self.payloads: list[Any] = []
+
+    def run(self, payload: Any) -> Any:
+        self.payloads.append(payload)
+        if isinstance(self.response, Exception):
+            raise self.response
+        return self.response
 
 
 def build_structured_agent_stub(**kwargs: Any) -> StructuredAgentStub:
-    return StructuredAgentStub(structured_output=kwargs["structured_output"], kwargs=dict(kwargs))
+    return StructuredAgentStub(response_format=kwargs["response_format"], kwargs=dict(kwargs))

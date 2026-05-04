@@ -1,8 +1,22 @@
 from __future__ import annotations
 
-from src.agents import PipelineDocumentInput, build_pipeline
+from types import SimpleNamespace
+from typing import Any
+from unittest.mock import patch
+
+from src.agents import AlbaranPipeline
 from src.config import AgentsConfig
-from src.models import DocumentType, TriageResult
+
+
+def _named_agents() -> dict[str, Any]:
+    return {
+        "triage": SimpleNamespace(name="triage"),
+        "extractor": SimpleNamespace(name="extractor"),
+        "coherence": SimpleNamespace(name="coherence"),
+        "validator": SimpleNamespace(name="validator"),
+        "inventory": SimpleNamespace(name="inventory"),
+        "communication": SimpleNamespace(name="communication"),
+    }
 
 
 def test_agents_config_defaults() -> None:
@@ -19,23 +33,26 @@ def test_agents_config_defaults() -> None:
 
 
 def test_pipeline_builds_with_default_agents() -> None:
-    pipeline = build_pipeline(config=AgentsConfig(), credential=object(), project_endpoint="https://foundry.example")
-    workflow = pipeline.build_workflow(PipelineDocumentInput(document_reference="https://storage/doc.pdf"))
+    with (
+        patch("src.agents.pipeline.create_clients", return_value=("gpt5", "gpt5-mini")),
+        patch("src.agents.pipeline.create_agents", return_value=_named_agents()),
+        patch("src.agents.pipeline.SequentialBuilder") as mock_builder,
+    ):
+        workflow = object()
+        mock_builder.return_value.build.return_value = workflow
+        pipeline = AlbaranPipeline(
+            config=AgentsConfig(), credential=object(), project_endpoint="https://foundry.example"
+        )
+        built = pipeline.build_workflow()
 
     assert set(pipeline.agents) == {"triage", "extractor", "coherence", "validator", "inventory", "communication"}
     assert pipeline.communication_agent is pipeline.agents["communication"]
-    assert workflow is not None
-
-
-def test_triage_result_model_round_trip() -> None:
-    payload = TriageResult(
-        document_type=DocumentType.ALBARAN,
-        confidence=0.91,
-        routing_decision="extract",
-        reasoning="Contains delivery note language and supplier header.",
-    )
-
-    restored = TriageResult.model_validate_json(payload.model_dump_json())
-
-    assert restored.document_type is DocumentType.ALBARAN
-    assert restored.routing_decision == "extract"
+    assert built is workflow
+    participants = mock_builder.call_args.kwargs["participants"]
+    assert [participant.name for participant in participants] == [
+        "triage",
+        "extractor",
+        "coherence",
+        "validator",
+        "inventory",
+    ]

@@ -1,141 +1,100 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
-from unittest.mock import call, patch
+from unittest.mock import patch
 
 import pytest
 
-from src.agents.factory import create_all_agents
-from src.config.agents import AgentsConfig
+from src.agents.factory import create_agents, create_clients
+from src.models.albaran import AlbaranExtraction, CoherenceCheckResult, TriageResult
+from src.models.inventory import PostingResult
+from src.models.validation import ValidationResult
+from tests.unit.agent_test_helpers import StructuredAgentStub, build_structured_agent_stub
 
 pytestmark = pytest.mark.unit
 
 
-def test_create_all_agents_returns_expected_keys() -> None:
-    agents = create_all_agents(config=AgentsConfig(), credential=object(), project_endpoint="https://foundry.example")
+class DummyFoundryChatClient:
+    def __init__(self, *, project_endpoint: str, model: str, credential: Any) -> None:
+        self.project_endpoint = project_endpoint
+        self.model = model
+        self.credential = credential
+
+
+class NamedTool:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+def test_create_clients_uses_foundry_models_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GPT5_DEPLOYMENT", "gpt-5-test")
+    monkeypatch.setenv("GPT5_MINI_DEPLOYMENT", "gpt-5-mini-test")
+
+    with patch("src.agents.factory._load_foundry_chat_client", return_value=DummyFoundryChatClient):
+        gpt5, gpt5_mini = create_clients("https://foundry.example", credential="credential")
+
+    assert gpt5.model == "gpt-5-test"
+    assert gpt5_mini.model == "gpt-5-mini-test"
+    assert gpt5.project_endpoint == "https://foundry.example"
+    assert gpt5_mini.credential == "credential"
+
+
+@patch("src.agents.factory.Agent", side_effect=build_structured_agent_stub)
+def test_create_agents_returns_expected_keys_and_models(mock_agent: Any) -> None:
+    tool_registry = {
+        "extractor": [NamedTool("content_understanding.analyze_document")],
+        "coherence": [NamedTool("bc.search_purchase_orders")],
+        "validator": [NamedTool("bc.get_purchase_order_lines")],
+        "inventory": [NamedTool("bc.post_purchase_receipt_lines")],
+        "communication": [NamedTool("acs.send_hitl_notification")],
+    }
+
+    agents = create_agents("gpt5-client", "gpt5-mini-client", mcp_tools=tool_registry)
 
     assert set(agents) == {"triage", "extractor", "coherence", "validator", "inventory", "communication"}
+    assert mock_agent.call_count == 6
+
+    triage = agents["triage"]
+    extractor = agents["extractor"]
+    coherence = agents["coherence"]
+    validator = agents["validator"]
+    inventory = agents["inventory"]
+    communication = agents["communication"]
+
+    assert isinstance(triage, StructuredAgentStub)
+    assert triage.kwargs["chat_client"] == "gpt5-mini-client"
+    assert triage.kwargs["response_format"] is TriageResult
+    assert "document triage specialist" in triage.kwargs["instructions"]
+
+    assert extractor.kwargs["chat_client"] == "gpt5-client"
+    assert extractor.kwargs["response_format"] is AlbaranExtraction
+    assert extractor.kwargs["tools"] == tool_registry["extractor"]
+
+    assert coherence.kwargs["chat_client"] == "gpt5-mini-client"
+    assert coherence.kwargs["response_format"] is CoherenceCheckResult
+    assert "bc.search_purchase_orders" in coherence.kwargs["instructions"]
+
+    assert validator.kwargs["response_format"] is ValidationResult
+    assert validator.kwargs["tools"] == tool_registry["validator"]
+
+    assert inventory.kwargs["response_format"] is PostingResult
+    assert inventory.kwargs["tools"] == tool_registry["inventory"]
+
+    assert communication.kwargs["tools"] == tool_registry["communication"]
+    assert "español" in communication.kwargs["instructions"]
 
 
-@patch("src.agents.factory.create_foundry_client", side_effect=["gpt5-client", "gpt5-mini-client"])
-@patch("src.agents.factory.create_communication_agent", return_value="communication-agent")
-@patch("src.agents.factory.create_inventory_agent", return_value="inventory-agent")
-@patch("src.agents.factory.create_validator_agent", return_value="validator-agent")
-@patch("src.agents.factory.create_coherence_agent", return_value="coherence-agent")
-@patch("src.agents.factory.create_extractor_agent", return_value="extractor-agent")
-@patch("src.agents.factory.create_triage_agent", return_value="triage-agent")
-def test_create_all_agents_passes_tool_registry_to_each_agent(
-    mock_triage: Any,
-    mock_extractor: Any,
-    mock_coherence: Any,
-    mock_validator: Any,
-    mock_inventory: Any,
-    mock_communication: Any,
-    mock_create_foundry_client: Any,
-) -> None:
-    config = AgentsConfig()
-    tool_registry = {
-        "triage": ["triage-tool"],
-        "extractor": ["extractor-tool"],
-        "coherence": ["coherence-tool"],
-        "validator": ["validator-tool"],
-        "inventory": ["inventory-tool"],
-        "communication": ["communication-tool"],
-    }
+def test_create_agents_omits_optional_tool_lists_when_not_provided() -> None:
+    captured_calls: list[dict[str, Any]] = []
 
-    agents = create_all_agents(
-        config=config,
-        credential="credential",
-        project_endpoint="https://foundry.example",
-        tool_registry=tool_registry,
-    )
+    def fake_agent(**kwargs: Any) -> dict[str, Any]:
+        captured_calls.append(kwargs)
+        return kwargs
 
-    assert agents == {
-        "triage": "triage-agent",
-        "extractor": "extractor-agent",
-        "coherence": "coherence-agent",
-        "validator": "validator-agent",
-        "inventory": "inventory-agent",
-        "communication": "communication-agent",
-    }
-    mock_create_foundry_client.assert_has_calls(
-        [
-            call(
-                project_endpoint="https://foundry.example",
-                model=config.models.gpt5_deployment,
-                credential="credential",
-            ),
-            call(
-                project_endpoint="https://foundry.example",
-                model=config.models.gpt5_mini_deployment,
-                credential="credential",
-            ),
-        ]
-    )
-    mock_triage.assert_called_once_with("gpt5-mini-client", config, tools=["triage-tool"])
-    mock_extractor.assert_called_once_with("gpt5-client", config, tools=["extractor-tool"])
-    mock_coherence.assert_called_once_with("gpt5-mini-client", config, tools=["coherence-tool"])
-    mock_validator.assert_called_once_with("gpt5-mini-client", config, tools=["validator-tool"])
-    mock_inventory.assert_called_once_with("gpt5-mini-client", config, tools=["inventory-tool"])
-    mock_communication.assert_called_once_with("gpt5-mini-client", config, tools=["communication-tool"])
+    with patch("src.agents.factory.Agent", side_effect=fake_agent):
+        agents = create_agents("gpt5-client", "gpt5-mini-client")
 
-
-@patch("src.agents.factory.create_foundry_client", side_effect=["extractor-client", "shared-mini-client"])
-@patch("src.agents.factory.create_communication_agent", return_value="communication-local-agent")
-@patch("src.agents.factory.create_inventory_agent", return_value="inventory-local-agent")
-@patch("src.agents.factory.create_validator_agent", return_value="validator-local-agent")
-@patch("src.agents.factory.create_coherence_agent", return_value="coherence-local-agent")
-@patch("src.agents.factory.create_extractor_agent", return_value="extractor-local-agent")
-@patch("src.agents.factory.create_triage_agent", return_value="triage-local-agent")
-def test_create_all_agents_respects_custom_config_overrides(
-    mock_triage: Any,
-    mock_extractor: Any,
-    mock_coherence: Any,
-    mock_validator: Any,
-    mock_inventory: Any,
-    mock_communication: Any,
-    mock_create_foundry_client: Any,
-) -> None:
-    custom_config = AgentsConfig.model_validate(
-        {
-            "models": {
-                "gpt5_deployment": "extractor-local",
-                "gpt5_mini_deployment": "shared-mini-local",
-            }
-        }
-    )
-
-    agents = create_all_agents(
-        config=custom_config,
-        credential="credential",
-        project_endpoint="https://foundry.example",
-    )
-
-    assert agents == {
-        "triage": "triage-local-agent",
-        "extractor": "extractor-local-agent",
-        "coherence": "coherence-local-agent",
-        "validator": "validator-local-agent",
-        "inventory": "inventory-local-agent",
-        "communication": "communication-local-agent",
-    }
-    mock_create_foundry_client.assert_has_calls(
-        [
-            call(
-                project_endpoint="https://foundry.example",
-                model="extractor-local",
-                credential="credential",
-            ),
-            call(
-                project_endpoint="https://foundry.example",
-                model="shared-mini-local",
-                credential="credential",
-            ),
-        ]
-    )
-    assert mock_triage.call_args.args[1].models.gpt5_mini_deployment == "shared-mini-local"
-    assert mock_extractor.call_args.args[1].models.gpt5_deployment == "extractor-local"
-    assert mock_coherence.call_args.args[1].models.gpt5_mini_deployment == "shared-mini-local"
-    assert mock_validator.call_args.args[1].models.gpt5_mini_deployment == "shared-mini-local"
-    assert mock_inventory.call_args.args[1].models.gpt5_mini_deployment == "shared-mini-local"
-    assert mock_communication.call_args.args[1].models.gpt5_mini_deployment == "shared-mini-local"
+    assert set(agents) == {"triage", "extractor", "coherence", "validator", "inventory", "communication"}
+    tool_payloads = [call.get("tools") for call in captured_calls if "tools" in call]
+    assert all(isinstance(payload, Sequence) for payload in tool_payloads)
