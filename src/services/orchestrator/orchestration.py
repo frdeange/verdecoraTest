@@ -8,7 +8,6 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
-from src.agents._maf_compat import create_foundry_client
 from src.agents.pipeline import AlbaranPipeline, PipelineDocumentInput
 from src.config.agents import get_agents_config
 
@@ -136,37 +135,16 @@ class OrchestratorService:
         if agent_client is not None:
             gpt5_client = gpt5_client or agent_client
             gpt5_mini_client = gpt5_mini_client or agent_client
-        self.gpt5_client, self.gpt5_mini_client = self._build_agent_clients(
-            gpt5_client=gpt5_client,
-            gpt5_mini_client=gpt5_mini_client,
-        )
-        self.agent_client = self.gpt5_client
         self.pipeline = AlbaranPipeline(
             config=get_agents_config(),
             project_endpoint=self.config.azure_ai_project_endpoint,
             credential=self.dependencies.get_credential(),
-            gpt5_client=self.gpt5_client,
-            gpt5_mini_client=self.gpt5_mini_client,
+            gpt5_client=gpt5_client,
+            gpt5_mini_client=gpt5_mini_client,
         )
-
-    def _build_agent_clients(
-        self,
-        *,
-        gpt5_client: Any | None = None,
-        gpt5_mini_client: Any | None = None,
-    ) -> tuple[Any, Any]:
-        credential = self.dependencies.get_credential()
-        resolved_gpt5_client = gpt5_client or create_foundry_client(
-            project_endpoint=self.config.azure_ai_project_endpoint,
-            model=self.config.gpt5_deployment,
-            credential=credential,
-        )
-        resolved_gpt5_mini_client = gpt5_mini_client or create_foundry_client(
-            project_endpoint=self.config.azure_ai_project_endpoint,
-            model=self.config.gpt5_mini_deployment,
-            credential=credential,
-        )
-        return resolved_gpt5_client, resolved_gpt5_mini_client
+        self.gpt5_client = self.pipeline.gpt5_client
+        self.gpt5_mini_client = self.pipeline.gpt5_mini_client
+        self.agent_client = self.gpt5_client
 
     async def close(self) -> None:
         closed_clients: set[int] = set()

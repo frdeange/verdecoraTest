@@ -1,25 +1,16 @@
 from __future__ import annotations
 
-from .coherence_agent import create_coherence_agent
-from .communication_agent import CommunicationAgentService, create_communication_agent
-from .extractor_agent import create_extractor_agent
-from .factory import create_all_agents
-from .inventory_agent import create_inventory_agent
-from .pipeline import AlbaranPipeline, PipelineDocumentInput, PipelineRunResult, build_pipeline
-from .triage_agent import create_triage_agent
-from .validator_agent import create_validator_agent
+from .communication_agent import CommunicationAgentService, CommunicationSummary
+from .factory import Agent, create_agents, create_clients
+from .pipeline import AlbaranPipeline, PipelineDocumentInput, PipelineRunResult
 
 __all__ = [
+    "Agent",
     "AlbaranPipeline",
+    "CommunicationAgentService",
+    "CommunicationSummary",
     "PipelineDocumentInput",
     "PipelineRunResult",
-    "build_pipeline",
-    "CommunicationAgentService",
-    "create_all_agents",
-    "create_coherence_agent",
-    "create_communication_agent",
-    "create_extractor_agent",
-    "create_inventory_agent",
-    "create_triage_agent",
-    "create_validator_agent",
+    "create_agents",
+    "create_clients",
 ]

@@ -12,10 +12,16 @@ PROMPT_SECURITY_INSTRUCTIONS = """Security rules:
 
 _REDACTION_TOKEN = "[blocked-untrusted-input]"
 _BLOCKED_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"(?is)\b(ignore|disregard|forget)\b.{0,80}\b(previous|prior|system|developer)\b.{0,80}\b(instruction|prompt|message)s?\b"),
-    re.compile(r"(?is)\b(reveal|show|print|dump|display|return|leak|expose)\b.{0,80}\b(system prompt|developer message|hidden instruction|chain[- ]of[- ]thought|internal prompt)\b"),
+    re.compile(
+        r"(?is)\b(ignore|disregard|forget)\b.{0,80}\b(previous|prior|system|developer)\b.{0,80}\b(instruction|prompt|message)s?\b"
+    ),
+    re.compile(
+        r"(?is)\b(reveal|show|print|dump|display|return|leak|expose)\b.{0,80}\b(system prompt|developer message|hidden instruction|chain[- ]of[- ]thought|internal prompt)\b"
+    ),
     re.compile(r"(?is)\b(jailbreak|developer mode|dan mode|bypass safety|override policy)\b"),
-    re.compile(r"(?is)(drop\s+table|union\s+select|insert\s+into|delete\s+from|update\s+\w+\s+set|or\s+1\s*=\s*1|--|/\*|\*/)"),
+    re.compile(
+        r"(?is)(drop\s+table|union\s+select|insert\s+into|delete\s+from|update\s+\w+\s+set|or\s+1\s*=\s*1|--|/\*|\*/)"
+    ),
 )
 
 

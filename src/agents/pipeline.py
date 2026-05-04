@@ -1,26 +1,18 @@
 from __future__ import annotations
 
-import inspect
-from typing import Any, Mapping, TypeVar
+from typing import Any, Mapping
 
-from pydantic import BaseModel, Field
+from agent_framework import SequentialBuilder
+from azure.identity.aio import DefaultAzureCredential
+from pydantic import BaseModel, Field, ValidationError
 
 from src.config.agents import AgentsConfig, get_agents_config
 from src.models.albaran import AlbaranExtraction, CoherenceCheckResult, TriageResult
 from src.models.inventory import PostingResult
 from src.models.validation import ValidationResult
 
-from ._maf_compat import (
-    build_sequential_workflow,
-    coerce_model,
-    create_foundry_client,
-    ensure_workflow_available,
-    event_payload,
-)
-from .factory import ToolRegistry, create_all_agents
+from .factory import ToolRegistry, create_agents, create_clients
 from .security import sanitize_untrusted_payload
-
-T = TypeVar("T", TriageResult, AlbaranExtraction, CoherenceCheckResult, ValidationResult, PostingResult)
 
 
 class PipelineDocumentInput(BaseModel):
@@ -44,46 +36,29 @@ class PipelineRunResult(BaseModel):
 
 
 class AlbaranPipeline:
+    """Sequential pipeline: Triage → Extractor → Coherence → Validator → Inventory."""
+
     def __init__(
         self,
         config: AgentsConfig | None = None,
         *,
         project_endpoint: str | None = None,
-        credential: Any | None = None,
+        credential: DefaultAzureCredential | Any | None = None,
         gpt5_client: Any | None = None,
         gpt5_mini_client: Any | None = None,
-        tool_registry: ToolRegistry | None = None,
+        mcp_tools: ToolRegistry | None = None,
         agents: Mapping[str, Any] | None = None,
     ) -> None:
         self.config = config or get_agents_config()
         self.project_endpoint = project_endpoint or self.config.endpoints.azure_ai_project_endpoint
-        self.credential = credential
+        self.credential = credential or self.config.create_credential()
         self.gpt5_client = gpt5_client
         self.gpt5_mini_client = gpt5_mini_client
 
         if agents is None:
-            resolved_credential = credential or self.config.create_credential()
-            self.credential = resolved_credential
-            self.gpt5_client = gpt5_client or create_foundry_client(
-                project_endpoint=self.project_endpoint,
-                model=self.config.models.gpt5_deployment,
-                credential=resolved_credential,
-            )
-            self.gpt5_mini_client = gpt5_mini_client or create_foundry_client(
-                project_endpoint=self.project_endpoint,
-                model=self.config.models.gpt5_mini_deployment,
-                credential=resolved_credential,
-            )
-            self.agents = dict(
-                create_all_agents(
-                    config=self.config,
-                    project_endpoint=self.project_endpoint,
-                    credential=resolved_credential,
-                    gpt5_client=self.gpt5_client,
-                    gpt5_mini_client=self.gpt5_mini_client,
-                    tool_registry=tool_registry,
-                )
-            )
+            if self.gpt5_client is None or self.gpt5_mini_client is None:
+                self.gpt5_client, self.gpt5_mini_client = create_clients(self.project_endpoint, self.credential)
+            self.agents = create_agents(self.gpt5_client, self.gpt5_mini_client, mcp_tools=mcp_tools)
         else:
             self.agents = dict(agents)
 
@@ -102,28 +77,39 @@ class AlbaranPipeline:
             return False
         return input_data.total_amount < self.config.thresholds.low_value_coherence_threshold
 
-    def build_workflow(self, input_data: PipelineDocumentInput) -> Any:
+    def build_workflow(self, *, skip_triage: bool = False, skip_coherence: bool = False) -> Any:
         participants: list[Any] = []
-        if not self._should_skip_triage(input_data):
+        if not skip_triage:
             participants.append(self.agents["triage"])
         participants.append(self.agents["extractor"])
-        if self._should_skip_coherence(input_data):
-            return build_sequential_workflow(name="albaran-processing", participants=participants)
-        participants.extend([self.agents["coherence"], self.agents["validator"], self.agents["inventory"]])
-        return build_sequential_workflow(name="albaran-processing", participants=participants)
+        if not skip_coherence:
+            participants.extend([self.agents["coherence"], self.agents["validator"], self.agents["inventory"]])
+        return SequentialBuilder(participants=participants).build()
 
-    async def _run_workflow_for_model(self, workflow: Any, payload: Any, model_type: type[T]) -> T | None:
-        ensure_workflow_available(workflow)
-        run_result = workflow.run(payload, stream=True)
+    def _build_stage_workflow(self, stage: str) -> Any:
+        return SequentialBuilder(participants=[self.agents[stage]]).build()
 
-        if hasattr(run_result, "__aiter__"):
-            latest_match: T | None = None
-            async for event in run_result:
-                latest_match = coerce_model(model_type, event_payload(event)) or latest_match
-            return latest_match
+    async def _run_workflow(self, workflow: Any, payload: Any) -> Any:
+        run_result = workflow.run(payload)
+        resolved = await run_result if hasattr(run_result, "__await__") else run_result
+        if hasattr(resolved, "__aiter__"):
+            latest_payload: Any = None
+            async for event in resolved:
+                latest_payload = getattr(event, "data", event)
+            return latest_payload
+        return getattr(resolved, "text", resolved)
 
-        resolved = await run_result if inspect.isawaitable(run_result) else run_result
-        return coerce_model(model_type, resolved)
+    def _coerce_model(self, model_type: type[Any], payload: Any) -> Any:
+        if payload is None:
+            return None
+        if isinstance(payload, model_type):
+            return payload
+        try:
+            if isinstance(payload, str):
+                return model_type.model_validate_json(payload)
+            return model_type.model_validate(payload)
+        except (TypeError, ValueError, ValidationError):
+            return None
 
     def _sanitize_input(self, input_data: PipelineDocumentInput) -> PipelineDocumentInput:
         sanitized_raw_text = sanitize_untrusted_payload(input_data.raw_text)
@@ -164,9 +150,9 @@ class AlbaranPipeline:
         if self._should_skip_triage(normalized_input):
             skipped_steps.append("triage")
         else:
-            triage_workflow = build_sequential_workflow(name="albaran-triage", participants=[self.agents["triage"]])
             triage_payload = normalized_input.raw_text or normalized_input.document_reference
-            triage_result = await self._run_workflow_for_model(triage_workflow, triage_payload, TriageResult)
+            triage_output = await self._run_workflow(self._build_stage_workflow("triage"), triage_payload)
+            triage_result = self._coerce_model(TriageResult, triage_output)
             if triage_result is not None and triage_result.routing_decision != "extract":
                 return PipelineRunResult(
                     triage=triage_result,
@@ -174,15 +160,11 @@ class AlbaranPipeline:
                     skipped_steps=skipped_steps + ["extractor", "coherence", "validation", "inventory"],
                 )
 
-        extraction_workflow = build_sequential_workflow(
-            name="albaran-extraction", participants=[self.agents["extractor"]]
-        )
         extraction_payload = (
             normalized_input.ocr_payload or normalized_input.raw_text or normalized_input.document_reference
         )
-        extraction_result = await self._run_workflow_for_model(
-            extraction_workflow, extraction_payload, AlbaranExtraction
-        )
+        extraction_output = await self._run_workflow(self._build_stage_workflow("extractor"), extraction_payload)
+        extraction_result = self._coerce_model(AlbaranExtraction, extraction_output)
 
         if self._should_skip_coherence(normalized_input):
             skipped_steps.extend(["coherence", "validation", "inventory"])
@@ -193,26 +175,18 @@ class AlbaranPipeline:
                 skipped_steps=skipped_steps,
             )
 
-        coherence_workflow = build_sequential_workflow(
-            name="albaran-coherence", participants=[self.agents["coherence"]]
-        )
         coherence_payload: Any = (
             extraction_result.model_dump(mode="json") if extraction_result is not None else extraction_payload
         )
-        coherence_result = await self._run_workflow_for_model(
-            coherence_workflow, coherence_payload, CoherenceCheckResult
-        )
+        coherence_output = await self._run_workflow(self._build_stage_workflow("coherence"), coherence_payload)
+        coherence_result = self._coerce_model(CoherenceCheckResult, coherence_output)
 
-        validation_workflow = build_sequential_workflow(
-            name="albaran-validation", participants=[self.agents["validator"]]
-        )
         validation_payload = {
             "extraction": extraction_result.model_dump(mode="json") if extraction_result is not None else None,
             "coherence": coherence_result.model_dump(mode="json") if coherence_result is not None else None,
         }
-        validation_result = await self._run_workflow_for_model(
-            validation_workflow, validation_payload, ValidationResult
-        )
+        validation_output = await self._run_workflow(self._build_stage_workflow("validator"), validation_payload)
+        validation_result = self._coerce_model(ValidationResult, validation_output)
 
         if validation_result is None or validation_result.recommendation != "approve":
             skipped_steps.append("inventory")
@@ -226,14 +200,12 @@ class AlbaranPipeline:
                 skipped_steps=skipped_steps,
             )
 
-        inventory_workflow = build_sequential_workflow(
-            name="albaran-inventory", participants=[self.agents["inventory"]]
-        )
         inventory_payload = {
             "validation": validation_result.model_dump(mode="json"),
             "extraction": extraction_result.model_dump(mode="json") if extraction_result is not None else None,
         }
-        inventory_result = await self._run_workflow_for_model(inventory_workflow, inventory_payload, PostingResult)
+        inventory_output = await self._run_workflow(self._build_stage_workflow("inventory"), inventory_payload)
+        inventory_result = self._coerce_model(PostingResult, inventory_output)
         routing_decision = "posted" if inventory_result is not None and inventory_result.success else "hitl_review"
         return PipelineRunResult(
             triage=triage_result,
@@ -246,22 +218,4 @@ class AlbaranPipeline:
         )
 
 
-def build_pipeline(
-    config: AgentsConfig | None = None,
-    *,
-    project_endpoint: str | None = None,
-    credential: Any | None = None,
-    gpt5_client: Any | None = None,
-    gpt5_mini_client: Any | None = None,
-    tool_registry: ToolRegistry | None = None,
-    agents: Mapping[str, Any] | None = None,
-) -> AlbaranPipeline:
-    return AlbaranPipeline(
-        config=config,
-        project_endpoint=project_endpoint,
-        credential=credential,
-        gpt5_client=gpt5_client,
-        gpt5_mini_client=gpt5_mini_client,
-        tool_registry=tool_registry,
-        agents=agents,
-    )
+__all__ = ["AlbaranPipeline", "PipelineDocumentInput", "PipelineRunResult"]

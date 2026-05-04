@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator, Callable
+from collections.abc import Callable
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -11,38 +12,9 @@ from src.agents.pipeline import AlbaranPipeline
 from src.services.flow0_dedup.dedup_handler import Flow0DedupHandler
 from src.services.orchestrator.config import OrchestratorConfig
 from src.services.orchestrator.orchestration import OrchestratorService
+from tests.unit.agent_test_helpers import FakeAsyncStream, FakeEvent, FakeWorkflow
 
 pytestmark = pytest.mark.e2e
-
-
-class FakeEvent:
-    def __init__(self, data: Any) -> None:
-        self.data = data
-
-
-class FakeAsyncStream:
-    def __init__(self, events: list[Any]) -> None:
-        self._events = iter(events)
-
-    def __aiter__(self) -> AsyncIterator[Any]:
-        return self
-
-    async def __anext__(self) -> Any:
-        try:
-            return next(self._events)
-        except StopIteration as exc:
-            raise StopAsyncIteration from exc
-
-
-class FakeWorkflow:
-    def __init__(self, response: Any) -> None:
-        self.response = response
-        self.payloads: list[Any] = []
-
-    def run(self, payload: Any, *, stream: bool) -> Any:
-        assert stream is True
-        self.payloads.append(payload)
-        return self.response
 
 
 class SharedCosmosStore:
@@ -153,6 +125,11 @@ class FakeReceiver:
         )
 
 
+class FakeWorkflowResult:
+    def __init__(self, payload: Any) -> None:
+        self.payload = payload
+
+
 def _to_workflow_response(response: Any) -> Any:
     if isinstance(response, list):
         return FakeAsyncStream([FakeEvent(item) for item in response])
@@ -236,15 +213,15 @@ def fake_receiver() -> FakeReceiver:
 
 
 @pytest.fixture()
-def workflow_factory() -> Callable[[dict[str, Any]], tuple[dict[str, FakeWorkflow], Callable[..., FakeWorkflow]]]:
-    def _build(responses: dict[str, Any]) -> tuple[dict[str, FakeWorkflow], Callable[..., FakeWorkflow]]:
+def workflow_factory() -> Callable[[dict[str, Any]], tuple[dict[str, FakeWorkflow], Callable[..., Any]]]:
+    def _build(responses: dict[str, Any]) -> tuple[dict[str, FakeWorkflow], Callable[..., Any]]:
         workflows = {name: FakeWorkflow(_to_workflow_response(response)) for name, response in responses.items()}
 
-        def fake_build_sequential_workflow(*, name: str, participants: list[Any]) -> FakeWorkflow:
-            assert participants
-            return workflows[name]
+        def fake_builder(*, participants: list[Any]) -> Any:
+            key = ">".join(getattr(participant, "name", str(participant)).casefold() for participant in participants)
+            return SimpleNamespace(build=lambda: workflows[key])
 
-        return workflows, fake_build_sequential_workflow
+        return workflows, fake_builder
 
     return _build
 
@@ -260,12 +237,13 @@ def orchestrator_factory(
         service.dependencies = FakeDependencies(cosmos_store, service_bus_client)
         service.pipeline = AlbaranPipeline(
             agents={
-                "triage": object(),
-                "extractor": object(),
-                "coherence": object(),
-                "validator": object(),
-                "inventory": object(),
-            },
+                "triage": SimpleNamespace(name="triage"),
+                "extractor": SimpleNamespace(name="extractor"),
+                "coherence": SimpleNamespace(name="coherence"),
+                "validator": SimpleNamespace(name="validator"),
+                "inventory": SimpleNamespace(name="inventory"),
+                "communication": SimpleNamespace(name="communication"),
+            }
         )
         service.download_blob = AsyncMock(return_value=b"%PDF-1.7 mocked pdf bytes")
         service.analyze_document = AsyncMock(return_value=ocr_payload)

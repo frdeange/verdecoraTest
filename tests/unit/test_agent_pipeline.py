@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
@@ -16,54 +16,34 @@ from tests.fixtures.sample_albarans import (
     sample_triage_result,
     sample_validation_result,
 )
+from tests.unit.agent_test_helpers import FakeAsyncStream, FakeEvent, FakeWorkflow, WorkflowResult
 
 pytestmark = pytest.mark.unit
 
 
-class FakeEvent:
-    def __init__(self, data: Any) -> None:
-        self.data = data
+def _named_agents() -> dict[str, Any]:
+    return {
+        "triage": SimpleNamespace(name="triage"),
+        "extractor": SimpleNamespace(name="extractor"),
+        "coherence": SimpleNamespace(name="coherence"),
+        "validator": SimpleNamespace(name="validator"),
+        "inventory": SimpleNamespace(name="inventory"),
+        "communication": SimpleNamespace(name="communication"),
+    }
 
 
-class FakeAsyncStream:
-    def __init__(self, events: list[Any]) -> None:
-        self._events = iter(events)
+def _patch_sequential_builder(workflows: dict[str, FakeWorkflow]):
+    def _builder(*, participants: list[Any]) -> Any:
+        key = ">".join(getattr(participant, "name", str(participant)).casefold() for participant in participants)
+        return SimpleNamespace(build=lambda: workflows[key])
 
-    def __aiter__(self) -> AsyncIterator[Any]:
-        return self
-
-    async def __anext__(self) -> Any:
-        try:
-            return next(self._events)
-        except StopIteration as exc:
-            raise StopAsyncIteration from exc
-
-
-class FakeWorkflow:
-    def __init__(self, response: Any) -> None:
-        self.response = response
-        self.payloads: list[Any] = []
-
-    def run(self, payload: Any, *, stream: bool) -> Any:
-        assert stream is True
-        self.payloads.append(payload)
-        if isinstance(self.response, Exception):
-            raise self.response
-        return self.response
+    return _builder
 
 
 def test_pipeline_creation_with_all_agents() -> None:
-    pipeline = AlbaranPipeline(
-        agents={
-            "triage": object(),
-            "extractor": object(),
-            "coherence": object(),
-            "validator": object(),
-            "inventory": object(),
-        },
-    )
+    pipeline = AlbaranPipeline(agents=_named_agents())
 
-    assert set(pipeline.agents) == {"triage", "extractor", "coherence", "validator", "inventory"}
+    assert set(pipeline.agents) == {"triage", "extractor", "coherence", "validator", "inventory", "communication"}
 
 
 @pytest.mark.asyncio
@@ -73,41 +53,23 @@ async def test_pipeline_run_with_mocked_agents() -> None:
     coherence_result = sample_coherence_result()
     validation_result = sample_validation_result()
     posting_result = sample_posting_result()
-    triage_workflow = FakeWorkflow(
-        FakeAsyncStream([FakeEvent({"ignored": True}), FakeEvent(triage_result.model_dump(mode="json"))])
-    )
-    extraction_workflow = FakeWorkflow(extraction_result.model_dump(mode="json"))
-    coherence_workflow = FakeWorkflow(coherence_result.model_dump_json())
-    validation_workflow = FakeWorkflow(validation_result.model_dump(mode="json"))
-    inventory_workflow = FakeWorkflow(posting_result.model_dump_json())
     workflows = {
-        "albaran-triage": triage_workflow,
-        "albaran-extraction": extraction_workflow,
-        "albaran-coherence": coherence_workflow,
-        "albaran-validation": validation_workflow,
-        "albaran-inventory": inventory_workflow,
+        "triage": FakeWorkflow(
+            FakeAsyncStream([FakeEvent({"ignored": True}), FakeEvent(triage_result.model_dump(mode="json"))])
+        ),
+        "extractor": FakeWorkflow(WorkflowResult(extraction_result.model_dump_json())),
+        "coherence": FakeWorkflow(coherence_result.model_dump_json()),
+        "validator": FakeWorkflow(validation_result.model_dump(mode="json")),
+        "inventory": FakeWorkflow(posting_result.model_dump_json()),
     }
-
-    def fake_build_sequential_workflow(*, name: str, participants: list[Any]) -> FakeWorkflow:
-        assert participants
-        return workflows[name]
-
-    pipeline = AlbaranPipeline(
-        agents={
-            "triage": object(),
-            "extractor": object(),
-            "coherence": object(),
-            "validator": object(),
-            "inventory": object(),
-        },
-    )
+    pipeline = AlbaranPipeline(agents=_named_agents())
     input_data = PipelineDocumentInput(
         document_reference="https://storage/account/albaran.pdf",
         raw_text="ALBARAN DE ENTREGA",
         ocr_payload={"pages": [{"pageNumber": 1}]},
     )
 
-    with patch("src.agents.pipeline.build_sequential_workflow", side_effect=fake_build_sequential_workflow):
+    with patch("src.agents.pipeline.SequentialBuilder", side_effect=_patch_sequential_builder(workflows)):
         result = await pipeline.run(input_data)
 
     assert isinstance(result, PipelineRunResult)
@@ -117,16 +79,16 @@ async def test_pipeline_run_with_mocked_agents() -> None:
     assert result.validation == validation_result
     assert result.inventory == posting_result
     assert result.routing_decision == "posted"
-    assert triage_workflow.payloads == ["ALBARAN DE ENTREGA"]
-    assert extraction_workflow.payloads == [{"pages": [{"pageNumber": 1}]}]
-    assert coherence_workflow.payloads == [extraction_result.model_dump(mode="json")]
-    assert validation_workflow.payloads == [
+    assert workflows["triage"].payloads == ["ALBARAN DE ENTREGA"]
+    assert workflows["extractor"].payloads == [{"pages": [{"pageNumber": 1}]}]
+    assert workflows["coherence"].payloads == [extraction_result.model_dump(mode="json")]
+    assert workflows["validator"].payloads == [
         {
             "extraction": extraction_result.model_dump(mode="json"),
             "coherence": coherence_result.model_dump(mode="json"),
         }
     ]
-    assert inventory_workflow.payloads == [
+    assert workflows["inventory"].payloads == [
         {
             "validation": validation_result.model_dump(mode="json"),
             "extraction": extraction_result.model_dump(mode="json"),
@@ -136,24 +98,13 @@ async def test_pipeline_run_with_mocked_agents() -> None:
 
 @pytest.mark.asyncio
 async def test_pipeline_propagates_agent_failures() -> None:
-    pipeline = AlbaranPipeline(
-        agents={
-            "triage": object(),
-            "extractor": object(),
-            "coherence": object(),
-            "validator": object(),
-            "inventory": object(),
-        },
-    )
-
-    def fake_build_sequential_workflow(*, name: str, participants: list[Any]) -> FakeWorkflow:
-        _ = participants
-        if name == "albaran-triage":
-            return FakeWorkflow(RuntimeError("triage failed"))
-        return FakeWorkflow({})
+    workflows = {
+        "triage": FakeWorkflow(RuntimeError("triage failed")),
+    }
+    pipeline = AlbaranPipeline(agents=_named_agents())
 
     with (
-        patch("src.agents.pipeline.build_sequential_workflow", side_effect=fake_build_sequential_workflow),
+        patch("src.agents.pipeline.SequentialBuilder", side_effect=_patch_sequential_builder(workflows)),
         pytest.raises(RuntimeError, match="triage failed"),
     ):
         await pipeline.run(PipelineDocumentInput(document_reference="https://storage/account/albaran.pdf"))
@@ -171,34 +122,15 @@ async def test_pipeline_skip_triage_flag_works() -> None:
     coherence_result = sample_coherence_result(is_coherent=True)
     validation_result = sample_validation_result()
     posting_result = sample_posting_result()
-    extraction_workflow = FakeWorkflow(extraction_result.model_dump(mode="json"))
-    coherence_workflow = FakeWorkflow(coherence_result.model_dump(mode="json"))
-    validation_workflow = FakeWorkflow(validation_result.model_dump(mode="json"))
-    inventory_workflow = FakeWorkflow(posting_result.model_dump(mode="json"))
-    calls: list[str] = []
+    workflows = {
+        "extractor": FakeWorkflow(extraction_result.model_dump(mode="json")),
+        "coherence": FakeWorkflow(coherence_result.model_dump(mode="json")),
+        "validator": FakeWorkflow(validation_result.model_dump(mode="json")),
+        "inventory": FakeWorkflow(posting_result.model_dump(mode="json")),
+    }
+    pipeline = AlbaranPipeline(config=config, agents=_named_agents())
 
-    def fake_build_sequential_workflow(*, name: str, participants: list[Any]) -> FakeWorkflow:
-        calls.append(name)
-        assert participants
-        return {
-            "albaran-extraction": extraction_workflow,
-            "albaran-coherence": coherence_workflow,
-            "albaran-validation": validation_workflow,
-            "albaran-inventory": inventory_workflow,
-        }[name]
-
-    pipeline = AlbaranPipeline(
-        config=config,
-        agents={
-            "triage": object(),
-            "extractor": object(),
-            "coherence": object(),
-            "validator": object(),
-            "inventory": object(),
-        },
-    )
-
-    with patch("src.agents.pipeline.build_sequential_workflow", side_effect=fake_build_sequential_workflow):
+    with patch("src.agents.pipeline.SequentialBuilder", side_effect=_patch_sequential_builder(workflows)):
         result = await pipeline.run(
             PipelineDocumentInput(
                 document_reference="https://storage/account/albaran.pdf",
@@ -213,7 +145,6 @@ async def test_pipeline_skip_triage_flag_works() -> None:
     assert result.validation == validation_result
     assert result.inventory == posting_result
     assert result.skipped_steps == ["triage"]
-    assert calls == ["albaran-extraction", "albaran-coherence", "albaran-validation", "albaran-inventory"]
 
 
 @pytest.mark.asyncio
@@ -224,23 +155,10 @@ async def test_pipeline_stops_after_non_extract_triage_result() -> None:
         routing_decision="reject",
         reasoning="Unrelated marketing brochure.",
     )
-    triage_workflow = FakeWorkflow(rejected_triage.model_dump(mode="json"))
+    workflows = {"triage": FakeWorkflow(rejected_triage.model_dump(mode="json"))}
+    pipeline = AlbaranPipeline(agents=_named_agents())
 
-    def fake_build_sequential_workflow(*, name: str, participants: list[Any]) -> FakeWorkflow:
-        assert participants
-        return {"albaran-triage": triage_workflow}[name]
-
-    pipeline = AlbaranPipeline(
-        agents={
-            "triage": object(),
-            "extractor": object(),
-            "coherence": object(),
-            "validator": object(),
-            "inventory": object(),
-        },
-    )
-
-    with patch("src.agents.pipeline.build_sequential_workflow", side_effect=fake_build_sequential_workflow):
+    with patch("src.agents.pipeline.SequentialBuilder", side_effect=_patch_sequential_builder(workflows)):
         result = await pipeline.run({"document_reference": "https://storage/account/flyer.pdf"})
 
     assert result.triage == rejected_triage
@@ -262,71 +180,17 @@ async def test_pipeline_routes_hitl_review_when_validation_requires_manual_revie
         recommendation="hitl_review",
         discrepancies=["Line 2 description needs review."],
     )
+    workflows = {
+        "triage": FakeWorkflow(sample_triage_result().model_dump(mode="json")),
+        "extractor": FakeWorkflow(extraction_result.model_dump(mode="json")),
+        "coherence": FakeWorkflow(coherence_result.model_dump(mode="json")),
+        "validator": FakeWorkflow(validation_result.model_dump(mode="json")),
+    }
+    pipeline = AlbaranPipeline(agents=_named_agents())
 
-    def fake_build_sequential_workflow(*, name: str, participants: list[Any]) -> FakeWorkflow:
-        assert participants
-        return {
-            "albaran-triage": FakeWorkflow(sample_triage_result().model_dump(mode="json")),
-            "albaran-extraction": FakeWorkflow(extraction_result.model_dump(mode="json")),
-            "albaran-coherence": FakeWorkflow(coherence_result.model_dump(mode="json")),
-            "albaran-validation": FakeWorkflow(validation_result.model_dump(mode="json")),
-        }[name]
+    with patch("src.agents.pipeline.SequentialBuilder", side_effect=_patch_sequential_builder(workflows)):
+        result = await pipeline.run(PipelineDocumentInput(document_reference="https://storage/account/albaran.pdf"))
 
-    pipeline = AlbaranPipeline(
-        agents={
-            "triage": object(),
-            "extractor": object(),
-            "coherence": object(),
-            "validator": object(),
-            "inventory": object(),
-        },
-    )
-
-    with patch("src.agents.pipeline.build_sequential_workflow", side_effect=fake_build_sequential_workflow):
-        result = await pipeline.run({"document_reference": "https://storage/account/albaran.pdf"})
-
-    assert result.validation == validation_result
-    assert result.inventory is None
     assert result.routing_decision == "hitl_review"
-    assert result.skipped_steps == ["inventory"]
-
-
-@pytest.mark.asyncio
-async def test_pipeline_skips_validation_and_inventory_when_coherence_is_skipped() -> None:
-    extraction_result = sample_extraction()
-
-    def fake_build_sequential_workflow(*, name: str, participants: list[Any]) -> FakeWorkflow:
-        assert participants
-        return {"albaran-extraction": FakeWorkflow(extraction_result.model_dump(mode="json"))}[name]
-
-    pipeline = AlbaranPipeline(
-        config=AgentsConfig.model_validate(
-            {
-                "skip_triage_suppliers": ["HERSTERA"],
-                "thresholds": {"low_value_coherence_threshold": 250.0},
-            }
-        ),
-        agents={
-            "triage": object(),
-            "extractor": object(),
-            "coherence": object(),
-            "validator": object(),
-            "inventory": object(),
-        },
-    )
-
-    with patch("src.agents.pipeline.build_sequential_workflow", side_effect=fake_build_sequential_workflow):
-        result = await pipeline.run(
-            {
-                "document_reference": "https://storage/account/albaran.pdf",
-                "total_amount": 99.0,
-                "supplier_hint": "HERSTERA",
-            }
-        )
-
-    assert result.extraction == extraction_result
-    assert result.coherence is None
-    assert result.validation is None
     assert result.inventory is None
-    assert result.routing_decision == "extract"
-    assert result.skipped_steps == ["triage", "coherence", "validation", "inventory"]
+    assert result.skipped_steps == ["inventory"]

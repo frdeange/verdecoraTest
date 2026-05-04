@@ -12,6 +12,7 @@ from src.models.inventory import PostingResult
 from src.services.escalation import timer
 from src.services.hitl_webform import sas
 from src.services.hitl_webform.callbacks import HITLCallbackHandler
+from src.services.hitl_webform.config import HITLWebformConfig
 from src.services.hitl_webform.main import create_app
 
 pytestmark = pytest.mark.unit
@@ -144,7 +145,11 @@ async def test_escalation_timer_triggers_24h_48h_and_72h(monkeypatch: pytest.Mon
 def test_webform_routes_support_get_review_and_post_decision() -> None:
     store = InMemoryReviewStore(build_review_record())
     publisher = FakePublisher()
-    app = create_app(review_store=store, decision_publisher=publisher)
+    app = create_app(
+        config=HITLWebformConfig(allow_local_email_bearer=True),
+        review_store=store,
+        decision_publisher=publisher,
+    )
 
     with TestClient(app) as client:
         review_response = client.get(

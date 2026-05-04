@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import inspect
-import json
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from html import escape
@@ -9,40 +7,12 @@ from typing import Any, Callable
 
 from pydantic import BaseModel
 
-from src.config.agents import AgentsConfig, get_agents_config
 from src.models.communication import EscalationLevel, HITLNotification
-
-from ._maf_compat import create_structured_agent
-from .prompts import COMMUNICATION_SYSTEM_PROMPT
-from .security import harden_system_prompt
 
 
 class CommunicationSummary(BaseModel):
     subject: str
     body_html: str
-
-
-def _build_communication_instructions() -> str:
-    schema = json.dumps(CommunicationSummary.model_json_schema(), ensure_ascii=False, indent=2)
-    return harden_system_prompt(COMMUNICATION_SYSTEM_PROMPT.format(schema=schema))
-
-
-def create_communication_agent(
-    client: Any,
-    config: AgentsConfig | None = None,
-    *,
-    tools: list[Any] | None = None,
-) -> Any:
-    resolved_config = config or get_agents_config()
-    return create_structured_agent(
-        client=client,
-        name="a6-communication",
-        model=resolved_config.models.gpt5_mini_deployment,
-        instructions=_build_communication_instructions(),
-        structured_output=CommunicationSummary,
-        tools=list(tools or []),
-        handoffs=["user"],
-    )
 
 
 class CommunicationAgentService:
@@ -126,7 +96,7 @@ class CommunicationAgentService:
     ) -> HITLNotification:
         notification = self.build_notification(review_record, escalation_level=escalation_level)
         send_result = self._send_notification_tool(notification)
-        if inspect.isawaitable(send_result):
+        if hasattr(send_result, "__await__"):
             await send_result
         await self._track_escalation_state(review_record, notification)
         return notification
@@ -152,7 +122,7 @@ class CommunicationAgentService:
             }
         )
         maybe_result = self._records_container.upsert_item(updated_record)
-        if inspect.isawaitable(maybe_result):
+        if hasattr(maybe_result, "__await__"):
             await maybe_result
 
     def _collect_discrepancies(self, validation: Mapping[str, Any]) -> list[str]:
@@ -208,4 +178,4 @@ def _default_send_notification_tool(notification: HITLNotification) -> Any:
     return send_hitl_notification(notification)
 
 
-__all__ = ["CommunicationAgentService", "CommunicationSummary", "create_communication_agent"]
+__all__ = ["CommunicationAgentService", "CommunicationSummary"]
