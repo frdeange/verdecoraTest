@@ -49,16 +49,16 @@ param keyVaultUrl string
 param tenantId string
 
 @description('Container image used by the orchestrator app.')
-param orchestratorImage string = 'ghcr.io/frdeange/verdecora-orchestrator:latest'
+param orchestratorImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
 @description('Container image used by the Flow 0 dedup ACA Job.')
-param dedupJobImage string = 'ghcr.io/frdeange/verdecora-flow0-dedup:latest'
+param dedupJobImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
 @description('Container image used by the HITL web form placeholder.')
-param hitlWebformImage string = 'ghcr.io/frdeange/verdecora-hitl-webform:latest'
+param hitlWebformImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
 @description('Container image used by the escalation timer ACA Job.')
-param escalationTimerJobImage string = 'ghcr.io/frdeange/verdecora-escalation-timer:latest'
+param escalationTimerJobImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
 var tags = {
   project: 'verdecora-albaranes'

@@ -39,6 +39,9 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
 
 resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
   name: '${storageAccount.name}/default'
+  properties: {
+    isVersioningEnabled: true
+  }
 }
 
 resource albaranesRawContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
@@ -46,7 +49,7 @@ resource albaranesRawContainer 'Microsoft.Storage/storageAccounts/blobServices/c
   properties: {
     publicAccess: 'None'
     immutableStorageWithVersioning: {
-      enabled: true
+      enabled: false
     }
     immutabilityPolicy: {
       immutabilityPeriodSinceCreationInDays: 30
@@ -83,9 +86,6 @@ resource lifecyclePolicy 'Microsoft.Storage/storageAccounts/managementPolicies@2
               baseBlob: {
                 tierToCool: {
                   daysAfterModificationGreaterThan: 30
-                }
-                tierToArchive: {
-                  daysAfterModificationGreaterThan: 90
                 }
               }
             }

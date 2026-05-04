@@ -41,11 +41,12 @@ resource aiServices 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = 
   }
   properties: {
     customSubDomainName: aiServicesName
-    publicNetworkAccess: 'Enabled'
+    publicNetworkAccess: 'Disabled'
     disableLocalAuth: true
     allowProjectManagement: true
     networkAcls: {
-      defaultAction: 'Allow'
+      bypass: 'AzureServices'
+      defaultAction: 'Deny'
       virtualNetworkRules: []
       ipRules: []
     }
@@ -56,6 +57,9 @@ resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-10-01-pre
   parent: aiServices
   name: projectName
   location: location
+  dependsOn: [
+    appInsightsConnection
+  ]
   #disable-next-line BCP187
   kind: 'AIServices'
   identity: {
@@ -88,6 +92,9 @@ resource gpt5Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-1
 resource gpt5MiniDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-10-01-preview' = {
   parent: aiServices
   name: 'gpt-5-mini'
+  dependsOn: [
+    gpt5Deployment
+  ]
   sku: {
     name: 'GlobalStandard'
     capacity: 10
@@ -106,6 +113,9 @@ resource gpt5MiniDeployment 'Microsoft.CognitiveServices/accounts/deployments@20
 resource storageConnection 'Microsoft.CognitiveServices/accounts/connections@2025-10-01-preview' = {
   parent: aiServices
   name: '${storageAccountName}-connection'
+  dependsOn: [
+    gpt5MiniDeployment
+  ]
   properties: {
     authType: 'AAD'
     category: 'AzureStorageAccount'
@@ -126,6 +136,9 @@ resource storageConnection 'Microsoft.CognitiveServices/accounts/connections@202
 resource appInsightsConnection 'Microsoft.CognitiveServices/accounts/connections@2025-10-01-preview' = {
   parent: aiServices
   name: 'appinsights-connection'
+  dependsOn: [
+    storageConnection
+  ]
   properties: {
     authType: 'ApiKey'
     category: 'AppInsights'

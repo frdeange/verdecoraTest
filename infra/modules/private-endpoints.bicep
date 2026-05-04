@@ -79,11 +79,8 @@ resource cognitiveServicesDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01'
   tags: tags
 }
 
-resource acsDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (!empty(acsResourceId)) {
-  name: 'privatelink.communication.azure.com'
-  location: 'global'
-  tags: tags
-}
+// Note: ACS (Communication Services) does NOT support Private Endpoints.
+// Access to ACS is controlled via Managed Identity RBAC only.
 
 resource storageDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (!empty(storageResourceId)) {
   name: '${storageDnsZone.name}/${virtualNetworkName}-link'
@@ -131,17 +128,6 @@ resource serviceBusDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLink
 
 resource cognitiveServicesDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (!empty(aiServicesResourceId) || !empty(documentIntelligenceResourceId)) {
   name: '${cognitiveServicesDnsZone.name}/${virtualNetworkName}-link'
-  location: 'global'
-  properties: {
-    virtualNetwork: {
-      id: vnet.id
-    }
-    registrationEnabled: false
-  }
-}
-
-resource acsDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (!empty(acsResourceId)) {
-  name: '${acsDnsZone.name}/${virtualNetworkName}-link'
   location: 'global'
   properties: {
     virtualNetwork: {
@@ -367,43 +353,6 @@ resource documentIntelligenceDnsZoneGroup 'Microsoft.Network/privateEndpoints/pr
         name: 'docintell-account'
         properties: {
           privateDnsZoneId: cognitiveServicesDnsZone.id
-        }
-      }
-    ]
-  }
-}
-
-resource acsPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-04-01' = if (!empty(acsResourceId)) {
-  name: 'pe-acs-${environment}'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: privateEndpointSubnetResourceId
-    }
-    privateLinkServiceConnections: [
-      {
-        name: 'acs-communication'
-        properties: {
-          privateLinkServiceId: acsResourceId
-          groupIds: [
-            'communicationService'
-          ]
-        }
-      }
-    ]
-  }
-}
-
-resource acsDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-04-01' = if (!empty(acsResourceId)) {
-  parent: acsPrivateEndpoint
-  name: 'default'
-  properties: {
-    privateDnsZoneConfigs: [
-      {
-        name: 'acs-communication'
-        properties: {
-          privateDnsZoneId: acsDnsZone.id
         }
       }
     ]

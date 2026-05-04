@@ -96,7 +96,7 @@ resource opsActionGroup 'Microsoft.Insights/actionGroups@2023-01-01' = {
   }
 }
 
-resource errorRateAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+resource errorRateAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = if (environment == 'prod') {
   name: 'ma-verdecora-error-rate-${environment}'
   location: 'global'
   tags: tags
@@ -191,7 +191,7 @@ resource queueDepthAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   }
 }
 
-resource hitlBacklogMetricAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+resource hitlBacklogMetricAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = if (environment == 'prod') {
   name: 'ma-verdecora-hitl-backlog-${environment}'
   location: 'global'
   tags: tags
