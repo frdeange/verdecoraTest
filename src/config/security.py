@@ -1,5 +1,18 @@
 from __future__ import annotations
 
+<<<<<<< HEAD
+from functools import lru_cache
+from typing import Any
+
+
+@lru_cache(maxsize=1)
+def get_managed_identity_credential() -> Any:
+    """Return the shared managed identity credential for Azure SDK clients."""
+
+    from azure.identity import DefaultAzureCredential
+
+    return DefaultAzureCredential(exclude_interactive_browser_credential=True)
+=======
 import os
 from functools import lru_cache
 from importlib import import_module
@@ -74,3 +87,4 @@ def get_servicebus_client(*, fully_qualified_namespace: str | None = None, crede
         fully_qualified_namespace=fully_qualified_namespace or _require_env('SERVICEBUS_FQ_NAMESPACE'),
         credential=credential or get_managed_identity_credential(),
     )
+>>>>>>> master

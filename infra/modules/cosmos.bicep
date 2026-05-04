@@ -21,6 +21,13 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   kind: 'GlobalDocumentDB'
   properties: {
     databaseAccountOfferType: 'Standard'
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+    disableLocalAuth: true
+>>>>>>> master
+>>>>>>> master
     publicNetworkAccess: 'Disabled'
     locations: [
       {
