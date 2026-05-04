@@ -6,7 +6,6 @@ from typing import Any
 
 from entity_schemas import ACTION_SCHEMAS, SEARCH_RESULTS, VALIDATED_READS, summarize_action
 
-
 READ_SEQUENCE: list[tuple[str, str]] = [
     ("List purchase orders", "purchase_orders_top5"),
     ("Read purchase order 106030", "purchase_order_106030"),

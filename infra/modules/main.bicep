@@ -89,6 +89,30 @@ module monitoring './monitoring.bicep' = {
   ]
 }
 
+module openAi './openai.bicep' = {
+  name: 'openAi'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    environment: environment
+    location: location
+  }
+  dependsOn: [
+    rg
+  ]
+}
+
+module docIntell './docintell.bicep' = {
+  name: 'docIntell'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    environment: environment
+    location: location
+  }
+  dependsOn: [
+    rg
+  ]
+}
+
 @description('Resource group id.')
 output resourceGroupId string = resourceGroup.outputs.resourceGroupId
 
@@ -112,3 +136,18 @@ output logAnalyticsWorkspaceId string = monitoring.outputs.logAnalyticsWorkspace
 
 @description('Application Insights id.')
 output applicationInsightsId string = monitoring.outputs.applicationInsightsId
+
+@description('Azure OpenAI account id.')
+output openaiAccountId string = openAi.outputs.openaiAccountId
+
+@description('Azure OpenAI endpoint.')
+output openaiEndpoint string = openAi.outputs.openaiEndpoint
+
+@description('Azure OpenAI principal id.')
+output openaiPrincipalId string = openAi.outputs.openaiPrincipalId
+
+@description('Document Intelligence account id.')
+output docIntellId string = docIntell.outputs.docIntellId
+
+@description('Document Intelligence endpoint.')
+output docIntellEndpoint string = docIntell.outputs.docIntellEndpoint

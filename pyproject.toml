@@ -12,7 +12,13 @@ authors = [
     { name = "Kiko de Angel", email = "kiko@verdecora.example.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "azure-ai-documentintelligence>=1.0.2",
+    "azure-cosmos>=4.9.0",
+    "azure-identity>=1.20.0",
+    "mcp>=1.12.4",
+    "pydantic>=2.11.0",
+]
 
 [project.optional-dependencies]
 dev = [
