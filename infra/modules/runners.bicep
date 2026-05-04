@@ -36,6 +36,10 @@ param runnerIdentityName string = 'id-gha-runner-${environment}'
 @description('Log Analytics workspace name used by the runner environment.')
 param logAnalyticsWorkspaceName string = 'log-runners-${environment}'
 
+@description('Log Analytics shared key used for ACA log ingestion (pass via Key Vault reference).')
+@secure()
+param logAnalyticsSharedKey string
+
 @description('Minimum number of job executions kept warm by the scaler.')
 param minExecutions int = 0
 
@@ -114,7 +118,7 @@ resource managedEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
       destination: 'log-analytics'
       logAnalyticsConfiguration: {
         customerId: logAnalytics.properties.customerId
-        sharedKey: listKeys(logAnalytics.id, '2022-10-01').primarySharedKey
+        sharedKey: logAnalyticsSharedKey
       }
     }
     vnetConfiguration: {
