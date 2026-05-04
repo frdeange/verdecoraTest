@@ -8,6 +8,7 @@ from .albaran import (
     LineItem,
     TriageResult,
 )
+from .communication import EscalationLevel, HITLDecision, HITLNotification
 from .inventory import PostingLineItem, PostingResult, PurchaseReceiptPosting
 from .validation import LineComparison, ValidationResult
 
@@ -16,6 +17,9 @@ __all__ = [
     "AlbaranHeader",
     "CoherenceCheckResult",
     "DocumentType",
+    "EscalationLevel",
+    "HITLDecision",
+    "HITLNotification",
     "LineComparison",
     "LineItem",
     "PostingLineItem",

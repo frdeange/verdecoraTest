@@ -48,6 +48,7 @@ class AlbaranPipeline:
         self.client = client
         self.config = config or get_agents_config()
         self.agents = dict(agents or create_all_agents(client, self.config, tool_registry=tool_registry))
+        self.communication_agent = self.agents.get("communication")
 
     def _should_skip_triage(self, input_data: PipelineDocumentInput) -> bool:
         supplier_tokens = {token.casefold() for token in self.config.skip_triage_suppliers}

@@ -6,6 +6,7 @@ MAF-based agent implementations for the Verdecora albarán flow.
 - `a2-triage` classifies OCR text and decides whether to extract, reject, or send to manual review.
 - `a1-extractor` converts Document Intelligence output into `AlbaranExtraction`.
 - `a3-coherence` validates the extracted payload against business rules and Business Central data.
+- `a6-communication` prepares Spanish HITL notification summaries and escalation handoffs.
 
 ## Key modules
 - `factory.py` centralises model selection, prompt injection, and MCP tool binding.
