@@ -24,8 +24,8 @@ param keyVaultResourceId string = ''
 @description('Service Bus namespace resource id.')
 param serviceBusResourceId string = ''
 
-@description('Azure OpenAI resource id.')
-param openAiResourceId string = ''
+@description('Azure AI Foundry resource id.')
+param aiServicesResourceId string = ''
 
 @description('Document Intelligence resource id.')
 param documentIntelligenceResourceId string = ''
@@ -73,13 +73,7 @@ resource serviceBusDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (
   tags: tags
 }
 
-resource openAiDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (!empty(openAiResourceId)) {
-  name: 'privatelink.openai.azure.com'
-  location: 'global'
-  tags: tags
-}
-
-resource cognitiveServicesDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (!empty(documentIntelligenceResourceId)) {
+resource cognitiveServicesDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (!empty(aiServicesResourceId) || !empty(documentIntelligenceResourceId)) {
   name: 'privatelink.cognitiveservices.azure.com'
   location: 'global'
   tags: tags
@@ -135,18 +129,7 @@ resource serviceBusDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLink
   }
 }
 
-resource openAiDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (!empty(openAiResourceId)) {
-  name: '${openAiDnsZone.name}/${virtualNetworkName}-link'
-  location: 'global'
-  properties: {
-    virtualNetwork: {
-      id: vnet.id
-    }
-    registrationEnabled: false
-  }
-}
-
-resource cognitiveServicesDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (!empty(documentIntelligenceResourceId)) {
+resource cognitiveServicesDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (!empty(aiServicesResourceId) || !empty(documentIntelligenceResourceId)) {
   name: '${cognitiveServicesDnsZone.name}/${virtualNetworkName}-link'
   location: 'global'
   properties: {
@@ -316,8 +299,8 @@ resource serviceBusDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZo
   }
 }
 
-resource openAiPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-04-01' = if (!empty(openAiResourceId)) {
-  name: 'pe-openai-${environment}'
+resource aiServicesPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-04-01' = if (!empty(aiServicesResourceId)) {
+  name: 'pe-aiservices-${environment}'
   location: location
   tags: tags
   properties: {
@@ -326,9 +309,9 @@ resource openAiPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-04-01' =
     }
     privateLinkServiceConnections: [
       {
-        name: 'openai-account'
+        name: 'ai-services-account'
         properties: {
-          privateLinkServiceId: openAiResourceId
+          privateLinkServiceId: aiServicesResourceId
           groupIds: [
             'account'
           ]
@@ -338,15 +321,15 @@ resource openAiPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-04-01' =
   }
 }
 
-resource openAiDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-04-01' = if (!empty(openAiResourceId)) {
-  parent: openAiPrivateEndpoint
+resource aiServicesDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-04-01' = if (!empty(aiServicesResourceId)) {
+  parent: aiServicesPrivateEndpoint
   name: 'default'
   properties: {
     privateDnsZoneConfigs: [
       {
-        name: 'openai-account'
+        name: 'ai-services-account'
         properties: {
-          privateDnsZoneId: openAiDnsZone.id
+          privateDnsZoneId: cognitiveServicesDnsZone.id
         }
       }
     ]

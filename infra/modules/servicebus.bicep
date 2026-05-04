@@ -68,6 +68,22 @@ resource albaranValidadoSubscription 'Microsoft.ServiceBus/namespaces/topics/sub
   }
 }
 
+resource hitlDecisionsTopic 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-preview' = {
+  parent: serviceBusNamespace
+  name: 'hitl-decisions'
+  properties: {
+    enablePartitioning: true
+  }
+}
+
+resource hitlDecisionsSubscription 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2022-10-01-preview' = {
+  parent: hitlDecisionsTopic
+  name: 'orchestrator-sub'
+  properties: {
+    maxDeliveryCount: 10
+  }
+}
+
 @description('Service Bus namespace id.')
 output serviceBusNamespaceId string = serviceBusNamespace.id
 
@@ -97,3 +113,6 @@ output albaranRecibidoSubscriptionId string = albaranRecibidoSubscription.id
 
 @description('Subscription (validado) id.')
 output albaranValidadoSubscriptionId string = albaranValidadoSubscription.id
+
+@description('HITL decisions topic name.')
+output hitlDecisionsTopicName string = last(split(hitlDecisionsTopic.name, '/'))

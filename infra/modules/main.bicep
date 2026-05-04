@@ -10,6 +10,7 @@ param location string = 'swedencentral'
 param opsEmailAddress string = 'ops@verdecora.example.com'
 
 var resourceGroupName = 'rg-verdecoratest-${environment}'
+var storageAccountUrl = 'https://${storage.outputs.storageAccountName}.blob.${az.environment().suffixes.storage}/'
 
 module rg './resource-group.bicep' = {
   name: 'resourceGroup'
@@ -92,12 +93,16 @@ module monitoring './monitoring.bicep' = {
   ]
 }
 
-module openAi './openai.bicep' = {
-  name: 'openAi'
+module aiFoundry './ai-foundry.bicep' = {
+  name: 'aiFoundry'
   scope: az.resourceGroup(resourceGroupName)
   params: {
     environment: environment
     location: location
+    storageAccountId: storage.outputs.storageAccountId
+    storageAccountName: storage.outputs.storageAccountName
+    applicationInsightsId: monitoring.outputs.applicationInsightsId
+    applicationInsightsInstrumentationKey: monitoring.outputs.applicationInsightsInstrumentationKey
   }
   dependsOn: [
     rg
@@ -160,7 +165,7 @@ module privateEndpoints './private-endpoints.bicep' = if (enableProductionNetwor
     cosmosResourceId: cosmos.outputs.cosmosAccountId
     keyVaultResourceId: keyVault.outputs.keyVaultId
     serviceBusResourceId: serviceBus.outputs.serviceBusNamespaceId
-    openAiResourceId: openAi.outputs.openaiAccountId
+    aiServicesResourceId: aiFoundry.outputs.aiServicesId
     documentIntelligenceResourceId: docIntell.outputs.docIntellId
     acsResourceId: acs.outputs.acsId
   }
@@ -178,13 +183,18 @@ module containerApps './container-apps.bicep' = {
     location: location
     infrastructureSubnetId: network.outputs.subnetAcaEnvId
     logAnalyticsWorkspaceName: 'log-albaranes-${environment}'
-    openAiEndpoint: openAi.outputs.openaiEndpoint
+    aiServicesEndpoint: aiFoundry.outputs.aiServicesEndpoint
     cosmosEndpoint: cosmos.outputs.cosmosEndpoint
     docIntellEndpoint: docIntell.outputs.docIntellEndpoint
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
     serviceBusNamespaceName: serviceBus.outputs.serviceBusNamespaceName
     ingestionQueueName: serviceBus.outputs.ingestionQueueName
     extractionQueueName: serviceBus.outputs.extraccionQueueName
+    hitlDecisionsTopicName: serviceBus.outputs.hitlDecisionsTopicName
+    storageAccountUrl: storageAccountUrl
+    acsEndpoint: acs.outputs.acsEndpoint
+    keyVaultUrl: keyVault.outputs.keyVaultUri
+    tenantId: subscription().tenantId
   }
   dependsOn: [
     rg
@@ -212,18 +222,17 @@ module identity './identity.bicep' = {
   name: 'identity'
   scope: az.resourceGroup(resourceGroupName)
   params: {
-    location: location
     cosmosAccountName: cosmos.outputs.cosmosAccountName
     serviceBusNamespaceName: serviceBus.outputs.serviceBusNamespaceName
     storageAccountName: storage.outputs.storageAccountName
     keyVaultName: keyVault.outputs.keyVaultName
     communicationServiceName: acs.outputs.acsName
-    openAiAccountName: openAi.outputs.openaiAccountName
+    aiServicesAccountName: aiFoundry.outputs.aiServicesName
     docIntellAccountName: docIntell.outputs.docIntellAccountName
-    deployUserAssignedIdentities: false
     orchestratorPrincipalId: containerApps.outputs.orchestratorPrincipalId
     hitlWebformPrincipalId: containerApps.outputs.hitlWebformPrincipalId
     flow0WorkerPrincipalId: containerApps.outputs.flow0DedupPrincipalId
+    escalationTimerPrincipalId: containerApps.outputs.escalationTimerPrincipalId
   }
   dependsOn: [
     rg
@@ -265,6 +274,9 @@ output ingestionQueueId string = serviceBus.outputs.ingestionQueueId
 @description('Extraction queue id.')
 output extraccionQueueId string = serviceBus.outputs.extraccionQueueId
 
+@description('HITL decisions topic name.')
+output hitlDecisionsTopicName string = serviceBus.outputs.hitlDecisionsTopicName
+
 @description('Cosmos DB account id.')
 output cosmosAccountId string = cosmos.outputs.cosmosAccountId
 
@@ -277,8 +289,14 @@ output storageAccountId string = storage.outputs.storageAccountId
 @description('Storage account name.')
 output storageAccountName string = storage.outputs.storageAccountName
 
+@description('Storage account blob endpoint.')
+output storageAccountUrl string = storageAccountUrl
+
 @description('Key Vault id.')
 output keyVaultId string = keyVault.outputs.keyVaultId
+
+@description('Key Vault endpoint.')
+output keyVaultUrl string = keyVault.outputs.keyVaultUri
 
 @description('Log Analytics workspace id.')
 output logAnalyticsWorkspaceId string = monitoring.outputs.logAnalyticsWorkspaceId
@@ -289,6 +307,9 @@ output applicationInsightsId string = monitoring.outputs.applicationInsightsId
 @description('Application Insights connection string.')
 output applicationInsightsConnectionString string = monitoring.outputs.applicationInsightsConnectionString
 
+@description('Application Insights instrumentation key.')
+output applicationInsightsInstrumentationKey string = monitoring.outputs.applicationInsightsInstrumentationKey
+
 @description('Azure Communication Services resource id.')
 output acsId string = acs.outputs.acsId
 
@@ -298,14 +319,26 @@ output acsEndpoint string = acs.outputs.acsEndpoint
 @description('Azure-managed sender domain for HITL email.')
 output emailSenderDomain string = acs.outputs.emailSenderDomain
 
-@description('Azure OpenAI account id.')
-output openaiAccountId string = openAi.outputs.openaiAccountId
+@description('Azure AI Foundry account id.')
+output aiServicesId string = aiFoundry.outputs.aiServicesId
 
-@description('Azure OpenAI endpoint.')
-output openaiEndpoint string = openAi.outputs.openaiEndpoint
+@description('Azure AI Foundry account name.')
+output aiServicesName string = aiFoundry.outputs.aiServicesName
 
-@description('Azure OpenAI principal id.')
-output openaiPrincipalId string = openAi.outputs.openaiPrincipalId
+@description('Azure AI Foundry endpoint.')
+output aiServicesEndpoint string = aiFoundry.outputs.aiServicesEndpoint
+
+@description('Azure AI Foundry project endpoint.')
+output aiProjectEndpoint string = aiFoundry.outputs.aiProjectEndpoint
+
+@description('Azure AI Foundry principal id.')
+output aiServicesPrincipalId string = aiFoundry.outputs.aiServicesPrincipalId
+
+@description('GPT-5 deployment name.')
+output gpt5DeploymentName string = aiFoundry.outputs.gpt5DeploymentName
+
+@description('GPT-5 mini deployment name.')
+output gpt5MiniDeploymentName string = aiFoundry.outputs.gpt5MiniDeploymentName
 
 @description('Document Intelligence account id.')
 output docIntellId string = docIntell.outputs.docIntellId
@@ -327,6 +360,9 @@ output flow0DedupJobId string = containerApps.outputs.flow0DedupJobId
 
 @description('HITL web form container app id.')
 output hitlWebformAppId string = containerApps.outputs.hitlWebformAppId
+
+@description('Escalation timer ACA Job id.')
+output escalationTimerJobId string = containerApps.outputs.escalationTimerJobId
 
 @description('Whether production-only network hardening is enabled.')
 output productionNetworkHardeningEnabled bool = enableProductionNetworkHardening
