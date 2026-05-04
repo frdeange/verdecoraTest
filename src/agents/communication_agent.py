@@ -37,7 +37,7 @@ def create_communication_agent(
     return create_structured_agent(
         client=client,
         name="a6-communication",
-        model=resolved_config.models.communication_model,
+        model=resolved_config.models.gpt5_mini_deployment,
         instructions=_build_communication_instructions(),
         structured_output=CommunicationSummary,
         tools=list(tools or []),

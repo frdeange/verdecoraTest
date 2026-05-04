@@ -35,7 +35,7 @@ def create_validator_agent(
     return create_structured_agent(
         client=client,
         name="a4-validator",
-        model=resolved_config.models.validator_model,
+        model=resolved_config.models.gpt5_mini_deployment,
         instructions=_build_validator_instructions(tool_names),
         structured_output=ValidationResult,
         tools=resolved_tools,

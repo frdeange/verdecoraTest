@@ -17,6 +17,14 @@ except ImportError as exc:  # pragma: no cover - default in local dev until MAF 
 else:  # pragma: no cover - depends on optional dependency.
     MAF_IMPORT_ERROR = None
 
+try:  # pragma: no cover - exercised only when Foundry support is installed.
+    from agent_framework.foundry import FoundryChatClient
+except ImportError as exc:  # pragma: no cover - default in local dev until MAF is installed.
+    FoundryChatClient = None
+    FOUNDRY_IMPORT_ERROR: ImportError | None = exc
+else:  # pragma: no cover - depends on optional dependency.
+    FOUNDRY_IMPORT_ERROR = None
+
 T = TypeVar("T")
 
 
@@ -39,6 +47,34 @@ class UnavailableWorkflowSpec:
     start_agent: Any | None = None
     is_available: bool = False
     reason: str = "agent-framework is not installed"
+
+
+@dataclass(slots=True)
+class UnavailableFoundryClientSpec:
+    project_endpoint: str
+    model: str
+    credential: Any
+    is_available: bool = False
+    reason: str = "agent-framework is not installed"
+
+    async def close(self) -> None:
+        return None
+
+
+def create_foundry_client(*, project_endpoint: str, model: str, credential: Any) -> Any:
+    if FoundryChatClient is None:
+        return UnavailableFoundryClientSpec(
+            project_endpoint=project_endpoint,
+            model=model,
+            credential=credential,
+            reason=str(FOUNDRY_IMPORT_ERROR or MAF_IMPORT_ERROR or "agent-framework is not installed"),
+        )
+
+    return FoundryChatClient(
+        project_endpoint=project_endpoint,
+        model=model,
+        credential=credential,
+    )
 
 
 def _build_with_builder(

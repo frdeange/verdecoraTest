@@ -6,6 +6,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+DEFAULT_AZURE_AI_PROJECT_ENDPOINT = "https://verdecora-ais-dev.services.ai.azure.com/api/projects/verdecora-project-dev"
+
 
 def _get_env(name: str, default: str) -> str:
     return os.getenv(name, default)
@@ -30,10 +32,15 @@ class OrchestratorConfig(BaseModel):
     storage_account_url: str = Field(
         default_factory=lambda: _get_env("STORAGE_ACCOUNT_URL", "https://examplestorage.blob.core.windows.net")
     )
-    azure_openai_endpoint: str = Field(
-        default_factory=lambda: _get_env("AZURE_OPENAI_ENDPOINT", "https://example.openai.azure.com/")
+    acs_endpoint: str = Field(
+        default_factory=lambda: _get_env("ACS_ENDPOINT", "https://example.unitedstates.communication.azure.com")
     )
-    azure_openai_api_version: str = Field(default_factory=lambda: _get_env("AZURE_OPENAI_API_VERSION", "2024-10-21"))
+    key_vault_url: str = Field(default_factory=lambda: _get_env("KEY_VAULT_URL", "https://example-kv.vault.azure.net/"))
+    azure_ai_project_endpoint: str = Field(
+        default_factory=lambda: _get_env("AZURE_AI_PROJECT_ENDPOINT", DEFAULT_AZURE_AI_PROJECT_ENDPOINT)
+    )
+    gpt5_deployment: str = Field(default_factory=lambda: _get_env("GPT5_DEPLOYMENT", "gpt-5"))
+    gpt5_mini_deployment: str = Field(default_factory=lambda: _get_env("GPT5_MINI_DEPLOYMENT", "gpt-5-mini"))
     docintell_endpoint: str = Field(
         default_factory=lambda: _get_env("DOCINTELL_ENDPOINT", "https://example.cognitiveservices.azure.com/")
     )
@@ -54,7 +61,7 @@ class OrchestratorConfig(BaseModel):
 
     def create_credential(self) -> Any:
         try:
-            from azure.identity import DefaultAzureCredential
+            from azure.identity.aio import DefaultAzureCredential
         except ModuleNotFoundError as exc:  # pragma: no cover - optional in local unit-test environments.
             raise RuntimeError(
                 "azure-identity is required to create Managed Identity credentials for the orchestrator."

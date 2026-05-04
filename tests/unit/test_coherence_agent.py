@@ -96,7 +96,7 @@ def test_coherence_agent_tracks_bc_matches_and_tolerance_checks() -> None:
 
 @patch("src.agents.coherence_agent.create_structured_agent", side_effect=build_structured_agent_stub)
 def test_coherence_agent_respects_custom_model_config(mock_factory: Any) -> None:
-    config = AgentsConfig.model_validate({"models": {"coherence_model": "coherence-local"}})
+    config = AgentsConfig.model_validate({"models": {"gpt5_mini_deployment": "coherence-local"}})
 
     create_coherence_agent(client=object(), config=config)
 

@@ -6,13 +6,12 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+DEFAULT_AZURE_AI_PROJECT_ENDPOINT = "https://verdecora-ais-dev.services.ai.azure.com/api/projects/verdecora-project-dev"
+
 
 class AzureServiceEndpoints(BaseModel):
-    azure_openai_endpoint: str = Field(
-        default_factory=lambda: os.getenv(
-            "AZURE_OPENAI_ENDPOINT",
-            "https://verdecora-openai-dev.openai.azure.com/",
-        )
+    azure_ai_project_endpoint: str = Field(
+        default_factory=lambda: os.getenv("AZURE_AI_PROJECT_ENDPOINT", DEFAULT_AZURE_AI_PROJECT_ENDPOINT)
     )
     document_intelligence_endpoint: str = Field(
         default_factory=lambda: os.getenv(
@@ -20,16 +19,11 @@ class AzureServiceEndpoints(BaseModel):
             "https://verdecora-docintell-dev.cognitiveservices.azure.com/",
         )
     )
-    azure_openai_api_version: str = Field(default_factory=lambda: os.getenv("AZURE_OPENAI_API_VERSION", "2024-10-21"))
 
 
 class AgentModelSettings(BaseModel):
-    extractor_model: str = Field(default_factory=lambda: os.getenv("GPT5_DEPLOYMENT", "gpt-5"))
-    triage_model: str = Field(default_factory=lambda: os.getenv("GPT5_MINI_DEPLOYMENT", "gpt-5-mini"))
-    coherence_model: str = Field(default_factory=lambda: os.getenv("GPT5_MINI_DEPLOYMENT", "gpt-5-mini"))
-    validator_model: str = Field(default_factory=lambda: os.getenv("GPT5_MINI_DEPLOYMENT", "gpt-5-mini"))
-    inventory_model: str = Field(default_factory=lambda: os.getenv("GPT5_MINI_DEPLOYMENT", "gpt-5-mini"))
-    communication_model: str = Field(default_factory=lambda: os.getenv("GPT5_MINI_DEPLOYMENT", "gpt-5-mini"))
+    gpt5_deployment: str = Field(default_factory=lambda: os.getenv("GPT5_DEPLOYMENT", "gpt-5"))
+    gpt5_mini_deployment: str = Field(default_factory=lambda: os.getenv("GPT5_MINI_DEPLOYMENT", "gpt-5-mini"))
 
 
 class AgentThresholdSettings(BaseModel):
@@ -53,7 +47,7 @@ class AgentsConfig(BaseModel):
 
     def create_credential(self) -> Any:
         try:
-            from azure.identity import DefaultAzureCredential
+            from azure.identity.aio import DefaultAzureCredential
         except ModuleNotFoundError as exc:  # pragma: no cover - depends on optional Azure SDK.
             raise RuntimeError(
                 "azure-identity is required to create Managed Identity credentials for agent clients."

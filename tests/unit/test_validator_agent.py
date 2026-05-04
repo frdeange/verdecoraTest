@@ -59,7 +59,7 @@ def test_validator_agent_decodes_validation_payload() -> None:
 
 @patch("src.agents.validator_agent.create_structured_agent", side_effect=build_structured_agent_stub)
 def test_validator_agent_respects_custom_model_config(mock_factory: Any) -> None:
-    config = AgentsConfig.model_validate({"models": {"validator_model": "validator-local"}})
+    config = AgentsConfig.model_validate({"models": {"gpt5_mini_deployment": "validator-local"}})
 
     create_validator_agent(client=object(), config=config)
 

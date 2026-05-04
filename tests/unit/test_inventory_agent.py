@@ -62,7 +62,7 @@ def test_inventory_agent_decodes_posting_result_payload() -> None:
 
 @patch("src.agents.inventory_agent.create_structured_agent", side_effect=build_structured_agent_stub)
 def test_inventory_agent_respects_custom_model_config(mock_factory: Any) -> None:
-    config = AgentsConfig.model_validate({"models": {"inventory_model": "inventory-local"}})
+    config = AgentsConfig.model_validate({"models": {"gpt5_mini_deployment": "inventory-local"}})
 
     create_inventory_agent(client=object(), config=config)
 

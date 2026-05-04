@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
+from src.agents._maf_compat import create_foundry_client
 from src.agents.pipeline import AlbaranPipeline, PipelineDocumentInput
 from src.config.agents import get_agents_config
 
@@ -122,34 +123,60 @@ class AzureDependencySet:
 
 
 class OrchestratorService:
-    def __init__(self, config: OrchestratorConfig | None = None, *, agent_client: Any | None = None) -> None:
+    def __init__(
+        self,
+        config: OrchestratorConfig | None = None,
+        *,
+        agent_client: Any | None = None,
+        gpt5_client: Any | None = None,
+        gpt5_mini_client: Any | None = None,
+    ) -> None:
         self.config = config or get_orchestrator_config()
         self.dependencies = AzureDependencySet(self.config)
-        self.agent_client = agent_client or self._build_agent_client()
-        self.pipeline = AlbaranPipeline(client=self.agent_client, config=get_agents_config())
-
-    def _build_agent_client(self) -> Any:
-        try:
-            from azure.identity import get_bearer_token_provider
-            from openai import AsyncAzureOpenAI
-        except ModuleNotFoundError:
-            return object()
-
-        token_provider = get_bearer_token_provider(
-            self.dependencies.get_credential(),
-            "https://cognitiveservices.azure.com/.default",
+        if agent_client is not None:
+            gpt5_client = gpt5_client or agent_client
+            gpt5_mini_client = gpt5_mini_client or agent_client
+        self.gpt5_client, self.gpt5_mini_client = self._build_agent_clients(
+            gpt5_client=gpt5_client,
+            gpt5_mini_client=gpt5_mini_client,
         )
-        return AsyncAzureOpenAI(
-            azure_endpoint=self.config.azure_openai_endpoint,
-            api_version=self.config.azure_openai_api_version,
-            azure_ad_token_provider=token_provider,
+        self.agent_client = self.gpt5_client
+        self.pipeline = AlbaranPipeline(
+            config=get_agents_config(),
+            project_endpoint=self.config.azure_ai_project_endpoint,
+            credential=self.dependencies.get_credential(),
+            gpt5_client=self.gpt5_client,
+            gpt5_mini_client=self.gpt5_mini_client,
         )
+
+    def _build_agent_clients(
+        self,
+        *,
+        gpt5_client: Any | None = None,
+        gpt5_mini_client: Any | None = None,
+    ) -> tuple[Any, Any]:
+        credential = self.dependencies.get_credential()
+        resolved_gpt5_client = gpt5_client or create_foundry_client(
+            project_endpoint=self.config.azure_ai_project_endpoint,
+            model=self.config.gpt5_deployment,
+            credential=credential,
+        )
+        resolved_gpt5_mini_client = gpt5_mini_client or create_foundry_client(
+            project_endpoint=self.config.azure_ai_project_endpoint,
+            model=self.config.gpt5_mini_deployment,
+            credential=credential,
+        )
+        return resolved_gpt5_client, resolved_gpt5_mini_client
 
     async def close(self) -> None:
-        if hasattr(self.agent_client, "close"):
-            maybe_close = self.agent_client.close()
+        closed_clients: set[int] = set()
+        for client in (self.gpt5_client, self.gpt5_mini_client):
+            if client is None or id(client) in closed_clients or not hasattr(client, "close"):
+                continue
+            maybe_close = client.close()
             if asyncio.iscoroutine(maybe_close):
                 await maybe_close
+            closed_clients.add(id(client))
         await self.dependencies.close()
 
     async def check_readiness(self) -> dict[str, Any]:

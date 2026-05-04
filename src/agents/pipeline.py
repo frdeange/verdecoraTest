@@ -10,7 +10,13 @@ from src.models.albaran import AlbaranExtraction, CoherenceCheckResult, TriageRe
 from src.models.inventory import PostingResult
 from src.models.validation import ValidationResult
 
-from ._maf_compat import build_sequential_workflow, coerce_model, ensure_workflow_available, event_payload
+from ._maf_compat import (
+    build_sequential_workflow,
+    coerce_model,
+    create_foundry_client,
+    ensure_workflow_available,
+    event_payload,
+)
 from .factory import ToolRegistry, create_all_agents
 from .security import sanitize_untrusted_payload
 
@@ -40,15 +46,47 @@ class PipelineRunResult(BaseModel):
 class AlbaranPipeline:
     def __init__(
         self,
-        client: Any,
         config: AgentsConfig | None = None,
         *,
+        project_endpoint: str | None = None,
+        credential: Any | None = None,
+        gpt5_client: Any | None = None,
+        gpt5_mini_client: Any | None = None,
         tool_registry: ToolRegistry | None = None,
         agents: Mapping[str, Any] | None = None,
     ) -> None:
-        self.client = client
         self.config = config or get_agents_config()
-        self.agents = dict(agents or create_all_agents(client, self.config, tool_registry=tool_registry))
+        self.project_endpoint = project_endpoint or self.config.endpoints.azure_ai_project_endpoint
+        self.credential = credential
+        self.gpt5_client = gpt5_client
+        self.gpt5_mini_client = gpt5_mini_client
+
+        if agents is None:
+            resolved_credential = credential or self.config.create_credential()
+            self.credential = resolved_credential
+            self.gpt5_client = gpt5_client or create_foundry_client(
+                project_endpoint=self.project_endpoint,
+                model=self.config.models.gpt5_deployment,
+                credential=resolved_credential,
+            )
+            self.gpt5_mini_client = gpt5_mini_client or create_foundry_client(
+                project_endpoint=self.project_endpoint,
+                model=self.config.models.gpt5_mini_deployment,
+                credential=resolved_credential,
+            )
+            self.agents = dict(
+                create_all_agents(
+                    config=self.config,
+                    project_endpoint=self.project_endpoint,
+                    credential=resolved_credential,
+                    gpt5_client=self.gpt5_client,
+                    gpt5_mini_client=self.gpt5_mini_client,
+                    tool_registry=tool_registry,
+                )
+            )
+        else:
+            self.agents = dict(agents)
+
         self.communication_agent = self.agents.get("communication")
 
     def _should_skip_triage(self, input_data: PipelineDocumentInput) -> bool:
@@ -209,10 +247,21 @@ class AlbaranPipeline:
 
 
 def build_pipeline(
-    client: Any,
     config: AgentsConfig | None = None,
     *,
+    project_endpoint: str | None = None,
+    credential: Any | None = None,
+    gpt5_client: Any | None = None,
+    gpt5_mini_client: Any | None = None,
     tool_registry: ToolRegistry | None = None,
     agents: Mapping[str, Any] | None = None,
 ) -> AlbaranPipeline:
-    return AlbaranPipeline(client, config=config, tool_registry=tool_registry, agents=agents)
+    return AlbaranPipeline(
+        config=config,
+        project_endpoint=project_endpoint,
+        credential=credential,
+        gpt5_client=gpt5_client,
+        gpt5_mini_client=gpt5_mini_client,
+        tool_registry=tool_registry,
+        agents=agents,
+    )

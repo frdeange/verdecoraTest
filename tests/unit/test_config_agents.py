@@ -14,16 +14,14 @@ pytestmark = pytest.mark.unit
 def test_agents_config_defaults() -> None:
     config = AgentsConfig()
 
-    assert config.endpoints.azure_openai_endpoint == "https://verdecora-openai-dev.openai.azure.com/"
+    assert config.endpoints.azure_ai_project_endpoint == (
+        "https://verdecora-ais-dev.services.ai.azure.com/api/projects/verdecora-project-dev"
+    )
     assert config.endpoints.document_intelligence_endpoint == (
         "https://verdecora-docintell-dev.cognitiveservices.azure.com/"
     )
-    assert config.models.extractor_model == "gpt-5"
-    assert config.models.triage_model == "gpt-5-mini"
-    assert config.models.coherence_model == "gpt-5-mini"
-    assert config.models.validator_model == "gpt-5-mini"
-    assert config.models.inventory_model == "gpt-5-mini"
-    assert config.models.communication_model == "gpt-5-mini"
+    assert config.models.gpt5_deployment == "gpt-5"
+    assert config.models.gpt5_mini_deployment == "gpt-5-mini"
     assert config.thresholds.triage_manual_review_threshold == pytest.approx(0.65)
     assert config.thresholds.low_value_coherence_threshold == pytest.approx(250.0)
     assert config.skip_triage_suppliers == ()
@@ -32,9 +30,8 @@ def test_agents_config_defaults() -> None:
 @patch.dict(
     "os.environ",
     {
-        "AZURE_OPENAI_ENDPOINT": "https://example.openai.azure.com/",
+        "AZURE_AI_PROJECT_ENDPOINT": "https://example.services.ai.azure.com/api/projects/demo",
         "DOCUMENT_INTELLIGENCE_ENDPOINT": "https://example-docint.cognitiveservices.azure.com/",
-        "AZURE_OPENAI_API_VERSION": "2025-01-01-preview",
         "GPT5_DEPLOYMENT": "gpt-5-custom",
         "GPT5_MINI_DEPLOYMENT": "gpt-5-mini-custom",
         "TRIAGE_MANUAL_REVIEW_THRESHOLD": "0.7",
@@ -47,15 +44,10 @@ def test_agents_config_reads_environment_overrides() -> None:
     get_agents_config.cache_clear()
     config = AgentsConfig()
 
-    assert config.endpoints.azure_openai_endpoint == "https://example.openai.azure.com/"
+    assert config.endpoints.azure_ai_project_endpoint == "https://example.services.ai.azure.com/api/projects/demo"
     assert config.endpoints.document_intelligence_endpoint == "https://example-docint.cognitiveservices.azure.com/"
-    assert config.endpoints.azure_openai_api_version == "2025-01-01-preview"
-    assert config.models.extractor_model == "gpt-5-custom"
-    assert config.models.triage_model == "gpt-5-mini-custom"
-    assert config.models.coherence_model == "gpt-5-mini-custom"
-    assert config.models.validator_model == "gpt-5-mini-custom"
-    assert config.models.inventory_model == "gpt-5-mini-custom"
-    assert config.models.communication_model == "gpt-5-mini-custom"
+    assert config.models.gpt5_deployment == "gpt-5-custom"
+    assert config.models.gpt5_mini_deployment == "gpt-5-mini-custom"
     assert config.thresholds.triage_manual_review_threshold == pytest.approx(0.7)
     assert config.thresholds.low_value_coherence_threshold == pytest.approx(99.5)
     assert config.skip_triage_suppliers == ("HERSTERA", "ROYAL CANIN")
@@ -65,7 +57,7 @@ def test_agents_config_reads_environment_overrides() -> None:
     "payload",
     [
         {"thresholds": {"triage_manual_review_threshold": "invalid"}},
-        {"models": {"extractor_model": None}},
+        {"models": {"gpt5_deployment": None}},
         {"skip_triage_suppliers": None},
     ],
 )

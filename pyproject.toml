@@ -13,6 +13,8 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "agent-framework",
+    "aiohttp>=3.11.0",
     "azure-ai-documentintelligence>=1.0.2",
     "azure-communication-email>=1.0.0",
     "azure-cosmos>=4.9.0",
@@ -21,7 +23,6 @@ dependencies = [
     "azure-storage-blob>=12.24.0",
     "fastapi>=0.115.0",
     "mcp>=1.12.4",
-    "openai>=1.58.1",
     "pydantic>=2.11.0",
     "PyJWT[crypto]>=2.10.1",
     "uvicorn>=0.34.0",

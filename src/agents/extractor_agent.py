@@ -34,7 +34,7 @@ def create_extractor_agent(
     return create_structured_agent(
         client=client,
         name="a1-extractor",
-        model=resolved_config.models.extractor_model,
+        model=resolved_config.models.gpt5_deployment,
         instructions=_build_extractor_instructions(tool_names),
         structured_output=AlbaranExtraction,
         tools=resolved_tools,

@@ -96,7 +96,7 @@ def test_extractor_agent_handles_missing_optional_fields_gracefully() -> None:
 
 @patch("src.agents.extractor_agent.create_structured_agent", side_effect=build_structured_agent_stub)
 def test_extractor_agent_respects_custom_model_config(mock_factory: Any) -> None:
-    config = AgentsConfig.model_validate({"models": {"extractor_model": "gpt-4.1"}})
+    config = AgentsConfig.model_validate({"models": {"gpt5_deployment": "gpt-4.1"}})
 
     create_extractor_agent(client=object(), config=config)
 

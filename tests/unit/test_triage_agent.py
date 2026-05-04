@@ -99,7 +99,7 @@ def test_triage_agent_handles_routing_decisions(
 
 @patch("src.agents.triage_agent.create_structured_agent", side_effect=build_structured_agent_stub)
 def test_triage_agent_respects_custom_model_config(mock_factory: Any) -> None:
-    config = AgentsConfig.model_validate({"models": {"triage_model": "triage-local"}})
+    config = AgentsConfig.model_validate({"models": {"gpt5_mini_deployment": "triage-local"}})
 
     create_triage_agent(client=object(), config=config)
 

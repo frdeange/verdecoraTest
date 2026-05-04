@@ -38,7 +38,7 @@ def test_create_communication_agent_uses_expected_model_and_prompt(mock_factory:
 
 @patch("src.agents.communication_agent.create_structured_agent", side_effect=build_structured_agent_stub)
 def test_create_communication_agent_respects_custom_model_config(mock_factory: Any) -> None:
-    config = AgentsConfig.model_validate({"models": {"communication_model": "communication-local"}})
+    config = AgentsConfig.model_validate({"models": {"gpt5_mini_deployment": "communication-local"}})
 
     create_communication_agent(client=object(), config=config)
 
