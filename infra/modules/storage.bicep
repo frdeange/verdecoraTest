@@ -104,6 +104,9 @@ resource lifecyclePolicy 'Microsoft.Storage/storageAccounts/managementPolicies@2
 @description('Storage account id.')
 output storageAccountId string = storageAccount.id
 
+@description('Storage account name.')
+output storageAccountName string = storageAccount.name
+
 @description('Raw container id.')
 output albaranesRawContainerId string = albaranesRawContainer.id
 

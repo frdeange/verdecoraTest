@@ -71,3 +71,21 @@ Run with:
 ```bash
 python -m src.mcp.feature_flags_mcp.server
 ```
+
+### `bc_mcp`
+
+Async client wrapper for the native Business Central MCP endpoint.
+
+**Configuration**
+- `BC_MCP_SERVER_URL`
+- `BC_MCP_TENANT_ID`
+- `BC_MCP_ENVIRONMENT_NAME`
+- `BC_MCP_COMPANY`
+- `BC_MCP_CONFIGURATION_NAME`
+- `BC_MCP_SCOPE`
+
+**Highlights**
+- Native MCP over streamable HTTP
+- `DefaultAzureCredential` bearer auth
+- Read helpers for vendors, purchase orders, PO lines, items, and purchase receipts
+- Configurable write-side tool mappings for receipt posting flows

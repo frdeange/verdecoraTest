@@ -1,6 +1,6 @@
 targetScope = 'resourceGroup'
 
-@description('Deployment location for the user-assigned managed identities.')
+@description('Deployment location for managed identity and RBAC resources.')
 param location string = resourceGroup().location
 
 @description('Optional tags applied to every managed identity.')
@@ -15,11 +15,11 @@ param serviceBusNamespaceName string
 @description('Name of the storage account that stores inbound delivery note PDFs.')
 param storageAccountName string
 
-@description('Name of the Key Vault that stores application secrets. The vault must already use RBAC authorization mode.')
-param keyVaultName string
+@description('Optional name of the Key Vault that stores application secrets. The vault must already use RBAC authorization mode.')
+param keyVaultName string = ''
 
-@description('Name of the Azure Communication Services resource used for HITL email.')
-param communicationServiceName string
+@description('Optional name of the Azure Communication Services resource used for HITL email.')
+param communicationServiceName string = ''
 
 @description('Optional Azure OpenAI account name for granting data-plane access to the ACA identity.')
 param openAiAccountName string = ''
@@ -29,6 +29,18 @@ param docIntellAccountName string = ''
 
 @description('Optional suffix appended to the managed identity names.')
 param nameSuffix string = ''
+
+@description('When true, create the legacy user-assigned identities and their RBAC assignments.')
+param deployUserAssignedIdentities bool = true
+
+@description('Optional system-assigned principal id for the agentic orchestrator ACA app.')
+param orchestratorPrincipalId string = ''
+
+@description('Optional system-assigned principal id for the HITL web form ACA app.')
+param hitlWebformPrincipalId string = ''
+
+@description('Optional system-assigned principal id for the Flow 0 dedup ACA Job.')
+param flow0WorkerPrincipalId string = ''
 
 var cosmosBuiltInDataContributorRoleDefinitionId = '00000000-0000-0000-0000-000000000002'
 var serviceBusDataSenderRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')
@@ -56,11 +68,11 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing 
   name: storageAccountName
 }
 
-resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = if (!empty(keyVaultName)) {
   name: keyVaultName
 }
 
-resource communicationService 'Microsoft.Communication/communicationServices@2023-04-01' existing = {
+resource communicationService 'Microsoft.Communication/communicationServices@2023-04-01' existing = if (!empty(communicationServiceName)) {
   name: communicationServiceName
 }
 
@@ -72,7 +84,7 @@ resource docIntellAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' exis
   name: docIntellAccountName
 }
 
-resource agenticOrchestratorIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+resource agenticOrchestratorIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = if (deployUserAssignedIdentities) {
   name: agenticOrchestratorIdentityName
   location: location
   tags: union(tags, {
@@ -81,7 +93,7 @@ resource agenticOrchestratorIdentity 'Microsoft.ManagedIdentity/userAssignedIden
   })
 }
 
-resource communicationAgentIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+resource communicationAgentIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = if (deployUserAssignedIdentities) {
   name: communicationAgentIdentityName
   location: location
   tags: union(tags, {
@@ -90,7 +102,7 @@ resource communicationAgentIdentity 'Microsoft.ManagedIdentity/userAssignedIdent
   })
 }
 
-resource hitlWebformIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+resource hitlWebformIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = if (deployUserAssignedIdentities) {
   name: hitlWebformIdentityName
   location: location
   tags: union(tags, {
@@ -99,7 +111,7 @@ resource hitlWebformIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2
   })
 }
 
-resource flow0WorkerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+resource flow0WorkerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = if (deployUserAssignedIdentities) {
   name: flow0WorkerIdentityName
   location: location
   tags: union(tags, {
@@ -108,209 +120,344 @@ resource flow0WorkerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2
   })
 }
 
-resource agenticOrchestratorCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = {
+resource agenticOrchestratorCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = if (deployUserAssignedIdentities) {
   parent: cosmosAccount
-  name: guid(cosmosAccount.id, agenticOrchestratorIdentity.name, cosmosBuiltInDataContributorRoleDefinitionId)
+  name: guid(cosmosAccount.id, agenticOrchestratorIdentity!.name, cosmosBuiltInDataContributorRoleDefinitionId)
   properties: {
-    principalId: agenticOrchestratorIdentity.properties.principalId
+    principalId: agenticOrchestratorIdentity!.properties.principalId
     roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosBuiltInDataContributorRoleDefinitionId}'
     scope: cosmosAccount.id
   }
 }
 
-resource communicationAgentCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = {
+resource communicationAgentCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = if (deployUserAssignedIdentities) {
   parent: cosmosAccount
-  name: guid(cosmosAccount.id, communicationAgentIdentity.name, cosmosBuiltInDataContributorRoleDefinitionId)
+  name: guid(cosmosAccount.id, communicationAgentIdentity!.name, cosmosBuiltInDataContributorRoleDefinitionId)
   properties: {
-    principalId: communicationAgentIdentity.properties.principalId
+    principalId: communicationAgentIdentity!.properties.principalId
     roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosBuiltInDataContributorRoleDefinitionId}'
     scope: cosmosAccount.id
   }
 }
 
-resource hitlWebformCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = {
+resource hitlWebformCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = if (deployUserAssignedIdentities) {
   parent: cosmosAccount
-  name: guid(cosmosAccount.id, hitlWebformIdentity.name, cosmosBuiltInDataContributorRoleDefinitionId)
+  name: guid(cosmosAccount.id, hitlWebformIdentity!.name, cosmosBuiltInDataContributorRoleDefinitionId)
   properties: {
-    principalId: hitlWebformIdentity.properties.principalId
+    principalId: hitlWebformIdentity!.properties.principalId
     roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosBuiltInDataContributorRoleDefinitionId}'
     scope: cosmosAccount.id
   }
 }
 
-resource flow0WorkerCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = {
+resource flow0WorkerCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = if (deployUserAssignedIdentities) {
   parent: cosmosAccount
-  name: guid(cosmosAccount.id, flow0WorkerIdentity.name, cosmosBuiltInDataContributorRoleDefinitionId)
+  name: guid(cosmosAccount.id, flow0WorkerIdentity!.name, cosmosBuiltInDataContributorRoleDefinitionId)
   properties: {
-    principalId: flow0WorkerIdentity.properties.principalId
+    principalId: flow0WorkerIdentity!.properties.principalId
     roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosBuiltInDataContributorRoleDefinitionId}'
     scope: cosmosAccount.id
   }
 }
 
-resource agenticOrchestratorServiceBusSenderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(serviceBusNamespace.id, agenticOrchestratorIdentity.name, serviceBusDataSenderRoleDefinitionId)
+resource agenticOrchestratorServiceBusSenderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities) {
+  name: guid(serviceBusNamespace.id, agenticOrchestratorIdentity!.name, serviceBusDataSenderRoleDefinitionId)
   scope: serviceBusNamespace
   properties: {
-    principalId: agenticOrchestratorIdentity.properties.principalId
+    principalId: agenticOrchestratorIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: serviceBusDataSenderRoleDefinitionId
   }
 }
 
-resource agenticOrchestratorServiceBusReceiverRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(serviceBusNamespace.id, agenticOrchestratorIdentity.name, serviceBusDataReceiverRoleDefinitionId)
+resource agenticOrchestratorServiceBusReceiverRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities) {
+  name: guid(serviceBusNamespace.id, agenticOrchestratorIdentity!.name, serviceBusDataReceiverRoleDefinitionId)
   scope: serviceBusNamespace
   properties: {
-    principalId: agenticOrchestratorIdentity.properties.principalId
+    principalId: agenticOrchestratorIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: serviceBusDataReceiverRoleDefinitionId
   }
 }
 
-resource communicationAgentServiceBusSenderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(serviceBusNamespace.id, communicationAgentIdentity.name, serviceBusDataSenderRoleDefinitionId)
+resource communicationAgentServiceBusSenderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities) {
+  name: guid(serviceBusNamespace.id, communicationAgentIdentity!.name, serviceBusDataSenderRoleDefinitionId)
   scope: serviceBusNamespace
   properties: {
-    principalId: communicationAgentIdentity.properties.principalId
+    principalId: communicationAgentIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: serviceBusDataSenderRoleDefinitionId
   }
 }
 
-resource hitlWebformServiceBusSenderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(serviceBusNamespace.id, hitlWebformIdentity.name, serviceBusDataSenderRoleDefinitionId)
+resource hitlWebformServiceBusSenderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities) {
+  name: guid(serviceBusNamespace.id, hitlWebformIdentity!.name, serviceBusDataSenderRoleDefinitionId)
   scope: serviceBusNamespace
   properties: {
-    principalId: hitlWebformIdentity.properties.principalId
+    principalId: hitlWebformIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: serviceBusDataSenderRoleDefinitionId
   }
 }
 
-resource flow0WorkerServiceBusSenderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(serviceBusNamespace.id, flow0WorkerIdentity.name, serviceBusDataSenderRoleDefinitionId)
+resource flow0WorkerServiceBusSenderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities) {
+  name: guid(serviceBusNamespace.id, flow0WorkerIdentity!.name, serviceBusDataSenderRoleDefinitionId)
   scope: serviceBusNamespace
   properties: {
-    principalId: flow0WorkerIdentity.properties.principalId
+    principalId: flow0WorkerIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: serviceBusDataSenderRoleDefinitionId
   }
 }
 
-resource agenticOrchestratorBlobReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, agenticOrchestratorIdentity.name, storageBlobDataReaderRoleDefinitionId)
+resource agenticOrchestratorBlobReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities) {
+  name: guid(storageAccount.id, agenticOrchestratorIdentity!.name, storageBlobDataReaderRoleDefinitionId)
   scope: storageAccount
   properties: {
-    principalId: agenticOrchestratorIdentity.properties.principalId
+    principalId: agenticOrchestratorIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: storageBlobDataReaderRoleDefinitionId
   }
 }
 
-resource flow0WorkerBlobReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, flow0WorkerIdentity.name, storageBlobDataReaderRoleDefinitionId)
+resource flow0WorkerBlobReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities) {
+  name: guid(storageAccount.id, flow0WorkerIdentity!.name, storageBlobDataReaderRoleDefinitionId)
   scope: storageAccount
   properties: {
-    principalId: flow0WorkerIdentity.properties.principalId
+    principalId: flow0WorkerIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: storageBlobDataReaderRoleDefinitionId
   }
 }
 
-resource agenticOrchestratorKeyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, agenticOrchestratorIdentity.name, keyVaultSecretsUserRoleDefinitionId)
+resource agenticOrchestratorKeyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities && !empty(keyVaultName)) {
+  name: guid(keyVault.id, agenticOrchestratorIdentity!.name, keyVaultSecretsUserRoleDefinitionId)
   scope: keyVault
   properties: {
-    principalId: agenticOrchestratorIdentity.properties.principalId
+    principalId: agenticOrchestratorIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: keyVaultSecretsUserRoleDefinitionId
   }
 }
 
-resource communicationAgentKeyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, communicationAgentIdentity.name, keyVaultSecretsUserRoleDefinitionId)
+resource communicationAgentKeyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities && !empty(keyVaultName)) {
+  name: guid(keyVault.id, communicationAgentIdentity!.name, keyVaultSecretsUserRoleDefinitionId)
   scope: keyVault
   properties: {
-    principalId: communicationAgentIdentity.properties.principalId
+    principalId: communicationAgentIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: keyVaultSecretsUserRoleDefinitionId
   }
 }
 
-resource hitlWebformKeyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, hitlWebformIdentity.name, keyVaultSecretsUserRoleDefinitionId)
+resource hitlWebformKeyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities && !empty(keyVaultName)) {
+  name: guid(keyVault.id, hitlWebformIdentity!.name, keyVaultSecretsUserRoleDefinitionId)
   scope: keyVault
   properties: {
-    principalId: hitlWebformIdentity.properties.principalId
+    principalId: hitlWebformIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: keyVaultSecretsUserRoleDefinitionId
   }
 }
 
-resource flow0WorkerKeyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, flow0WorkerIdentity.name, keyVaultSecretsUserRoleDefinitionId)
+resource flow0WorkerKeyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities && !empty(keyVaultName)) {
+  name: guid(keyVault.id, flow0WorkerIdentity!.name, keyVaultSecretsUserRoleDefinitionId)
   scope: keyVault
   properties: {
-    principalId: flow0WorkerIdentity.properties.principalId
+    principalId: flow0WorkerIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: keyVaultSecretsUserRoleDefinitionId
   }
 }
 
-resource communicationAgentCommunicationServicesContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(communicationService.id, communicationAgentIdentity.name, communicationServicesContributorRoleDefinitionId)
+resource communicationAgentCommunicationServicesContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities && !empty(communicationServiceName)) {
+  name: guid(communicationService.id, communicationAgentIdentity!.name, communicationServicesContributorRoleDefinitionId)
   scope: communicationService
   properties: {
-    principalId: communicationAgentIdentity.properties.principalId
+    principalId: communicationAgentIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: communicationServicesContributorRoleDefinitionId
   }
 }
 
-resource agenticOrchestratorOpenAiUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(openAiAccountName)) {
-  name: guid(openAiAccount.id, agenticOrchestratorIdentity.name, cognitiveServicesOpenAIUserRoleDefinitionId)
+resource agenticOrchestratorOpenAiUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities && !empty(openAiAccountName)) {
+  name: guid(openAiAccount.id, agenticOrchestratorIdentity!.name, cognitiveServicesOpenAIUserRoleDefinitionId)
   scope: openAiAccount
   properties: {
-    principalId: agenticOrchestratorIdentity.properties.principalId
+    principalId: agenticOrchestratorIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: cognitiveServicesOpenAIUserRoleDefinitionId
   }
 }
 
-resource agenticOrchestratorDocIntellUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(docIntellAccountName)) {
-  name: guid(docIntellAccount.id, agenticOrchestratorIdentity.name, cognitiveServicesUserRoleDefinitionId)
+resource agenticOrchestratorDocIntellUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployUserAssignedIdentities && !empty(docIntellAccountName)) {
+  name: guid(docIntellAccount.id, agenticOrchestratorIdentity!.name, cognitiveServicesUserRoleDefinitionId)
   scope: docIntellAccount
   properties: {
-    principalId: agenticOrchestratorIdentity.properties.principalId
+    principalId: agenticOrchestratorIdentity!.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: cognitiveServicesUserRoleDefinitionId
   }
 }
 
-output identities object = {
-  agenticOrchestrator: {
-    name: agenticOrchestratorIdentity.name
-    clientId: agenticOrchestratorIdentity.properties.clientId
-    principalId: agenticOrchestratorIdentity.properties.principalId
-    resourceId: agenticOrchestratorIdentity.id
-  }
-  communicationAgent: {
-    name: communicationAgentIdentity.name
-    clientId: communicationAgentIdentity.properties.clientId
-    principalId: communicationAgentIdentity.properties.principalId
-    resourceId: communicationAgentIdentity.id
-  }
-  hitlWebform: {
-    name: hitlWebformIdentity.name
-    clientId: hitlWebformIdentity.properties.clientId
-    principalId: hitlWebformIdentity.properties.principalId
-    resourceId: hitlWebformIdentity.id
-  }
-  flow0Worker: {
-    name: flow0WorkerIdentity.name
-    clientId: flow0WorkerIdentity.properties.clientId
-    principalId: flow0WorkerIdentity.properties.principalId
-    resourceId: flow0WorkerIdentity.id
+resource orchestratorSystemAssignedCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = if (!empty(orchestratorPrincipalId)) {
+  parent: cosmosAccount
+  name: guid(cosmosAccount.id, orchestratorPrincipalId, cosmosBuiltInDataContributorRoleDefinitionId, 'system')
+  properties: {
+    principalId: orchestratorPrincipalId
+    roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosBuiltInDataContributorRoleDefinitionId}'
+    scope: cosmosAccount.id
   }
 }
+
+resource orchestratorSystemAssignedServiceBusSenderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(orchestratorPrincipalId)) {
+  name: guid(serviceBusNamespace.id, orchestratorPrincipalId, serviceBusDataSenderRoleDefinitionId, 'system')
+  scope: serviceBusNamespace
+  properties: {
+    principalId: orchestratorPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataSenderRoleDefinitionId
+  }
+}
+
+resource orchestratorSystemAssignedServiceBusReceiverRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(orchestratorPrincipalId)) {
+  name: guid(serviceBusNamespace.id, orchestratorPrincipalId, serviceBusDataReceiverRoleDefinitionId, 'system')
+  scope: serviceBusNamespace
+  properties: {
+    principalId: orchestratorPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataReceiverRoleDefinitionId
+  }
+}
+
+resource orchestratorSystemAssignedBlobReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(orchestratorPrincipalId)) {
+  name: guid(storageAccount.id, orchestratorPrincipalId, storageBlobDataReaderRoleDefinitionId, 'system')
+  scope: storageAccount
+  properties: {
+    principalId: orchestratorPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: storageBlobDataReaderRoleDefinitionId
+  }
+}
+
+resource orchestratorSystemAssignedOpenAiRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(orchestratorPrincipalId) && !empty(openAiAccountName)) {
+  name: guid(openAiAccount.id, orchestratorPrincipalId, cognitiveServicesOpenAIUserRoleDefinitionId, 'system')
+  scope: openAiAccount
+  properties: {
+    principalId: orchestratorPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: cognitiveServicesOpenAIUserRoleDefinitionId
+  }
+}
+
+resource orchestratorSystemAssignedDocIntellRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(orchestratorPrincipalId) && !empty(docIntellAccountName)) {
+  name: guid(docIntellAccount.id, orchestratorPrincipalId, cognitiveServicesUserRoleDefinitionId, 'system')
+  scope: docIntellAccount
+  properties: {
+    principalId: orchestratorPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: cognitiveServicesUserRoleDefinitionId
+  }
+}
+
+resource flow0SystemAssignedCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = if (!empty(flow0WorkerPrincipalId)) {
+  parent: cosmosAccount
+  name: guid(cosmosAccount.id, flow0WorkerPrincipalId, cosmosBuiltInDataContributorRoleDefinitionId, 'system')
+  properties: {
+    principalId: flow0WorkerPrincipalId
+    roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosBuiltInDataContributorRoleDefinitionId}'
+    scope: cosmosAccount.id
+  }
+}
+
+resource flow0SystemAssignedServiceBusSenderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(flow0WorkerPrincipalId)) {
+  name: guid(serviceBusNamespace.id, flow0WorkerPrincipalId, serviceBusDataSenderRoleDefinitionId, 'system')
+  scope: serviceBusNamespace
+  properties: {
+    principalId: flow0WorkerPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataSenderRoleDefinitionId
+  }
+}
+
+resource flow0SystemAssignedServiceBusReceiverRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(flow0WorkerPrincipalId)) {
+  name: guid(serviceBusNamespace.id, flow0WorkerPrincipalId, serviceBusDataReceiverRoleDefinitionId, 'system')
+  scope: serviceBusNamespace
+  properties: {
+    principalId: flow0WorkerPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataReceiverRoleDefinitionId
+  }
+}
+
+resource flow0SystemAssignedBlobReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(flow0WorkerPrincipalId)) {
+  name: guid(storageAccount.id, flow0WorkerPrincipalId, storageBlobDataReaderRoleDefinitionId, 'system')
+  scope: storageAccount
+  properties: {
+    principalId: flow0WorkerPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: storageBlobDataReaderRoleDefinitionId
+  }
+}
+
+resource hitlWebformSystemAssignedCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = if (!empty(hitlWebformPrincipalId)) {
+  parent: cosmosAccount
+  name: guid(cosmosAccount.id, hitlWebformPrincipalId, cosmosBuiltInDataContributorRoleDefinitionId, 'system')
+  properties: {
+    principalId: hitlWebformPrincipalId
+    roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosBuiltInDataContributorRoleDefinitionId}'
+    scope: cosmosAccount.id
+  }
+}
+
+resource hitlWebformSystemAssignedServiceBusSenderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(hitlWebformPrincipalId)) {
+  name: guid(serviceBusNamespace.id, hitlWebformPrincipalId, serviceBusDataSenderRoleDefinitionId, 'system')
+  scope: serviceBusNamespace
+  properties: {
+    principalId: hitlWebformPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataSenderRoleDefinitionId
+  }
+}
+
+resource hitlWebformSystemAssignedServiceBusReceiverRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(hitlWebformPrincipalId)) {
+  name: guid(serviceBusNamespace.id, hitlWebformPrincipalId, serviceBusDataReceiverRoleDefinitionId, 'system')
+  scope: serviceBusNamespace
+  properties: {
+    principalId: hitlWebformPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataReceiverRoleDefinitionId
+  }
+}
+
+output identities object = deployUserAssignedIdentities ? {
+  agenticOrchestrator: {
+    name: agenticOrchestratorIdentity!.name
+    clientId: agenticOrchestratorIdentity!.properties.clientId
+    principalId: agenticOrchestratorIdentity!.properties.principalId
+    resourceId: agenticOrchestratorIdentity!.id
+  }
+  communicationAgent: {
+    name: communicationAgentIdentity!.name
+    clientId: communicationAgentIdentity!.properties.clientId
+    principalId: communicationAgentIdentity!.properties.principalId
+    resourceId: communicationAgentIdentity!.id
+  }
+  hitlWebform: {
+    name: hitlWebformIdentity!.name
+    clientId: hitlWebformIdentity!.properties.clientId
+    principalId: hitlWebformIdentity!.properties.principalId
+    resourceId: hitlWebformIdentity!.id
+  }
+  flow0Worker: {
+    name: flow0WorkerIdentity!.name
+    clientId: flow0WorkerIdentity!.properties.clientId
+    principalId: flow0WorkerIdentity!.properties.principalId
+    resourceId: flow0WorkerIdentity!.id
+  }
+} : {
+  orchestratorSystemAssignedPrincipalId: orchestratorPrincipalId
+  hitlWebformSystemAssignedPrincipalId: hitlWebformPrincipalId
+  flow0WorkerSystemAssignedPrincipalId: flow0WorkerPrincipalId
+}
+

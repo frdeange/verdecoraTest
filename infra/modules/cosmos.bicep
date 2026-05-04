@@ -101,6 +101,12 @@ resource dlqContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/contai
 @description('Cosmos DB account id.')
 output cosmosAccountId string = cosmosAccount.id
 
+@description('Cosmos DB account name.')
+output cosmosAccountName string = cosmosAccount.name
+
+@description('Cosmos DB endpoint.')
+output cosmosEndpoint string = cosmosAccount.properties.documentEndpoint
+
 @description('Cosmos DB database id.')
 output albaranesDatabaseId string = albaranesDb.id
 

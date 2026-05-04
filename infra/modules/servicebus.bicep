@@ -28,29 +28,41 @@ resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2022-10-01-preview
   }
 }
 
+resource ingestionQueue 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-preview' = {
+  parent: serviceBusNamespace
+  name: 'extraccion-queue'
+  properties: {
+    enablePartitioning: true
+  }
+}
+
 resource extraccionQueue 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-preview' = {
-  name: '${serviceBusNamespace.name}/extraccion-in'
+  parent: serviceBusNamespace
+  name: 'extraccion-in'
   properties: {
     enablePartitioning: true
   }
 }
 
 resource albaranEventsTopic 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-preview' = {
-  name: '${serviceBusNamespace.name}/albaran-events'
+  parent: serviceBusNamespace
+  name: 'albaran-events'
   properties: {
     enablePartitioning: true
   }
 }
 
 resource albaranRecibidoSubscription 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2022-10-01-preview' = {
-  name: '${serviceBusNamespace.name}/albaran-events/albaran-recibido'
+  parent: albaranEventsTopic
+  name: 'albaran-recibido'
   properties: {
     maxDeliveryCount: 10
   }
 }
 
 resource albaranValidadoSubscription 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2022-10-01-preview' = {
-  name: '${serviceBusNamespace.name}/albaran-events/albaran-validado'
+  parent: albaranEventsTopic
+  name: 'albaran-validado'
   properties: {
     maxDeliveryCount: 10
   }
@@ -59,8 +71,23 @@ resource albaranValidadoSubscription 'Microsoft.ServiceBus/namespaces/topics/sub
 @description('Service Bus namespace id.')
 output serviceBusNamespaceId string = serviceBusNamespace.id
 
-@description('Queue id.')
+@description('Service Bus namespace name.')
+output serviceBusNamespaceName string = serviceBusNamespace.name
+
+@description('Service Bus fully qualified namespace.')
+output serviceBusFullyQualifiedNamespace string = '${serviceBusNamespace.name}.servicebus.windows.net'
+
+@description('Flow 0 ingestion queue id.')
+output ingestionQueueId string = ingestionQueue.id
+
+@description('Flow 0 ingestion queue name.')
+output ingestionQueueName string = last(split(ingestionQueue.name, '/'))
+
+@description('Extraction queue id.')
 output extraccionQueueId string = extraccionQueue.id
+
+@description('Extraction queue name.')
+output extraccionQueueName string = last(split(extraccionQueue.name, '/'))
 
 @description('Topic id.')
 output albaranEventsTopicId string = albaranEventsTopic.id
