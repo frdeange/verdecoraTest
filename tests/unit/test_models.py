@@ -10,14 +10,21 @@ from src.models import (
     AlbaranHeader,
     CoherenceCheckResult,
     DocumentType,
+    LineComparison,
     LineItem,
+    PostingLineItem,
+    PurchaseReceiptPosting,
     TriageResult,
+    ValidationResult,
 )
 from tests.fixtures.sample_albarans import (
     sample_albaran_header,
     sample_coherence_result,
     sample_extraction,
     sample_line_items,
+    sample_posting_result,
+    sample_purchase_receipt_posting,
+    sample_validation_result,
 )
 
 pytestmark = pytest.mark.unit
@@ -177,3 +184,64 @@ def test_coherence_check_result_serialization_round_trip() -> None:
 
     assert restored == coherence
     assert dumped["suggested_corrections"]["matched_po_number"] == "PO-2026-0457"
+
+
+def test_validation_result_defaults_and_round_trip() -> None:
+    validation = sample_validation_result()
+
+    dumped = validation.model_dump(mode="json")
+    restored = ValidationResult.model_validate(dumped)
+
+    assert restored == validation
+    assert dumped["line_comparisons"][0]["status"] == "match"
+
+
+@pytest.mark.parametrize("overall_match_pct", [-0.1, 1.1])
+def test_validation_result_rejects_match_percentage_outside_bounds(overall_match_pct: float) -> None:
+    with pytest.raises(ValidationError):
+        ValidationResult(
+            is_valid=True,
+            overall_match_pct=overall_match_pct,
+            recommendation="approve",
+            reasoning="Invalid percentage.",
+        )
+
+
+def test_purchase_receipt_posting_round_trip() -> None:
+    posting = sample_purchase_receipt_posting()
+
+    dumped = posting.model_dump(mode="json")
+    restored = PurchaseReceiptPosting.model_validate(dumped)
+
+    assert restored == posting
+    assert dumped["posting_date"] == "2026-01-16"
+
+
+def test_posting_result_defaults_and_errors() -> None:
+    result = sample_posting_result(success=False, receipt_number=None, posted_lines=0, errors=["BC timeout"])
+
+    assert result.success is False
+    assert result.receipt_number is None
+    assert result.errors == ["BC timeout"]
+
+
+def test_supporting_models_accept_numeric_values() -> None:
+    comparison = LineComparison(
+        line_number=1,
+        field="price",
+        extracted_value="8.00",
+        bc_value="8.00",
+        difference_pct=0.0,
+        status="match",
+    )
+    posting_line = PostingLineItem(
+        item_number="HER-001",
+        description="Maceta cerámica 20cm",
+        quantity=3,
+        unit_cost=8,
+        line_amount=24,
+    )
+
+    assert comparison.difference_pct == 0.0
+    assert posting_line.quantity == 3.0
+    assert posting_line.unit_cost == 8.0

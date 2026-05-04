@@ -6,7 +6,9 @@ from src.config.agents import AgentsConfig, get_agents_config
 
 from .coherence_agent import create_coherence_agent
 from .extractor_agent import create_extractor_agent
+from .inventory_agent import create_inventory_agent
 from .triage_agent import create_triage_agent
+from .validator_agent import create_validator_agent
 
 ToolRegistry = Mapping[str, list[Any]]
 
@@ -28,4 +30,6 @@ def create_all_agents(
         "triage": create_triage_agent(client, resolved_config, tools=_get_tools(tool_registry, "triage")),
         "extractor": create_extractor_agent(client, resolved_config, tools=_get_tools(tool_registry, "extractor")),
         "coherence": create_coherence_agent(client, resolved_config, tools=_get_tools(tool_registry, "coherence")),
+        "validator": create_validator_agent(client, resolved_config, tools=_get_tools(tool_registry, "validator")),
+        "inventory": create_inventory_agent(client, resolved_config, tools=_get_tools(tool_registry, "inventory")),
     }

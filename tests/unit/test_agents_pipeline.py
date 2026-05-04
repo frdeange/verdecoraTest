@@ -15,13 +15,15 @@ def test_agents_config_defaults() -> None:
     assert config.models.extractor_model == "gpt-5"
     assert config.models.triage_model == "gpt-5-mini"
     assert config.models.coherence_model == "gpt-5-mini"
+    assert config.models.validator_model == "gpt-5-mini"
+    assert config.models.inventory_model == "gpt-5-mini"
 
 
 def test_pipeline_builds_with_default_agents() -> None:
     pipeline = build_pipeline(client=object(), config=AgentsConfig())
     workflow = pipeline.build_workflow(PipelineDocumentInput(document_reference="https://storage/doc.pdf"))
 
-    assert set(pipeline.agents) == {"triage", "extractor", "coherence"}
+    assert set(pipeline.agents) == {"triage", "extractor", "coherence", "validator", "inventory"}
     assert workflow is not None
 
 
