@@ -35,6 +35,11 @@ class CosmosReviewStore:
         items = [item async for item in container.query_items(query=query, parameters=parameters)]
         return dict(items[0]) if items else None
 
+    async def upsert_item(self, document: dict[str, Any]) -> dict[str, Any]:
+        container = await self._get_container()
+        await container.upsert_item(document)
+        return document
+
     async def save_decision(self, decision: HITLDecision) -> dict[str, Any]:
         record = (await self.get_review_record(decision.albaran_id)) or {"id": decision.albaran_id}
         record.update(
@@ -45,8 +50,7 @@ class CosmosReviewStore:
                 "decided_at": decision.decided_at.isoformat(),
             }
         )
-        container = await self._get_container()
-        await container.upsert_item(record)
+        await self.upsert_item(record)
         return record
 
     async def close(self) -> None:
