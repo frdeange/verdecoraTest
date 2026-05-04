@@ -8,6 +8,7 @@ from src.models.albaran import CoherenceCheckResult
 
 from ._maf_compat import create_structured_agent
 from .prompts import COHERENCE_SYSTEM_PROMPT
+from .security import harden_system_prompt
 
 DEFAULT_COHERENCE_TOOL_NAMES: tuple[str, ...] = (
     "bc.search_vendors",
@@ -19,7 +20,7 @@ DEFAULT_COHERENCE_TOOL_NAMES: tuple[str, ...] = (
 def _build_coherence_instructions(tool_names: tuple[str, ...]) -> str:
     schema = json.dumps(CoherenceCheckResult.model_json_schema(), ensure_ascii=False, indent=2)
     tool_hint = "\nAvailable MCP tools: " + ", ".join(tool_names) if tool_names else ""
-    return COHERENCE_SYSTEM_PROMPT.format(schema=schema) + tool_hint
+    return harden_system_prompt(COHERENCE_SYSTEM_PROMPT.format(schema=schema) + tool_hint)
 
 
 def create_coherence_agent(

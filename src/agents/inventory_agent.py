@@ -9,6 +9,7 @@ from src.models.validation import ValidationResult
 
 from ._maf_compat import create_structured_agent
 from .prompts import INVENTORY_SYSTEM_PROMPT
+from .security import harden_system_prompt
 
 DEFAULT_INVENTORY_TOOL_NAMES: tuple[str, ...] = (
     "bc.create_purchase_receipt",
@@ -19,7 +20,7 @@ DEFAULT_INVENTORY_TOOL_NAMES: tuple[str, ...] = (
 def _build_inventory_instructions(tool_names: tuple[str, ...]) -> str:
     schema = json.dumps(PostingResult.model_json_schema(), ensure_ascii=False, indent=2)
     tool_hint = "\nAvailable MCP tools: " + ", ".join(tool_names) if tool_names else ""
-    return INVENTORY_SYSTEM_PROMPT.format(schema=schema) + tool_hint
+    return harden_system_prompt(INVENTORY_SYSTEM_PROMPT.format(schema=schema) + tool_hint)
 
 
 def create_inventory_agent(

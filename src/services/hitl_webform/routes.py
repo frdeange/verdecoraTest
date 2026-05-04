@@ -104,7 +104,8 @@ async def get_review_page(
     request: Request,
     authorization: str | None = Header(default=None),
 ) -> HTMLResponse:
-    reviewer = validate_entra_token(authorization)
+    config = cast(Any, request.app.state.hitl_config)
+    reviewer = await validate_entra_token(authorization, config=config)
     review_store = cast(Any, request.app.state.review_store)
     review_record = await review_store.get_review_record(albaran_id)
     if review_record is None:
@@ -119,7 +120,8 @@ async def submit_review_decision(
     request: Request,
     authorization: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    reviewer = validate_entra_token(authorization)
+    config = cast(Any, request.app.state.hitl_config)
+    reviewer = await validate_entra_token(authorization, config=config)
     if payload.decision not in {"approve", "reject", "modify"}:
         raise HTTPException(status_code=422, detail="decision must be approve, reject, or modify")
     review_store = cast(Any, request.app.state.review_store)

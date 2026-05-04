@@ -8,6 +8,7 @@ from src.models.validation import ValidationResult, compare_line_values, recomme
 
 from ._maf_compat import create_structured_agent
 from .prompts import VALIDATOR_SYSTEM_PROMPT
+from .security import harden_system_prompt
 
 DEFAULT_VALIDATOR_TOOL_NAMES: tuple[str, ...] = (
     "bc.search_purchase_orders",
@@ -19,7 +20,7 @@ DEFAULT_VALIDATOR_TOOL_NAMES: tuple[str, ...] = (
 def _build_validator_instructions(tool_names: tuple[str, ...]) -> str:
     schema = json.dumps(ValidationResult.model_json_schema(), ensure_ascii=False, indent=2)
     tool_hint = "\nAvailable MCP tools: " + ", ".join(tool_names) if tool_names else ""
-    return VALIDATOR_SYSTEM_PROMPT.format(schema=schema) + tool_hint
+    return harden_system_prompt(VALIDATOR_SYSTEM_PROMPT.format(schema=schema) + tool_hint)
 
 
 def create_validator_agent(
