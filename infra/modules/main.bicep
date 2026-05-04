@@ -114,7 +114,7 @@ module docIntell './docintell.bicep' = {
 }
 
 @description('Resource group id.')
-output resourceGroupId string = resourceGroup.outputs.resourceGroupId
+output resourceGroupId string = rg.outputs.resourceGroupId
 
 @description('Virtual network id.')
 output virtualNetworkId string = network.outputs.virtualNetworkId
