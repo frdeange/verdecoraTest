@@ -55,5 +55,14 @@ class FakeWorkflow:
         return self.response
 
 
-def build_structured_agent_stub(**kwargs: Any) -> StructuredAgentStub:
-    return StructuredAgentStub(response_format=kwargs["response_format"], kwargs=dict(kwargs))
+def build_structured_agent_stub(*args: Any, **kwargs: Any) -> StructuredAgentStub:
+    response_format = kwargs.get("response_format")
+    if response_format is None:
+        response_format = kwargs.get("default_options", {}).get("response_format")
+    if response_format is None:
+        raise KeyError("response_format")
+
+    captured_kwargs = dict(kwargs)
+    if args:
+        captured_kwargs["client"] = args[0]
+    return StructuredAgentStub(response_format=response_format, kwargs=captured_kwargs)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from agent_framework import SequentialBuilder
+from agent_framework.orchestrations import SequentialBuilder
 from azure.identity.aio import DefaultAzureCredential
 from pydantic import BaseModel, Field, ValidationError
 
@@ -95,7 +95,14 @@ class AlbaranPipeline:
         if hasattr(resolved, "__aiter__"):
             latest_payload: Any = None
             async for event in resolved:
-                latest_payload = getattr(event, "data", event)
+                data = getattr(event, "data", event)
+                text = getattr(data, "text", None)
+                if text is not None:
+                    latest_payload = text
+                elif hasattr(data, "messages"):
+                    latest_payload = data.messages[-1].content if data.messages else str(data)
+                else:
+                    latest_payload = data
             return latest_payload
         return getattr(resolved, "text", resolved)
 
