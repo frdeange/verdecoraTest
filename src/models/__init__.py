@@ -10,6 +10,7 @@ from .albaran import (
 )
 from .communication import EscalationLevel, HITLDecision, HITLNotification
 from .inventory import PostingLineItem, PostingResult, PurchaseReceiptPosting
+from .store import Store
 from .validation import LineComparison, ValidationResult
 
 __all__ = [
@@ -25,6 +26,7 @@ __all__ = [
     "PostingLineItem",
     "PostingResult",
     "PurchaseReceiptPosting",
+    "Store",
     "TriageResult",
     "ValidationResult",
 ]

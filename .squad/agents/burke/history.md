@@ -10,6 +10,12 @@
 
 ## Learnings
 
+### 2026-05-05 — Verdecora store catalog + BC seed
+- Added a shared `Store` model, cached loader, and a 27-store Verdecora catalog in `data/stores/verdecora-stores.json` for Upload Web and BC integration.
+- Used BC-friendly short `bc_location_code` values so the future Business Central `Location` seed can map cleanly to master data without overloading the display name.
+- Added `scripts/seed_bc_stores.py` as a dry-run BC Location seeder stub and validated it against the shared catalog.
+- Added unit coverage for catalog loading, required fields, duplicate IDs, and Spanish postal-code shape validation.
+
 ### 2026-05-03 — BC MCP / inventory analysis
 - Reviewed the PRD assumptions for Purchase Orders, Purchase Lines, Vendors, Items, Warehouse Receipts, and Item Journals.
 - Confirmed native BC MCP can expose standard top-level API pages for **Purchase Orders**, **Purchase Order Lines**, **Vendors**, **Items**, and **Posted Purchase Receipts**.
