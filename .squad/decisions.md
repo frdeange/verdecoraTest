@@ -453,6 +453,107 @@ pwsh -File C:\repos\verdecoraTest\.squad\scripts\create-backlog.ps1
 ```
 After execution, script produces `.squad/decisions/inbox/hicks-issue-map.json` (key → issue# mapping) for downstream automation.
 
+### 2026-05-04: MAF v1.0 PoC Patterns Validated
+**From:** Ash (MAF Specialist)  
+**Date:** 2026-05-04  
+**PR:** #56  
+**Issue:** #1  
+**Status:** COMPLETED
+
+SequentialBuilder and HandoffBuilder from `agent-framework` v1.0 GA are validated for albarán processing pipeline. PoC confirms:
+1. **SequentialBuilder** works for linear pipelines but has no conditional branching.
+2. **HandoffBuilder** works for conditional routing but depends on LLM prompt quality.
+3. **HITL** via `handoffs=["user"]` correctly pauses workflow for human review.
+4. **@tool decorator** with `Annotated` params and `approval_mode` works as documented.
+5. **OpenTelemetry** integrates cleanly with custom spans.
+
+**Recommendation for Sprint 1:** Use **WorkflowBuilder** (not SequentialBuilder/HandoffBuilder) for production pipeline. It supports `Case`/`Default` conditional edges with deterministic routing — better fit for business rules than LLM-driven handoff. Keep HandoffBuilder for dynamic edge cases. Use `CosmosCheckpointStorage` for durable HITL waits (24h reminder, 48h escalation). Replace mock tools with `MCPStreamableHTTPTool` pointing to real MCP servers.
+
+**Impact:** Unblocks Sprint 1 agent implementation with confirmed API patterns.
+
+### 2026-05-05: MAF v1.2.2 Upgrade Complete
+**From:** Bishop (AI Agent Developer) + Ash (MAF Specialist)  
+**Date:** 2026-05-05  
+**PR:** #86  
+**Commits:** 61151de  
+**Status:** COMPLETED
+
+**Decision:** Upgrade production baseline to MAF >=1.2.2,<2.0 and adapt all breaking changes.
+
+**Breaking Changes Adapted:**
+1. **AgentResponse standardization** (#5301): Updated `_run_workflow()` in pipeline.py, reconciler.py, analyzer.py to handle `AgentResponse` instead of `list[Message]`. Terminal output handlers normalize `.text` / `.messages` consistently.
+2. **ChatAgent deprecation:** Standardized on `agent_framework.Agent` direct usage (ChatAgent no longer exported from top-level).
+3. **Structured output configuration:** Moved to `default_options={"response_format": Model}` instead of `response_format=` constructor parameter.
+4. **CosmosCheckpointStorage compatibility:** Ready to support `allowed_checkpoint_types` for HITL (breaking change #5200 from v1.1.0).
+5. **HandoffBuilder context fix:** PoC benefits from v1.0.1 stabilization (#5136).
+
+**Test Validation:** 171 tests passed, 7 skipped (non-blocking).
+
+**Impact:** Sprint 1 WorkflowBuilder development now proceeds on stable MAF baseline. Durable Workflow hosting + shared state preservation simplify HITL architecture.
+
+### 2026-05-04: GitHub Runners Bootstrap (ACA Jobs)
+**From:** Brett (Network Architect)  
+**Date:** 2026-05-04  
+**Issue:** #4  
+**Status:** IN PROGRESS
+
+**Decisions Captured:**
+1. **Use ACA Jobs, not ACA Apps, for GitHub Actions runners.** Event-driven model matches KEDA scaler; cost-efficient.
+2. **Dedicated internal ACA managed environment on `snet-runners`.** Isolates CI/CD runner blast radius from application workloads.
+3. **Back runner PAT with Key Vault + user-assigned managed identity.** Avoids hard-coded secrets in Bicep; enables later hardening.
+4. **Temporary public Key Vault access (Phase 0 only).** Bootstrap guide explicitly requires removing exception after cutover.
+5. **Bootstrap verification via manual ACA job start + GitHub runners API.** Deterministic runner-registration check before moving all deploys to self-hosted pool.
+6. **Treat ACA runners as private IaC/control-plane workers only.** No Docker-in-Docker support; Docker builds use ACR Tasks.
+
+### 2026-05-04: BC MCP Validation Against CRONUS
+**From:** Burke (MCP Analyst)  
+**Date:** 2026-05-04  
+**Status:** COMPLETED  
+**Validation Report:** `docs/poc/bc-mcp-validation.md`
+
+**Decisions:**
+1. **Standard native BC MCP pages are sufficient for Sprint 1 read-side validation** (D-BURKE-BC-VALIDATION-001): Use pages `PAG30066`, `PAG30067`, `PAG30010`, `PAG30008`, `PAG30064`, `PAG30065` for PO, PO-line, vendor, item, receipt, receipt-line.
+2. **Pin exact action names; semantic discovery is design-time only** (D-BURKE-BC-VALIDATION-002): Broad prompts return noisy results; production code uses pinned action names.
+3. **Use parent-scoped sub-entity actions for detail reads** (D-BURKE-BC-VALIDATION-003): `List_PurchaseOrderLinesOfPurchaseOrder_PAG30067` pattern works cleanly with known parent id.
+4. **Posted purchase receipts are canonical success artifact** (D-BURKE-BC-VALIDATION-004): Readable natively via MCP; matches audit/confirmation use case.
+5. **Plan custom AL for warehouse receipts, item journals, receipt-only posting** (D-BURKE-BC-VALIDATION-005): No native BC MCP coverage found; requires custom AL.
+
+**Impact:** Validates Sprint 1 BC integration scope. Identifies custom AL dependencies.
+
+### 2026-05-04: Bicep Foundation (Sprint 0)
+**From:** Dallas (Infrastructure)  
+**Date:** 2026-05-04  
+**Status:** COMPLETED  
+**Infra Location:** `infra/modules`, `infra/main.bicep`
+
+**Decisions:**
+- Implemented base Bicep modules for core infrastructure with subscription-scope `main.bicep` orchestrator.
+- Standardized tags across all resources (`project=verdecora-albaranes`, `env`, `managed-by=bicep`).
+- Set `publicNetworkAccess=Disabled` where supported (private endpoint readiness).
+- Storage account naming: hyphenless `st-albaranes-{env}` variant to satisfy Azure constraints.
+- Service Bus topic `albaran-events` with subscriptions `albaran-recibido` and `albaran-validado`.
+- Storage immutability policy on `albaranes-raw`: unlocked 30-day retention as baseline.
+
+**Impact:** Infrastructure foundation ready for Phase 0 deployment.
+
+### 2026-05-04T09:15: Zero Keys Policy — Managed Identity ONLY
+**From:** Kiko de Angel (via Copilot)  
+**Date:** 2026-05-04  
+**Status:** BINDING DIRECTIVE
+
+**Directive:** ALL services must authenticate using Managed Identity. NO connection strings, NO shared keys, NO access keys anywhere — not in code, not in Bicep, not in config. Some Azure subscriptions have policies that block key-based auth entirely. This is a hard requirement, not a preference.
+
+**Rationale:** Subscription-level Azure Policy enforcement. Keys are blocked.
+
+### 2026-05-05T12:03: MAF Version Pinning Directive
+**From:** Kiko de Angel (via Copilot)  
+**Date:** 2026-05-05  
+**Status:** BINDING DIRECTIVE
+
+**Directive:** Pin Microsoft Agent Framework to `>=1.2.2,<2.0` in pyproject.toml. No point starting a new project with an outdated framework. Adopt v1.2.2 as baseline.
+
+**Rationale:** User request — ensures team starts with current, stable MAF version.
+
 ## Governance
 
 - All meaningful changes require team consensus

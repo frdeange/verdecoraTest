@@ -16,8 +16,15 @@
 - Recommended keeping Azure AI Document Intelligence as the OCR foundation, but changing the design from unconditional double-pass to selective hybrid escalation.
 - Wrote full findings to `prerequisites/analysis/bishop-llm-evaluation.md` and decision summary to `.squad/decisions/inbox/bishop-llm-models.md`.
 
-### 2026-05-05 — MAF v1.2.2 migration behavior
-- Upgrading to MAF v1.2.2 requires using `agent_framework.Agent` directly; `ChatAgent` is no longer exported from the top-level package.
-- Structured outputs now belong in `default_options={"response_format": Model}` instead of passing `response_format=` to the agent constructor.
-- Sequential workflow output handlers must normalize `AgentResponse` values by reading `.text` first and falling back to `.messages[-1].content` when needed.
-- `SequentialBuilder` should be imported from `agent_framework.orchestrations` for v1.2.2-compatible code paths.
+### 2026-05-05 — MAF v1.2.2 upgrade execution and breaking change adaptation
+- Received upgrade requirement from Ash (MAF v1.2.2 impact analysis).
+- Executed upgrade: Updated `pyproject.toml` to pin `agent-framework>=1.2.2,<2.0`.
+- Adapted breaking changes:
+  1. **AgentResponse standardization** (#5301): Modified `_run_workflow()` handlers in pipeline.py, reconciler.py, analyzer.py to normalize `.text` / `.messages[-1].content` output.
+  2. **ChatAgent deprecation:** Standardized all agent code on `agent_framework.Agent` direct usage.
+  3. **Structured output configuration:** Updated to `default_options={"response_format": Model}` pattern.
+  4. **CosmosCheckpointStorage prep:** Ready for `allowed_checkpoint_types` support (breaking change #5200).
+- Test validation: 171 tests passed, 7 skipped (non-blocking).
+- PR #86 created with commit 61151de.
+- Sprint 1 WorkflowBuilder development now unblocked with stable MAF baseline.
+

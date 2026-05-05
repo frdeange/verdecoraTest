@@ -43,3 +43,13 @@
 - **Key finding:** SequentialBuilder is linear-only; WorkflowBuilder recommended for Sprint 1 deterministic routing
 - **Key finding:** HandoffBuilder routing is LLM-dependent (prompt-driven); must test with real model
 - **Output:** `src/poc/maf_poc/`, `docs/poc/maf-v1-poc.md`
+
+### 2026-05-05: MAF v1.2.2 Impact Analysis and Upgrade
+- **Release:** python-1.2.2 (2026-04-29)
+- **Outcome:** Full impact analysis completed; 3 accumulated breaking changes identified between v1.0.0 and v1.2.2.
+- **Breaking changes:** HandoffBuilder context fix (v1.0.1 #5136), CosmosCheckpointStorage pickle restriction (v1.1.0 #5200), AgentResponse standardization (v1.2.2 #5301).
+- **Key impact:** `_run_workflow()` in pipeline.py, reconciler.py, analyzer.py require AgentResponse output handling.
+- **Bishop execution:** Upgraded pyproject.toml to `>=1.2.2,<2.0`, adapted all affected modules, validated with 171 passing tests.
+- **PR #86 created:** Commit 61151de — MAF v1.2.2 baseline ready for Sprint 1.
+- **Status:** ✅ COMPLETED. System ready for WorkflowBuilder development.
+
