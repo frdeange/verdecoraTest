@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "4335735284261144565"
+      "templateHash": "6784977157700746004"
     }
   },
   "parameters": {
@@ -56,11 +56,54 @@
       "metadata": {
         "description": "Optional override for the escalation timer job image during infrastructure deployments."
       }
+    },
+    "appGwFrontendCertificateSecretId": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Key Vault secret identifier for the Application Gateway TLS certificate (PFX secret, versionless URI recommended)."
+      }
+    },
+    "enableUploadWebAppGateway": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable Application Gateway deployment for upload-web once the TLS certificate secret is ready."
+      }
+    },
+    "uploadWebEntraClientId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Microsoft Entra application client id used by upload-web Easy Auth."
+      }
+    },
+    "enableUploadWebAuth": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable Easy Auth deployment for upload-web once the container app exists."
+      }
+    },
+    "uploadWebAllowedAudiences": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Optional audiences accepted by upload-web Easy Auth. Defaults to api://{uploadWebEntraClientId}."
+      }
+    },
+    "uploadWebAllowedGroupObjectIds": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Optional Microsoft Entra group object ids allowed to access upload-web."
+      }
     }
   },
   "variables": {
     "resourceGroupName": "[format('rg-verdecoratest-{0}', parameters('environment'))]",
-    "enableNetworkHardening": true
+    "enableNetworkHardening": true,
+    "uploadWebAppName": "[format('verdecora-upload-web-{0}', parameters('environment'))]"
   },
   "resources": [
     {
@@ -175,7 +218,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "14441465333506807893"
+              "templateHash": "13938833016720167310"
             }
           },
           "parameters": {
@@ -242,6 +285,69 @@
               "name": "[format('nsg-egress-albaranes-{0}', parameters('environment'))]",
               "location": "[parameters('location')]",
               "tags": "[variables('tags')]"
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-04-01",
+              "name": "[format('nsg-appgw-albaranes-{0}', parameters('environment'))]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('tags')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "allow-http-inbound",
+                    "properties": {
+                      "access": "Allow",
+                      "direction": "Inbound",
+                      "priority": 100,
+                      "protocol": "Tcp",
+                      "sourceAddressPrefix": "Internet",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "80"
+                    }
+                  },
+                  {
+                    "name": "allow-https-inbound",
+                    "properties": {
+                      "access": "Allow",
+                      "direction": "Inbound",
+                      "priority": 110,
+                      "protocol": "Tcp",
+                      "sourceAddressPrefix": "Internet",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "443"
+                    }
+                  },
+                  {
+                    "name": "allow-gatewaymanager",
+                    "properties": {
+                      "access": "Allow",
+                      "direction": "Inbound",
+                      "priority": 120,
+                      "protocol": "Tcp",
+                      "sourceAddressPrefix": "GatewayManager",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "65200-65535"
+                    }
+                  },
+                  {
+                    "name": "deny-rest-inbound",
+                    "properties": {
+                      "access": "Deny",
+                      "direction": "Inbound",
+                      "priority": 4096,
+                      "protocol": "*",
+                      "sourceAddressPrefix": "*",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "*"
+                    }
+                  }
+                ]
+              }
             },
             {
               "type": "Microsoft.Network/virtualNetworks",
@@ -317,11 +423,21 @@
                         "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-egress-albaranes-{0}', parameters('environment')))]"
                       }
                     }
+                  },
+                  {
+                    "name": "appgw-snet",
+                    "properties": {
+                      "addressPrefix": "10.10.6.0/24",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-appgw-albaranes-{0}', parameters('environment')))]"
+                      }
+                    }
                   }
                 ]
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-aca-env-albaranes-{0}', parameters('environment')))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-appgw-albaranes-{0}', parameters('environment')))]",
                 "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-egress-albaranes-{0}', parameters('environment')))]",
                 "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-functions-albaranes-{0}', parameters('environment')))]",
                 "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-pe-albaranes-{0}', parameters('environment')))]",
@@ -372,6 +488,13 @@
               },
               "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')), '2023-04-01').subnets[4].id]"
             },
+            "subnetAppGatewayId": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Gateway subnet id."
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')), '2023-04-01').subnets[5].id]"
+            },
             "nsgAcaId": {
               "type": "string",
               "metadata": {
@@ -406,6 +529,13 @@
                 "description": "Egress NSG id."
               },
               "value": "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-egress-albaranes-{0}', parameters('environment')))]"
+            },
+            "nsgAppGatewayId": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Gateway NSG id."
+              },
+              "value": "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-appgw-albaranes-{0}', parameters('environment')))]"
             }
           }
         }
@@ -3199,7 +3329,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "1508615338088884100"
+              "templateHash": "9811920103377580210"
             }
           },
           "parameters": {
@@ -3737,6 +3867,13 @@
               },
               "value": "[variables('managedEnvironmentName')]"
             },
+            "managedEnvironmentDefaultDomain": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Apps managed environment default domain."
+              },
+              "value": "[reference(resourceId('Microsoft.App/managedEnvironments', variables('managedEnvironmentName')), '2025-01-01').defaultDomain]"
+            },
             "orchestratorAppId": {
               "type": "string",
               "metadata": {
@@ -3810,6 +3947,532 @@
         "[subscriptionResourceId('Microsoft.Resources/deployments', 'resourceGroup')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'serviceBus')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableUploadWebAppGateway')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "appGateway",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "subnetId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'network'), '2025-04-01').outputs.subnetAppGatewayId.value]"
+          },
+          "backendFqdn": {
+            "value": "[format('{0}.internal.{1}', variables('uploadWebAppName'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'containerApps'), '2025-04-01').outputs.managedEnvironmentDefaultDomain.value)]"
+          },
+          "keyVaultName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'keyVault'), '2025-04-01').outputs.keyVaultName.value]"
+          },
+          "frontendSslCertificateSecretId": {
+            "value": "[parameters('appGwFrontendCertificateSecretId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "17053705018400402108"
+            }
+          },
+          "parameters": {
+            "environment": {
+              "type": "string",
+              "metadata": {
+                "description": "Deployment environment name (dev/test/prod)."
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for networking resources."
+              }
+            },
+            "subnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Dedicated subnet resource ID for Application Gateway."
+              }
+            },
+            "backendFqdn": {
+              "type": "string",
+              "metadata": {
+                "description": "Internal ACA FQDN used as the backend target for upload-web."
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Existing Key Vault name that stores the Application Gateway TLS certificate secret."
+              }
+            },
+            "frontendSslCertificateSecretId": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Key Vault secret identifier for the frontend TLS certificate (PFX secret, versionless URI recommended)."
+              }
+            },
+            "publicIpDnsLabel": {
+              "type": "string",
+              "defaultValue": "[format('verdecora-upload-{0}', parameters('environment'))]",
+              "metadata": {
+                "description": "Public DNS label assigned to the Application Gateway public IP."
+              }
+            },
+            "appGatewayName": {
+              "type": "string",
+              "defaultValue": "[format('agw-verdecora-upload-{0}', parameters('environment'))]",
+              "metadata": {
+                "description": "Application Gateway resource name."
+              }
+            },
+            "publicIpName": {
+              "type": "string",
+              "defaultValue": "[format('pip-verdecora-upload-{0}', parameters('environment'))]",
+              "metadata": {
+                "description": "Public IP resource name for the Application Gateway frontend."
+              }
+            },
+            "appGatewayIdentityName": {
+              "type": "string",
+              "defaultValue": "[format('id-appgw-verdecora-upload-{0}', parameters('environment'))]",
+              "metadata": {
+                "description": "User-assigned managed identity name used by Application Gateway to read TLS material from Key Vault."
+              }
+            }
+          },
+          "variables": {
+            "tags": {
+              "project": "verdecora-albaranes",
+              "env": "[parameters('environment')]",
+              "service": "upload-web-edge",
+              "managed-by": "bicep"
+            },
+            "keyVaultSecretsUserRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+            "frontendPortHttpId": "[resourceId('Microsoft.Network/applicationGateways/frontendPorts', parameters('appGatewayName'), 'port-http')]",
+            "frontendPortHttpsId": "[resourceId('Microsoft.Network/applicationGateways/frontendPorts', parameters('appGatewayName'), 'port-https')]",
+            "frontendIpConfigurationId": "[resourceId('Microsoft.Network/applicationGateways/frontendIPConfigurations', parameters('appGatewayName'), 'frontend-public')]",
+            "backendAddressPoolId": "[resourceId('Microsoft.Network/applicationGateways/backendAddressPools', parameters('appGatewayName'), 'upload-web-backend')]",
+            "backendHttpSettingsId": "[resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', parameters('appGatewayName'), 'upload-web-https-settings')]",
+            "httpsProbeId": "[resourceId('Microsoft.Network/applicationGateways/probes', parameters('appGatewayName'), 'upload-web-healthz')]",
+            "httpListenerId": "[resourceId('Microsoft.Network/applicationGateways/httpListeners', parameters('appGatewayName'), 'listener-http')]",
+            "httpsListenerId": "[resourceId('Microsoft.Network/applicationGateways/httpListeners', parameters('appGatewayName'), 'listener-https')]",
+            "sslCertificateId": "[resourceId('Microsoft.Network/applicationGateways/sslCertificates', parameters('appGatewayName'), 'frontend-cert')]",
+            "httpRedirectId": "[resourceId('Microsoft.Network/applicationGateways/redirectConfigurations', parameters('appGatewayName'), 'http-to-https')]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[parameters('appGatewayIdentityName')]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('tags')]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), parameters('appGatewayIdentityName'), variables('keyVaultSecretsUserRoleDefinitionId'))]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('appGatewayIdentityName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('keyVaultSecretsUserRoleDefinitionId')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('appGatewayIdentityName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2024-07-01",
+              "name": "[parameters('publicIpName')]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('tags')]",
+              "sku": {
+                "name": "Standard",
+                "tier": "Regional"
+              },
+              "zones": [
+                "1",
+                "2",
+                "3"
+              ],
+              "properties": {
+                "publicIPAddressVersion": "IPv4",
+                "publicIPAllocationMethod": "Static",
+                "dnsSettings": {
+                  "domainNameLabel": "[toLower(parameters('publicIpDnsLabel'))]"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Network/applicationGateways",
+              "apiVersion": "2024-07-01",
+              "name": "[parameters('appGatewayName')]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('tags')]",
+              "zones": [
+                "1",
+                "2",
+                "3"
+              ],
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('appGatewayIdentityName')))]": {}
+                }
+              },
+              "properties": {
+                "sku": {
+                  "name": "Standard_v2",
+                  "tier": "Standard_v2"
+                },
+                "autoscaleConfiguration": {
+                  "minCapacity": 0,
+                  "maxCapacity": 10
+                },
+                "enableHttp2": true,
+                "sslPolicy": {
+                  "policyType": "Predefined",
+                  "policyName": "AppGwSslPolicy20220101"
+                },
+                "gatewayIPConfigurations": [
+                  {
+                    "name": "gateway-ip-config",
+                    "properties": {
+                      "subnet": {
+                        "id": "[parameters('subnetId')]"
+                      }
+                    }
+                  }
+                ],
+                "frontendIPConfigurations": [
+                  {
+                    "name": "frontend-public",
+                    "properties": {
+                      "publicIPAddress": {
+                        "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIpName'))]"
+                      }
+                    }
+                  }
+                ],
+                "frontendPorts": [
+                  {
+                    "name": "port-http",
+                    "properties": {
+                      "port": 80
+                    }
+                  },
+                  {
+                    "name": "port-https",
+                    "properties": {
+                      "port": 443
+                    }
+                  }
+                ],
+                "backendAddressPools": [
+                  {
+                    "name": "upload-web-backend",
+                    "properties": {
+                      "backendAddresses": [
+                        {
+                          "fqdn": "[parameters('backendFqdn')]"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "backendHttpSettingsCollection": [
+                  {
+                    "name": "upload-web-https-settings",
+                    "properties": {
+                      "cookieBasedAffinity": "Disabled",
+                      "pickHostNameFromBackendAddress": true,
+                      "port": 443,
+                      "protocol": "Https",
+                      "probe": {
+                        "id": "[variables('httpsProbeId')]"
+                      },
+                      "probeEnabled": true,
+                      "requestTimeout": 30
+                    }
+                  }
+                ],
+                "probes": [
+                  {
+                    "name": "upload-web-healthz",
+                    "properties": {
+                      "protocol": "Https",
+                      "path": "/healthz",
+                      "interval": 30,
+                      "timeout": 10,
+                      "unhealthyThreshold": 3,
+                      "pickHostNameFromBackendHttpSettings": true,
+                      "match": {
+                        "statusCodes": [
+                          "200"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "sslCertificates": [
+                  {
+                    "name": "frontend-cert",
+                    "properties": {
+                      "keyVaultSecretId": "[parameters('frontendSslCertificateSecretId')]"
+                    }
+                  }
+                ],
+                "httpListeners": [
+                  {
+                    "name": "listener-http",
+                    "properties": {
+                      "frontendIPConfiguration": {
+                        "id": "[variables('frontendIpConfigurationId')]"
+                      },
+                      "frontendPort": {
+                        "id": "[variables('frontendPortHttpId')]"
+                      },
+                      "protocol": "Http"
+                    }
+                  },
+                  {
+                    "name": "listener-https",
+                    "properties": {
+                      "frontendIPConfiguration": {
+                        "id": "[variables('frontendIpConfigurationId')]"
+                      },
+                      "frontendPort": {
+                        "id": "[variables('frontendPortHttpsId')]"
+                      },
+                      "protocol": "Https",
+                      "sslCertificate": {
+                        "id": "[variables('sslCertificateId')]"
+                      }
+                    }
+                  }
+                ],
+                "redirectConfigurations": [
+                  {
+                    "name": "http-to-https",
+                    "properties": {
+                      "includePath": true,
+                      "includeQueryString": true,
+                      "redirectType": "Permanent",
+                      "targetListener": {
+                        "id": "[variables('httpsListenerId')]"
+                      }
+                    }
+                  }
+                ],
+                "requestRoutingRules": [
+                  {
+                    "name": "http-redirect",
+                    "properties": {
+                      "httpListener": {
+                        "id": "[variables('httpListenerId')]"
+                      },
+                      "redirectConfiguration": {
+                        "id": "[variables('httpRedirectId')]"
+                      },
+                      "priority": 100,
+                      "ruleType": "Basic"
+                    }
+                  },
+                  {
+                    "name": "https-backend",
+                    "properties": {
+                      "backendAddressPool": {
+                        "id": "[variables('backendAddressPoolId')]"
+                      },
+                      "backendHttpSettings": {
+                        "id": "[variables('backendHttpSettingsId')]"
+                      },
+                      "httpListener": {
+                        "id": "[variables('httpsListenerId')]"
+                      },
+                      "priority": 110,
+                      "ruleType": "Basic"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('appGatewayIdentityName'))]",
+                "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), parameters('appGatewayIdentityName'), variables('keyVaultSecretsUserRoleDefinitionId')))]",
+                "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIpName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "appGwPublicFqdn": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Gateway public FQDN."
+              },
+              "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIpName')), '2024-07-01').dnsSettings.fqdn]"
+            },
+            "appGwPublicIpId": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Gateway public IP resource id."
+              },
+              "value": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIpName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'containerApps')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'keyVault')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'network')]",
+        "[subscriptionResourceId('Microsoft.Resources/deployments', 'resourceGroup')]"
+      ]
+    },
+    {
+      "condition": "[and(parameters('enableUploadWebAuth'), not(empty(parameters('uploadWebEntraClientId'))))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "uploadWebAuth",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "containerAppName": {
+            "value": "[variables('uploadWebAppName')]"
+          },
+          "tenantId": {
+            "value": "[subscription().tenantId]"
+          },
+          "clientId": {
+            "value": "[parameters('uploadWebEntraClientId')]"
+          },
+          "allowedAudiences": {
+            "value": "[parameters('uploadWebAllowedAudiences')]"
+          },
+          "allowedGroupObjectIds": {
+            "value": "[parameters('uploadWebAllowedGroupObjectIds')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "8894751000453714026"
+            }
+          },
+          "parameters": {
+            "containerAppName": {
+              "type": "string",
+              "metadata": {
+                "description": "Container App name for upload-web."
+              }
+            },
+            "tenantId": {
+              "type": "string",
+              "metadata": {
+                "description": "Microsoft Entra tenant id used by Easy Auth."
+              }
+            },
+            "clientId": {
+              "type": "string",
+              "metadata": {
+                "description": "Microsoft Entra application client id used by upload-web Easy Auth."
+              }
+            },
+            "allowedAudiences": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Optional audiences accepted by upload-web Easy Auth. Defaults to api://{clientId}."
+              }
+            },
+            "allowedGroupObjectIds": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Optional Microsoft Entra group object ids allowed to access upload-web."
+              }
+            }
+          },
+          "variables": {
+            "resolvedAllowedAudiences": "[if(empty(parameters('allowedAudiences')), createArray(format('api://{0}', parameters('clientId'))), parameters('allowedAudiences'))]",
+            "aadValidation": "[if(empty(parameters('allowedGroupObjectIds')), createObject('allowedAudiences', variables('resolvedAllowedAudiences')), createObject('allowedAudiences', variables('resolvedAllowedAudiences'), 'defaultAuthorizationPolicy', createObject('allowedPrincipals', createObject('groups', parameters('allowedGroupObjectIds'))), 'jwtClaimChecks', createObject('allowedGroups', parameters('allowedGroupObjectIds'))))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/containerApps/authConfigs",
+              "apiVersion": "2025-01-01",
+              "name": "[format('{0}/{1}', parameters('containerAppName'), 'current')]",
+              "properties": {
+                "platform": {
+                  "enabled": true
+                },
+                "globalValidation": {
+                  "redirectToProvider": "azureActiveDirectory",
+                  "unauthenticatedClientAction": "RedirectToLoginPage"
+                },
+                "httpSettings": {
+                  "requireHttps": true
+                },
+                "identityProviders": {
+                  "azureActiveDirectory": {
+                    "enabled": true,
+                    "login": {
+                      "loginParameters": [
+                        "scope=openid profile email"
+                      ]
+                    },
+                    "registration": {
+                      "clientId": "[parameters('clientId')]",
+                      "openIdIssuer": "[format('{0}{1}/v2.0', environment().authentication.loginEndpoint, parameters('tenantId'))]"
+                    },
+                    "validation": "[variables('aadValidation')]"
+                  }
+                },
+                "login": {
+                  "tokenStore": {
+                    "enabled": true
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "authConfigId": {
+              "type": "string",
+              "metadata": {
+                "description": "Easy Auth config resource id for upload-web."
+              },
+              "value": "[resourceId('Microsoft.App/containerApps/authConfigs', parameters('containerAppName'), 'current')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/deployments', 'resourceGroup')]"
       ]
     },
     {
@@ -5119,6 +5782,13 @@
       },
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'containerApps'), '2025-04-01').outputs.managedEnvironmentId.value]"
     },
+    "containerAppsEnvironmentDefaultDomain": {
+      "type": "string",
+      "metadata": {
+        "description": "Container Apps environment default domain."
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'containerApps'), '2025-04-01').outputs.managedEnvironmentDefaultDomain.value]"
+    },
     "runnersEnvironmentName": {
       "type": "string",
       "metadata": {
@@ -5160,6 +5830,20 @@
         "description": "Escalation timer ACA Job id."
       },
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'containerApps'), '2025-04-01').outputs.escalationTimerJobId.value]"
+    },
+    "appGwPublicFqdn": {
+      "type": "string",
+      "metadata": {
+        "description": "Application Gateway public FQDN for upload-web."
+      },
+      "value": "[if(parameters('enableUploadWebAppGateway'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'appGateway'), '2025-04-01').outputs.appGwPublicFqdn.value, '')]"
+    },
+    "appGwPublicIpId": {
+      "type": "string",
+      "metadata": {
+        "description": "Application Gateway public IP resource id for upload-web."
+      },
+      "value": "[if(parameters('enableUploadWebAppGateway'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'appGateway'), '2025-04-01').outputs.appGwPublicIpId.value, '')]"
     },
     "networkHardeningEnabled": {
       "type": "bool",

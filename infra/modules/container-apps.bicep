@@ -566,6 +566,9 @@ output managedEnvironmentId string = managedEnvironment.id
 @description('Container Apps managed environment name.')
 output managedEnvironmentName string = managedEnvironment.name
 
+@description('Container Apps managed environment default domain.')
+output managedEnvironmentDefaultDomain string = managedEnvironment.properties.defaultDomain
+
 @description('Main orchestrator container app id.')
 output orchestratorAppId string = orchestratorApp.id
 

@@ -47,6 +47,68 @@ resource nsgEgress 'Microsoft.Network/networkSecurityGroups@2023-04-01' = {
   tags: tags
 }
 
+resource nsgAppGateway 'Microsoft.Network/networkSecurityGroups@2023-04-01' = {
+  name: 'nsg-appgw-albaranes-${environment}'
+  location: location
+  tags: tags
+  properties: {
+    securityRules: [
+      {
+        name: 'allow-http-inbound'
+        properties: {
+          access: 'Allow'
+          direction: 'Inbound'
+          priority: 100
+          protocol: 'Tcp'
+          sourceAddressPrefix: 'Internet'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '80'
+        }
+      }
+      {
+        name: 'allow-https-inbound'
+        properties: {
+          access: 'Allow'
+          direction: 'Inbound'
+          priority: 110
+          protocol: 'Tcp'
+          sourceAddressPrefix: 'Internet'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '443'
+        }
+      }
+      {
+        name: 'allow-gatewaymanager'
+        properties: {
+          access: 'Allow'
+          direction: 'Inbound'
+          priority: 120
+          protocol: 'Tcp'
+          sourceAddressPrefix: 'GatewayManager'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '65200-65535'
+        }
+      }
+      {
+        name: 'deny-rest-inbound'
+        properties: {
+          access: 'Deny'
+          direction: 'Inbound'
+          priority: 4096
+          protocol: '*'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '*'
+        }
+      }
+    ]
+  }
+}
+
 resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
   name: vnetName
   location: location
@@ -120,6 +182,15 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
           }
         }
       }
+      {
+        name: 'appgw-snet'
+        properties: {
+          addressPrefix: '10.10.6.0/24'
+          networkSecurityGroup: {
+            id: nsgAppGateway.id
+          }
+        }
+      }
     ]
   }
 }
@@ -142,6 +213,9 @@ output subnetRunnersId string = vnet.properties.subnets[3].id
 @description('Egress subnet id.')
 output subnetEgressId string = vnet.properties.subnets[4].id
 
+@description('Application Gateway subnet id.')
+output subnetAppGatewayId string = vnet.properties.subnets[5].id
+
 @description('ACA NSG id.')
 output nsgAcaId string = nsgAca.id
 
@@ -156,3 +230,6 @@ output nsgRunnersId string = nsgRunners.id
 
 @description('Egress NSG id.')
 output nsgEgressId string = nsgEgress.id
+
+@description('Application Gateway NSG id.')
+output nsgAppGatewayId string = nsgAppGateway.id
