@@ -1,0 +1,272 @@
+[
+  {
+    "id": "VDC-MAD-CHAMBERI",
+    "name": "Chamberí Urban",
+    "region": "Madrid",
+    "address": "Calle de Jerónimo de la Quintana, 6",
+    "city": "Madrid",
+    "postal_code": "28010",
+    "aliases": ["Chamberi", "Chamberí", "Chamberí Urban", "Jerónimo de la Quintana"],
+    "bc_location_code": "CHAMBERI"
+  },
+  {
+    "id": "VDC-MAD-RIOS-ROSAS",
+    "name": "Ríos Rosas Urban",
+    "region": "Madrid",
+    "address": "Calle de Ríos Rosas, 42",
+    "city": "Madrid",
+    "postal_code": "28003",
+    "aliases": ["Rios Rosas", "Ríos Rosas", "Ríos Rosas 42", "Ríos Rosas Urban"],
+    "bc_location_code": "RIOSROSAS"
+  },
+  {
+    "id": "VDC-MAD-LOPEZ-HOYOS",
+    "name": "López de Hoyos Urban",
+    "region": "Madrid",
+    "address": "Calle López de Hoyos",
+    "city": "Madrid",
+    "postal_code": "28002",
+    "aliases": ["Lopez de Hoyos", "López de Hoyos", "López de Hoyos Urban"],
+    "bc_location_code": "LOPEZHOYO"
+  },
+  {
+    "id": "VDC-MAD-SANTA-ENGRACIA-41",
+    "name": "Floristería Santa Engracia 41",
+    "region": "Madrid",
+    "address": "Calle de Santa Engracia, 41",
+    "city": "Madrid",
+    "postal_code": "28010",
+    "aliases": ["Santa Engracia", "Santa Engracia 41", "Floristería Santa Engracia"],
+    "bc_location_code": "SENGR41"
+  },
+  {
+    "id": "VDC-MAD-NUNEZ-BALBOA-58",
+    "name": "Floristería Núñez de Balboa 58",
+    "region": "Madrid",
+    "address": "Calle de Núñez de Balboa, 58",
+    "city": "Madrid",
+    "postal_code": "28001",
+    "aliases": ["Nunez de Balboa", "Núñez de Balboa", "Núñez de Balboa 58", "Floristería Núñez de Balboa"],
+    "bc_location_code": "NUNEZ58"
+  },
+  {
+    "id": "VDC-MAD-ALCALA-108",
+    "name": "Calle Alcalá 108",
+    "region": "Madrid",
+    "address": "Calle de Alcalá, 108",
+    "city": "Madrid",
+    "postal_code": "28009",
+    "aliases": ["Alcalá 108", "Calle Alcalá 108", "Alcala 108"],
+    "bc_location_code": "ALCALA108"
+  },
+  {
+    "id": "VDC-MAD-CASTELLANA-192",
+    "name": "Floristería Castellana 192",
+    "region": "Madrid",
+    "address": "Paseo de la Castellana, 192",
+    "city": "Madrid",
+    "postal_code": "28046",
+    "aliases": ["Castellana 192", "Paseo de la Castellana 192", "Floristería Castellana"],
+    "bc_location_code": "CAST192"
+  },
+  {
+    "id": "VDC-MAD-ARAVACA",
+    "name": "Aravaca",
+    "region": "Madrid",
+    "address": "Calle de Carlos San José",
+    "city": "Madrid",
+    "postal_code": "28023",
+    "aliases": ["Verdecora Aravaca", "Aravaca Madrid"],
+    "bc_location_code": "ARAVACA"
+  },
+  {
+    "id": "VDC-MAD-PARQUESUR",
+    "name": "Parquesur",
+    "region": "Madrid",
+    "address": "Centro Comercial Parquesur, Avenida Gran Bretaña, s/n",
+    "city": "Leganés",
+    "postal_code": "28916",
+    "aliases": ["Verdecora Parquesur", "CC Parquesur", "Parquesur Leganés"],
+    "bc_location_code": "PARQUESUR"
+  },
+  {
+    "id": "VDC-MAD-LA-MORALEJA",
+    "name": "Floristería La Moraleja",
+    "region": "Madrid",
+    "address": "Centro Comercial La Moraleja Green, Avenida de Europa, 10",
+    "city": "Alcobendas",
+    "postal_code": "28109",
+    "aliases": ["La Moraleja", "Floristería La Moraleja", "La Moraleja Green"],
+    "bc_location_code": "MORALEJA"
+  },
+  {
+    "id": "VDC-MAD-LOS-PENOTES",
+    "name": "Los Peñotes",
+    "region": "Madrid",
+    "address": "Plaza de la Botánica, 1",
+    "city": "Alcobendas",
+    "postal_code": "28108",
+    "aliases": ["Los Penotes", "Peñotes", "Verdecora Los Peñotes"],
+    "bc_location_code": "PENOTES"
+  },
+  {
+    "id": "VDC-MAD-ALCOBENDAS",
+    "name": "Floristería Alcobendas",
+    "region": "Madrid",
+    "address": "Paseo de la Chopera",
+    "city": "Alcobendas",
+    "postal_code": "28100",
+    "aliases": ["Alcobendas", "Floristería Alcobendas", "Verdecora Alcobendas"],
+    "bc_location_code": "ALCOBEND"
+  },
+  {
+    "id": "VDC-MAD-ARROYO-CULEBRO",
+    "name": "Arroyo Culebro M-50",
+    "region": "Madrid",
+    "address": "Calle Fuente de la Teja, 2",
+    "city": "Leganés",
+    "postal_code": "28914",
+    "aliases": ["Arroyo Culebro", "Arroyo Culebro M50", "Arroyo Culebro M-50"],
+    "bc_location_code": "CULEBRO50"
+  },
+  {
+    "id": "VDC-MAD-MAJADAHONDA",
+    "name": "Majadahonda",
+    "region": "Madrid",
+    "address": "Carretera de Majadahonda a Boadilla, 106",
+    "city": "Majadahonda",
+    "postal_code": "28222",
+    "aliases": ["Verdecora Majadahonda", "Majadahonda Madrid"],
+    "bc_location_code": "MAJADAHON"
+  },
+  {
+    "id": "VDC-MAD-TORRELODONES",
+    "name": "Torrelodones",
+    "region": "Madrid",
+    "address": "Autovía del Noroeste",
+    "city": "Torrelodones",
+    "postal_code": "28250",
+    "aliases": ["Verdecora Torrelodones", "Torrelodones Madrid"],
+    "bc_location_code": "TORRELODN"
+  },
+  {
+    "id": "VDC-MAD-SANTO-DOMINGO",
+    "name": "Floristería Santo Domingo",
+    "region": "Madrid",
+    "address": "Urbanización Santo Domingo",
+    "city": "Algete",
+    "postal_code": "28120",
+    "aliases": ["Santo Domingo", "Floristería Santo Domingo", "Santo Domingo Algete"],
+    "bc_location_code": "STODOMING"
+  },
+  {
+    "id": "VDC-MAD-ALCALA-HENARES",
+    "name": "Alcalá de Henares",
+    "region": "Madrid",
+    "address": "Calle de Cogolludo, Parque Comercial La Dehesa",
+    "city": "Alcalá de Henares",
+    "postal_code": "28805",
+    "aliases": ["Alcala de Henares", "Alcalá de Henares", "La Dehesa Alcalá"],
+    "bc_location_code": "ALCALAHE"
+  },
+  {
+    "id": "VDC-VLC-PATERNA",
+    "name": "Paterna",
+    "region": "Valencia",
+    "address": "Autovía del Túria",
+    "city": "Paterna",
+    "postal_code": "46980",
+    "aliases": ["Verdecora Paterna", "Paterna Valencia"],
+    "bc_location_code": "PATERNA"
+  },
+  {
+    "id": "VDC-VLC-VALENCIA-URBAN",
+    "name": "Valencia Urban",
+    "region": "Valencia",
+    "address": "Calle Colón",
+    "city": "Valencia",
+    "postal_code": "46004",
+    "aliases": ["Valencia Urban", "Verdecora Valencia Urban", "Valencia Centro"],
+    "bc_location_code": "VALURBAN"
+  },
+  {
+    "id": "VDC-VLC-PUERTO",
+    "name": "Avenida del Puerto",
+    "region": "Valencia",
+    "address": "Avenida del Puerto",
+    "city": "Valencia",
+    "postal_code": "46023",
+    "aliases": ["Avenida del Puerto", "Verdecora Puerto", "Puerto Valencia"],
+    "bc_location_code": "VAPUERTO"
+  },
+  {
+    "id": "VDC-ALC-DENIA",
+    "name": "Denia",
+    "region": "Alicante",
+    "address": "Camí de la Bota, 1",
+    "city": "Dénia",
+    "postal_code": "03700",
+    "aliases": ["Denia", "Dénia", "Verdecora Denia"],
+    "bc_location_code": "DENIA"
+  },
+  {
+    "id": "VDC-ZAZ-ZARAGOZA",
+    "name": "Zaragoza",
+    "region": "Zaragoza",
+    "address": "Calle de Manuel Jalón",
+    "city": "Zaragoza",
+    "postal_code": "50011",
+    "aliases": ["Verdecora Zaragoza", "Zaragoza Venta del Olivar"],
+    "bc_location_code": "ZARAGOZA"
+  },
+  {
+    "id": "VDC-MLG-MALAGA",
+    "name": "Málaga",
+    "region": "Málaga",
+    "address": "Avenida Enrique Granados, 3",
+    "city": "Málaga",
+    "postal_code": "29003",
+    "aliases": ["Malaga", "Málaga", "Verdecora Málaga"],
+    "bc_location_code": "MALAGA"
+  },
+  {
+    "id": "VDC-PVG-VIGO",
+    "name": "Vigo",
+    "region": "Pontevedra",
+    "address": "Vía Norte",
+    "city": "Vigo",
+    "postal_code": "36201",
+    "aliases": ["Verdecora Vigo", "Vigo Vía Norte", "Via Norte"],
+    "bc_location_code": "VIGO"
+  },
+  {
+    "id": "VDC-BCN-SANT-QUIRZE",
+    "name": "Sant Quirze",
+    "region": "Barcelona",
+    "address": "Centro Comercial Sant Quirze del Vallès, C-58, Sortida 12",
+    "city": "Sant Quirze del Vallès",
+    "postal_code": "08192",
+    "aliases": ["Sant Quirze", "Sant Quirze del Vallès", "Verdecora Sant Quirze"],
+    "bc_location_code": "SQUIRZE"
+  },
+  {
+    "id": "VDC-BCN-DIAGONAL-534",
+    "name": "Diagonal 534",
+    "region": "Barcelona",
+    "address": "Avinguda Diagonal, 534",
+    "city": "Barcelona",
+    "postal_code": "08036",
+    "aliases": ["Diagonal 534", "Avinguda Diagonal 534", "Verdecora Diagonal"],
+    "bc_location_code": "DIAG534"
+  },
+  {
+    "id": "VDC-ALC-ALICANTE",
+    "name": "Alicante",
+    "region": "Alicante",
+    "address": "Centro Comercial Plaza Mar 2, Avenida de Dénia, s/n",
+    "city": "Alicante",
+    "postal_code": "03016",
+    "aliases": ["Verdecora Alicante", "Alicante Plaza Mar 2", "Plaza Mar 2"],
+    "bc_location_code": "ALICANTE"
+  }
+]
