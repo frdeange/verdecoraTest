@@ -1,0 +1,123 @@
+:root {
+  --vc-primary: #01928F;      /* Teal - CTAs, buttons */
+  --vc-nav-dark: #005E62;     /* Dark green - header/footer */
+  --vc-accent: #2FB5D2;       /* Cyan - links */
+  --vc-text: #212529;         /* Body text */
+  --vc-bg: #FFFFFF;           /* Background */
+  --vc-font-regular: 'OpenSans-Regular', 'Noto Sans', sans-serif;
+  --vc-font-semibold: 'OpenSans-SemiBold', 'Noto Sans', sans-serif;
+  --vc-font-bold: 'OpenSans-Bold', 'Noto Sans', sans-serif;
+  --vc-font-display: 'Cardo', serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--vc-text);
+  background: var(--vc-bg);
+  font-family: 'Open Sans', var(--vc-font-regular);
+}
+
+a {
+  color: var(--vc-accent);
+}
+
+.vc-shell {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+}
+
+.vc-header,
+.vc-footer {
+  background: var(--vc-nav-dark);
+  color: var(--vc-bg);
+}
+
+.vc-header-content,
+.vc-footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.vc-brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.vc-logo {
+  width: 180px;
+  max-width: 100%;
+  display: block;
+}
+
+.vc-user-meta,
+.vc-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.vc-main {
+  padding: 3rem 0 4rem;
+}
+
+.vc-hero {
+  padding: 2rem;
+  border: 1px solid rgba(1, 146, 143, 0.15);
+  border-radius: 1.5rem;
+  box-shadow: 0 20px 45px rgba(0, 94, 98, 0.08);
+}
+
+.vc-kicker {
+  margin: 0 0 0.75rem;
+  color: var(--vc-accent);
+  font-family: 'Open Sans', var(--vc-font-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vc-hero h1 {
+  margin: 0;
+  font-family: var(--vc-font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+}
+
+.vc-hero p {
+  max-width: 48rem;
+  line-height: 1.6;
+}
+
+.vc-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--vc-primary);
+  color: var(--vc-bg);
+  font-family: 'Open Sans', var(--vc-font-semibold);
+  text-decoration: none;
+}
+
+.vc-link {
+  color: var(--vc-accent);
+  font-family: 'Open Sans', var(--vc-font-semibold);
+  text-decoration: none;
+}
+
+@media (max-width: 720px) {
+  .vc-header-content,
+  .vc-footer-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

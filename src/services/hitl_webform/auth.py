@@ -5,6 +5,8 @@ from functools import lru_cache
 from fastapi import HTTPException, status
 from pydantic import BaseModel
 
+from src.shared.auth.entra import EntraAuthError, extract_name
+
 from .config import HITLWebformConfig
 from .security import EntraTokenValidator, TokenClaims, TokenValidationError, extract_bearer_token
 
@@ -22,7 +24,10 @@ def get_token_validator(tenant_id: str, expected_audience: str) -> EntraTokenVal
 
 
 def _build_authenticated_reviewer(claims: TokenClaims) -> AuthenticatedReviewer:
-    display_name = claims.email.split("@", maxsplit=1)[0].replace(".", " ").title()
+    try:
+        display_name = extract_name(claims.raw_claims)
+    except EntraAuthError:
+        display_name = claims.email.split("@", maxsplit=1)[0].replace(".", " ").title()
     return AuthenticatedReviewer(
         email=claims.email,
         subject=claims.subject,
