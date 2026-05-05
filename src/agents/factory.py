@@ -5,7 +5,7 @@ import os
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from agent_framework import ChatAgent as Agent
+from agent_framework import Agent
 
 from src.models.albaran import AlbaranExtraction, CoherenceCheckResult, TriageResult
 from src.models.inventory import PostingResult
@@ -67,44 +67,44 @@ def create_agents(
 
     return {
         "triage": Agent(
-            chat_client=gpt5_mini,
+            gpt5_mini,
             name="Triage",
             instructions=build_triage_instructions(),
-            response_format=TriageResult,
+            default_options={"response_format": TriageResult},
         ),
         "extractor": Agent(
-            chat_client=gpt5,
+            gpt5,
             name="Extractor",
             instructions=build_extractor_instructions(_resolve_tool_names(extractor_tools)),
-            response_format=AlbaranExtraction,
+            default_options={"response_format": AlbaranExtraction},
             tools=extractor_tools,
         ),
         "coherence": Agent(
-            chat_client=gpt5_mini,
+            gpt5_mini,
             name="Coherence",
             instructions=build_coherence_instructions(_resolve_tool_names(coherence_tools)),
-            response_format=CoherenceCheckResult,
+            default_options={"response_format": CoherenceCheckResult},
             tools=coherence_tools,
         ),
         "validator": Agent(
-            chat_client=gpt5_mini,
+            gpt5_mini,
             name="Validator",
             instructions=build_validator_instructions(_resolve_tool_names(validator_tools)),
-            response_format=ValidationResult,
+            default_options={"response_format": ValidationResult},
             tools=validator_tools,
         ),
         "inventory": Agent(
-            chat_client=gpt5_mini,
+            gpt5_mini,
             name="Inventory",
             instructions=build_inventory_instructions(_resolve_tool_names(inventory_tools)),
-            response_format=PostingResult,
+            default_options={"response_format": PostingResult},
             tools=inventory_tools,
         ),
         "communication": Agent(
-            chat_client=gpt5_mini,
+            gpt5_mini,
             name="Communication",
             instructions=build_communication_instructions(),
-            response_format=CommunicationSummary,
+            default_options={"response_format": CommunicationSummary},
             tools=communication_tools,
         ),
     }

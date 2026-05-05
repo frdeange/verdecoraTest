@@ -2,7 +2,7 @@
 # Install: pip install -r src/poc/maf_poc/requirements-poc.txt
 
 # Core framework
-agent-framework>=1.0.0
+agent-framework>=1.2.2,<2.0
 
 # Chat client (pick one or both)
 # agent-framework[foundry]    # For FoundryChatClient (Azure AI Foundry)

@@ -18,6 +18,18 @@ from tests.fixtures.sample_albarans import (
 )
 from tests.unit.agent_test_helpers import FakeAsyncStream, FakeEvent, FakeWorkflow, WorkflowResult
 
+
+class _AgentMessage:
+    def __init__(self, content: str, author_name: str = "agent") -> None:
+        self.content = content
+        self.author_name = author_name
+
+
+class _AgentResponse:
+    def __init__(self, *, text: str | None = None, messages: list[_AgentMessage] | None = None) -> None:
+        self.text = text
+        self.messages = messages or []
+
 pytestmark = pytest.mark.unit
 
 
@@ -44,6 +56,28 @@ def test_pipeline_creation_with_all_agents() -> None:
     pipeline = AlbaranPipeline(agents=_named_agents())
 
     assert set(pipeline.agents) == {"triage", "extractor", "coherence", "validator", "inventory", "communication"}
+
+
+@pytest.mark.asyncio
+async def test_run_workflow_uses_agent_response_text_from_stream() -> None:
+    pipeline = AlbaranPipeline(agents=_named_agents())
+    workflow = FakeWorkflow(
+        FakeAsyncStream([FakeEvent(_AgentResponse(text='{"status":"ok"}', messages=[_AgentMessage('ignored')]))])
+    )
+
+    result = await pipeline._run_workflow(workflow, {"payload": True})
+
+    assert result == '{"status":"ok"}'
+
+
+@pytest.mark.asyncio
+async def test_run_workflow_falls_back_to_agent_response_messages() -> None:
+    pipeline = AlbaranPipeline(agents=_named_agents())
+    workflow = FakeWorkflow(FakeAsyncStream([FakeEvent(_AgentResponse(messages=[_AgentMessage('{"status":"ok"}')]))]))
+
+    result = await pipeline._run_workflow(workflow, {"payload": True})
+
+    assert result == '{"status":"ok"}'
 
 
 @pytest.mark.asyncio

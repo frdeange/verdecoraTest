@@ -20,6 +20,16 @@ from opentelemetry.sdk.trace.export import (
 
 from .stub_agents import create_extractor, create_inventory, create_validator
 
+
+def _resolve_workflow_output(data) -> str:
+    text = getattr(data, "text", None)
+    if text is not None:
+        return str(text)
+    if hasattr(data, "messages"):
+        return str(data.messages[-1].content) if data.messages else str(data)
+    return str(data)
+
+
 # ---------------------------------------------------------------------------
 # Telemetry setup (console exporter for local dev)
 # ---------------------------------------------------------------------------
@@ -53,13 +63,14 @@ async def run_extraction_pipeline(client, input_text: str, tracer: trace.Tracer)
     with tracer.start_as_current_span("extraction_pipeline") as span:
         span.set_attribute("input.text", input_text)
 
-        result = None
+        result = ""
         async for event in workflow.run(input_text, stream=True):
             if event.type == "output":
-                result = event.data
-                span.set_attribute("extraction.result_length", len(str(result)))
+                data = getattr(event, "data", event)
+                result = _resolve_workflow_output(data)
+                span.set_attribute("extraction.result_length", len(result))
 
-    return str(result) if result else ""
+    return result
 
 
 async def run_validation_handoff(client, extracted_json: str, tracer: trace.Tracer) -> dict:
@@ -92,11 +103,15 @@ async def run_validation_handoff(client, extracted_json: str, tracer: trace.Trac
             stream=True,
         ):
             if event.type == "output":
-                messages.append(event.data)
-                span.add_event("agent_output", {"agent": getattr(event.data, "author_name", "unknown")})
+                data = getattr(event, "data", event)
+                messages.append(_resolve_workflow_output(data))
+                author = getattr(data, "author_name", "unknown")
+                if author == "unknown" and hasattr(data, "messages") and data.messages:
+                    author = getattr(data.messages[-1], "author_name", "unknown")
+                span.add_event("agent_output", {"agent": author})
 
         # Determine outcome
-        output_text = " ".join(str(m) for m in messages)
+        output_text = " ".join(messages)
         if "REC-" in output_text or "posted" in output_text.lower():
             outcome = "posted"
         elif "discrepancia" in output_text.lower() or "discrepancy" in output_text.lower():
@@ -108,7 +123,7 @@ async def run_validation_handoff(client, extracted_json: str, tracer: trace.Trac
 
     return {
         "outcome": outcome,
-        "messages": [str(m) for m in messages],
+        "messages": messages,
     }
 
 

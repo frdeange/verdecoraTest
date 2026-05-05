@@ -63,22 +63,22 @@ def test_create_agents_returns_expected_keys_and_models(mock_agent: Any) -> None
     communication = agents["communication"]
 
     assert isinstance(triage, StructuredAgentStub)
-    assert triage.kwargs["chat_client"] == "gpt5-mini-client"
-    assert triage.kwargs["response_format"] is TriageResult
+    assert triage.kwargs["client"] == "gpt5-mini-client"
+    assert triage.kwargs["default_options"]["response_format"] is TriageResult
     assert "document triage specialist" in triage.kwargs["instructions"]
 
-    assert extractor.kwargs["chat_client"] == "gpt5-client"
-    assert extractor.kwargs["response_format"] is AlbaranExtraction
+    assert extractor.kwargs["client"] == "gpt5-client"
+    assert extractor.kwargs["default_options"]["response_format"] is AlbaranExtraction
     assert extractor.kwargs["tools"] == tool_registry["extractor"]
 
-    assert coherence.kwargs["chat_client"] == "gpt5-mini-client"
-    assert coherence.kwargs["response_format"] is CoherenceCheckResult
+    assert coherence.kwargs["client"] == "gpt5-mini-client"
+    assert coherence.kwargs["default_options"]["response_format"] is CoherenceCheckResult
     assert "bc.search_purchase_orders" in coherence.kwargs["instructions"]
 
-    assert validator.kwargs["response_format"] is ValidationResult
+    assert validator.kwargs["default_options"]["response_format"] is ValidationResult
     assert validator.kwargs["tools"] == tool_registry["validator"]
 
-    assert inventory.kwargs["response_format"] is PostingResult
+    assert inventory.kwargs["default_options"]["response_format"] is PostingResult
     assert inventory.kwargs["tools"] == tool_registry["inventory"]
 
     assert communication.kwargs["tools"] == tool_registry["communication"]
@@ -88,7 +88,9 @@ def test_create_agents_returns_expected_keys_and_models(mock_agent: Any) -> None
 def test_create_agents_omits_optional_tool_lists_when_not_provided() -> None:
     captured_calls: list[dict[str, Any]] = []
 
-    def fake_agent(**kwargs: Any) -> dict[str, Any]:
+    def fake_agent(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        if args:
+            kwargs["client"] = args[0]
         captured_calls.append(kwargs)
         return kwargs
 
