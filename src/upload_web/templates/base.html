@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title or "Verdecora Upload Web" }}</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cardo:wght@400;700&family=Open+Sans:wght@400;600;700&display=swap');
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/verdecora.css') }}">
+    <script src="https://unpkg.com/htmx.org@1.9.12" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  </head>
+  <body>
+    <header class="vc-header">
+      <div class="vc-shell vc-header-content">
+        <a href="/" class="vc-brand" aria-label="Ir al inicio de Verdecora Upload Web">
+          <img src="{{ url_for('static', path='img/verdecora-logo.jpg') }}" alt="Verdecora" class="vc-logo">
+        </a>
+        <div class="vc-user-meta">
+          {% if current_user %}
+          <span>{{ current_user.name }}</span>
+          {% else %}
+          <span>Sesión pendiente</span>
+          {% endif %}
+          <a href="/logout" class="vc-button">Cerrar sesión</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="vc-shell vc-main" x-data="{ ready: true }">
+      <section class="vc-hero">
+        <p class="vc-kicker">Upload Web</p>
+        <h1>{{ hero_title or "Subida de albaranes" }}</h1>
+        <p>{{ hero_subtitle or "Plantilla base para la experiencia de subida y seguimiento." }}</p>
+        <div class="vc-actions">
+          <a href="{{ primary_action_href or '/uploads' }}" class="vc-button">{{ primary_action_label or "Continuar" }}</a>
+          <a href="/mis-albaranes" class="vc-link">Mis albaranes</a>
+        </div>
+      </section>
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="vc-footer">
+      <div class="vc-shell vc-footer-content">
+        <span>Verdecora · Recepción de mercancía</span>
+        <a href="https://verdecora.es" class="vc-link">verdecora.es</a>
+      </div>
+    </footer>
+  </body>
+</html>
