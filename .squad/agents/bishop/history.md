@@ -9,6 +9,12 @@
 
 ## Learnings
 
+### 2026-05-05 — Upload Web store detection heuristic spike
+- Implemented `src/upload_web/services/store_detector.py` with a hardcoded Verdecora store catalog and deterministic matching heuristic for Upload Web preflight.
+- Prioritized exact postal code matches, then fuzzy city + street scoring with accent/punctuation normalization and proposal-aligned confidence bands (`>=0.85` auto-select, `0.5-0.85` suggest, `<0.5` no suggestion).
+- Left unresolved public-store records (for example Valencia Av. Puerto, Dénia, Sant Quirze, Alicante) without a trusted postal code so the spike does not over-assert on weak catalog data.
+- Added unit coverage in `tests/unit/test_store_detector.py` for postal match, city-only suggestion, no-match, accent handling, and partial-address matching.
+
 ### 2026-05-03 — LLM model evaluation and OCR strategy
 - Reviewed the PRD assumptions around GPT-4o / GPT-4.1 and the proposed unconditional double-pass OCR pipeline.
 - Evaluated current Azure OpenAI / Foundry options, including GPT-5 family, GPT-4.1, GPT-4o, o-series, and Claude availability in Foundry.
