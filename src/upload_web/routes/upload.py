@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.shared.auth.entra import AuthenticatedUser
 from src.upload_web.middleware import get_upload_current_user
@@ -12,48 +12,59 @@ router = APIRouter(tags=["upload-web"])
 CurrentUser = Annotated[AuthenticatedUser, Depends(get_upload_current_user)]
 
 
-@router.get("/", response_class=HTMLResponse, include_in_schema=False)
-async def index(request: Request) -> HTMLResponse:
+def _build_template_context(
+    request: Request,
+    current_user: AuthenticatedUser,
+    **extra: Any,
+) -> dict[str, Any]:
+    flash_messages = getattr(request.state, "flash_messages", [])
+    context: dict[str, Any] = {
+        "request": request,
+        "current_user": current_user,
+        "flash_messages": flash_messages,
+    }
+    context.update(extra)
+    return context
+
+
+@router.get("/", response_class=HTMLResponse, include_in_schema=False, name="index")
+async def index(request: Request, current_user: CurrentUser) -> HTMLResponse:
     return request.app.state.templates.TemplateResponse(
-        request=request,
-        name="base.html",
-        context={
-            "page_title": "Verdecora Upload Web",
-            "hero_title": "Subida de albaranes",
-            "hero_subtitle": "Scaffold inicial de la app FastAPI para la experiencia de subida en tienda.",
-            "primary_action_href": "/uploads",
-            "primary_action_label": "Ver placeholder de subida",
-            "current_user": getattr(request.state, "authenticated_user", None),
-        },
+        request,
+        "pages/home.html",
+        _build_template_context(
+            request,
+            current_user,
+            page_title="Inicio · Verdecora Upload Web",
+        ),
     )
 
 
-@router.get("/uploads")
-async def upload_placeholder(current_user: CurrentUser) -> dict[str, object]:
-    return {
-        "status": "placeholder",
-        "message": "Los endpoints de subida se implementarán en el siguiente sprint.",
-        "user": {
-            "oid": current_user.oid,
-            "name": current_user.name,
-            "groups": list(current_user.groups),
-        },
-    }
+@router.get("/upload", response_class=HTMLResponse, name="upload_page")
+@router.get("/uploads", response_class=HTMLResponse, include_in_schema=False)
+async def upload_page(request: Request, current_user: CurrentUser) -> HTMLResponse:
+    return request.app.state.templates.TemplateResponse(
+        request,
+        "pages/upload.html",
+        _build_template_context(
+            request,
+            current_user,
+            page_title="Subir albarán · Verdecora Upload Web",
+        ),
+    )
 
 
-@router.get("/mis-albaranes", response_class=HTMLResponse)
+@router.get("/mis-albaranes", response_class=HTMLResponse, name="my_uploads_page")
 async def my_uploads_page(request: Request, current_user: CurrentUser) -> HTMLResponse:
     return request.app.state.templates.TemplateResponse(
-        request=request,
-        name="base.html",
-        context={
-            "page_title": "Mis albaranes",
-            "hero_title": "Mis albaranes",
-            "hero_subtitle": "Panel placeholder para el seguimiento de cargas del usuario autenticado.",
-            "primary_action_href": "/my-uploads",
-            "primary_action_label": "Refrescar uploads",
-            "current_user": current_user,
-        },
+        request,
+        "pages/home.html",
+        _build_template_context(
+            request,
+            current_user,
+            page_title="Mis albaranes · Verdecora Upload Web",
+            my_uploads_message="Tus albaranes enviados aparecerán aquí en el siguiente sprint. Mientras tanto, puedes seguir subiendo documentos desde el botón principal.",
+        ),
     )
 
 
@@ -67,3 +78,7 @@ async def my_uploads_partial(current_user: CurrentUser) -> dict[str, object]:
         },
     }
 
+
+@router.get("/logout", include_in_schema=False, name="logout_placeholder")
+async def logout_placeholder() -> RedirectResponse:
+    return RedirectResponse(url="/", status_code=307)

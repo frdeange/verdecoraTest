@@ -8,54 +8,27 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Cardo:wght@400;700&family=Open+Sans:wght@400;600;700&display=swap');
     </style>
-    <link rel="stylesheet" href="{{ url_for('static', path='css/verdecora.css') }}">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://unpkg.com/htmx.org@1.9.12" crossorigin="anonymous"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/verdecora.css') }}">
   </head>
-  <body>
-    <header class="vc-header">
-      <div class="vc-shell vc-header-content">
-        <a href="/" class="vc-brand" aria-label="Ir al inicio de Verdecora Upload Web">
-          <img src="{{ url_for('static', path='img/verdecora-logo.jpg') }}" alt="Verdecora" class="vc-logo">
-        </a>
-        <div class="vc-user-meta">
-          {% if current_user %}
-          <span class="vc-user-name">{{ current_user.name }}</span>
-          {% else %}
-          <span class="vc-user-name">Sesión pendiente</span>
-          {% endif %}
-          <a href="/logout" class="vc-button vc-logout-button" aria-label="Cerrar sesión de forma segura">
-            <span aria-hidden="true">⎋</span>
-            <span>Cerrar sesión</span>
-          </a>
-        </div>
-      </div>
-    </header>
-
-    <main class="vc-shell vc-main" x-data="{ ready: true }">
+  <body class="min-h-screen bg-[var(--vc-bg)] text-[var(--vc-text)] antialiased">
+    <div class="flex min-h-screen flex-col" x-data="{ mobileMenuOpen: false }">
+      {% include 'components/_header.html' %}
+      {% include 'components/_flash.html' %}
       {% if session_notice %}
       <section class="vc-notice" role="status">
         {{ session_notice }}
       </section>
       {% endif %}
-      <section class="vc-hero">
-        <p class="vc-kicker">Upload Web</p>
-        <h1>{{ hero_title or "Subida de albaranes" }}</h1>
-        <p>{{ hero_subtitle or "Plantilla base para la experiencia de subida y seguimiento." }}</p>
-        <div class="vc-actions">
-          <a href="{{ primary_action_href or '/uploads' }}" class="vc-button">{{ primary_action_label or "Continuar" }}</a>
-          <a href="/mis-albaranes" class="vc-link">Mis albaranes</a>
+      <main class="flex-1">
+        <div class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
+          {% block content %}{% endblock %}
         </div>
-      </section>
-      {% block content %}{% endblock %}
-    </main>
-
-    <footer class="vc-footer">
-      <div class="vc-shell vc-footer-content">
-        <span>Verdecora · Recepción de mercancía</span>
-        <a href="https://verdecora.es" class="vc-link">verdecora.es</a>
-      </div>
-    </footer>
+      </main>
+      {% include 'components/_footer.html' %}
+    </div>
     <script>
       document.addEventListener('htmx:configRequest', function (event) {
         const token = document.querySelector('meta[name="csrf-token"]')?.content;

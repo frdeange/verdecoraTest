@@ -1,0 +1,12 @@
+{% set messages = flash_messages | default([]) %}
+{% if messages %}
+<section class="mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 lg:px-8" aria-live="polite">
+  <div class="space-y-3">
+    {% for message in messages %}
+    {% set message_level = message.level if message.level is defined else message.get('level', 'info') %}
+    {% set message_text = message.text if message.text is defined else message.get('text', '') %}
+    <div class="rounded-2xl border px-4 py-3 text-sm shadow-sm {% if message_level == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-900{% elif message_level == 'error' %}border-rose-200 bg-rose-50 text-rose-900{% else %}border-cyan-200 bg-cyan-50 text-slate-900{% endif %}">{{ message_text }}</div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
