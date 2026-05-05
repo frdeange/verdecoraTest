@@ -21,6 +21,25 @@ param hitlWebformImage string = ''
 @description('Optional override for the escalation timer job image during infrastructure deployments.')
 param escalationTimerJobImage string = ''
 
+@secure()
+@description('Key Vault secret identifier for the Application Gateway TLS certificate (PFX secret, versionless URI recommended).')
+param appGwFrontendCertificateSecretId string = ''
+
+@description('Enable Application Gateway deployment for upload-web once the TLS certificate secret is ready.')
+param enableUploadWebAppGateway bool = false
+
+@description('Microsoft Entra application client id used by upload-web Easy Auth.')
+param uploadWebEntraClientId string = ''
+
+@description('Enable Easy Auth deployment for upload-web once the container app exists.')
+param enableUploadWebAuth bool = false
+
+@description('Optional audiences accepted by upload-web Easy Auth. Defaults to api://{uploadWebEntraClientId}.')
+param uploadWebAllowedAudiences array = []
+
+@description('Optional Microsoft Entra group object ids allowed to access upload-web.')
+param uploadWebAllowedGroupObjectIds array = []
+
 var resourceGroupName = 'rg-verdecoratest-${environment}'
 var storageAccountUrl = 'https://${storage.outputs.storageAccountName}.blob.${az.environment().suffixes.storage}/'
 
@@ -249,6 +268,40 @@ module containerApps './container-apps.bicep' = {
   ]
 }
 
+var uploadWebAppName = 'verdecora-upload-web-${environment}'
+var uploadWebBackendFqdn = '${uploadWebAppName}.internal.${containerApps.outputs.managedEnvironmentDefaultDomain}'
+
+module appGateway './appgw.bicep' = if (enableUploadWebAppGateway) {
+  name: 'appGateway'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    environment: environment
+    location: location
+    subnetId: network.outputs.subnetAppGatewayId
+    backendFqdn: uploadWebBackendFqdn
+    keyVaultName: keyVault.outputs.keyVaultName
+    frontendSslCertificateSecretId: appGwFrontendCertificateSecretId
+  }
+  dependsOn: [
+    rg
+  ]
+}
+
+module uploadWebAuth './upload-web-auth.bicep' = if (enableUploadWebAuth && !empty(uploadWebEntraClientId)) {
+  name: 'uploadWebAuth'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    containerAppName: uploadWebAppName
+    tenantId: subscription().tenantId
+    clientId: uploadWebEntraClientId
+    allowedAudiences: uploadWebAllowedAudiences
+    allowedGroupObjectIds: uploadWebAllowedGroupObjectIds
+  }
+  dependsOn: [
+    rg
+  ]
+}
+
 module eventGrid './eventgrid.bicep' = {
   name: 'eventGrid'
   scope: az.resourceGroup(resourceGroupName)
@@ -399,6 +452,9 @@ output opsActionGroupId string = alerts.outputs.actionGroupId
 @description('Container Apps environment id.')
 output containerAppsEnvironmentId string = containerApps.outputs.managedEnvironmentId
 
+@description('Container Apps environment default domain.')
+output containerAppsEnvironmentDefaultDomain string = containerApps.outputs.managedEnvironmentDefaultDomain
+
 @description('GitHub runner ACA environment name.')
 output runnersEnvironmentName string = runners.outputs.runnerEnvironmentName
 
@@ -416,6 +472,12 @@ output hitlWebformAppId string = containerApps.outputs.hitlWebformAppId
 
 @description('Escalation timer ACA Job id.')
 output escalationTimerJobId string = containerApps.outputs.escalationTimerJobId
+
+@description('Application Gateway public FQDN for upload-web.')
+output appGwPublicFqdn string = enableUploadWebAppGateway ? appGateway!.outputs.appGwPublicFqdn : ''
+
+@description('Application Gateway public IP resource id for upload-web.')
+output appGwPublicIpId string = enableUploadWebAppGateway ? appGateway!.outputs.appGwPublicIpId : ''
 
 @description('Whether production-only network hardening is enabled.')
 output networkHardeningEnabled bool = enableNetworkHardening
