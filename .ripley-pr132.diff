@@ -1,0 +1,693 @@
+diff --git a/.squad/agents/parker/history.md b/.squad/agents/parker/history.md
+index b0ffbaf..6c9f6e0 100644
+--- a/.squad/agents/parker/history.md
++++ b/.squad/agents/parker/history.md
+@@ -13,3 +13,10 @@
+ - Added a new `src/upload_web/` FastAPI scaffold with `healthz`/`readyz`, placeholder upload routes, Jinja base layout, Verdecora CSS tokens, and the canonical logo asset.
+ - Introduced `src/shared/auth/` for Easy Auth header decoding (`X-MS-TOKEN-AAD-ID-TOKEN`) so Upload Web has a reusable Entra identity dependency and HITL can start consuming shared claim helpers.
+ - `UploadWebSettings` uses `pydantic-settings` and accepts both issue-level env names (`BLOB_ACCOUNT`, `COSMOS_URL`, `APP_INSIGHTS_CONNECTION_STRING`) and proposal/IaC env names (`STORAGE_ACCOUNT_URL`, `COSMOS_ENDPOINT`, `APPLICATIONINSIGHTS_CONNECTION_STRING`).
++
++### 2026-05-06 ÔÇö Sprint 1: branded Jinja pages + upload session API
++- Reworked `src/upload_web/templates/` into a proper Jinja layout with reusable header/footer/flash partials, Tailwind/HTMX/Alpine CDNs, and dedicated `pages/home.html` + `pages/upload.html` views branded for Verdecora store staff.
++- Updated Upload Web routes so authenticated users land on a friendly home screen, can open a visual upload placeholder, and still reach the existing Mis Albaranes placeholder path.
++- Added `src/upload_web/models/upload.py` and `src/upload_web/services/upload_session.py` for in-memory upload sessions plus one-hour SAS issuance. For local/dev without `STORAGE_ACCOUNT_URL`, the service returns a deterministic mock SAS token.
++- Added `POST /api/sessions` and `GET /api/sessions/{session_id}` under `src/upload_web/routes/api.py`, guarded by shared Easy Auth dependencies.
++- Added unit coverage for template rendering and upload session creation/retrieval, including mocked Azure SAS generation.
+diff --git a/src/upload_web/app.py b/src/upload_web/app.py
+index f8ecbac..980a5f5 100644
+--- a/src/upload_web/app.py
++++ b/src/upload_web/app.py
+@@ -1,5 +1,6 @@
+ from __future__ import annotations
+ 
++from datetime import UTC, datetime
+ from pathlib import Path
+ 
+ from fastapi import FastAPI
+@@ -18,6 +19,7 @@ def create_app(settings: UploadWebSettings | None = None) -> FastAPI:
+     app = FastAPI(title="Verdecora Upload Web")
+     app.state.settings = resolved_settings
+     app.state.templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
++    app.state.templates.env.globals.update(app_name="Verdecora Upload Web", current_year=datetime.now(UTC).year)
+     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+ 
+     @app.get("/healthz")
+diff --git a/src/upload_web/models/__init__.py b/src/upload_web/models/__init__.py
+new file mode 100644
+index 0000000..80d7a60
+--- /dev/null
++++ b/src/upload_web/models/__init__.py
+@@ -0,0 +1,5 @@
++from __future__ import annotations
++
++from .upload import UploadFile, UploadSession
++
++__all__ = ["UploadFile", "UploadSession"]
+diff --git a/src/upload_web/models/upload.py b/src/upload_web/models/upload.py
+new file mode 100644
+index 0000000..dfbe1d4
+--- /dev/null
++++ b/src/upload_web/models/upload.py
+@@ -0,0 +1,26 @@
++from __future__ import annotations
++
++from datetime import UTC, datetime
++
++from pydantic import BaseModel, Field
++
++
++class UploadFile(BaseModel):
++    filename: str
++    blob_path: str
++    content_type: str
++    size_bytes: int = Field(ge=0)
++    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
++
++
++class UploadSession(BaseModel):
++    session_id: str
++    user_oid: str
++    user_name: str
++    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
++    status: str = "created"
++    files: list[UploadFile] = Field(default_factory=list)
++    container_name: str = "albaranes-raw"
++    upload_prefix: str = ""
++    sas_token: str = ""
++    sas_expires_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+diff --git a/src/upload_web/routes/__init__.py b/src/upload_web/routes/__init__.py
+index 51d08e6..1407bed 100644
+--- a/src/upload_web/routes/__init__.py
++++ b/src/upload_web/routes/__init__.py
+@@ -1,5 +1,12 @@
+ """Route registration for Upload Web."""
+ 
+-from .upload import router
++from fastapi import APIRouter
++
++from .api import router as api_router
++from .upload import router as web_router
++
++router = APIRouter()
++router.include_router(web_router)
++router.include_router(api_router, prefix="/api")
+ 
+ __all__ = ["router"]
+diff --git a/src/upload_web/routes/api.py b/src/upload_web/routes/api.py
+new file mode 100644
+index 0000000..f636361
+--- /dev/null
++++ b/src/upload_web/routes/api.py
+@@ -0,0 +1,28 @@
++from __future__ import annotations
++
++from typing import Annotated
++
++from fastapi import APIRouter, Depends, HTTPException, status
++
++from src.shared.auth.dependencies import get_current_user
++from src.shared.auth.entra import AuthenticatedUser
++from src.upload_web.models.upload import UploadSession
++from src.upload_web.services.upload_session import create_upload_session, get_upload_session
++
++router = APIRouter(prefix="/sessions", tags=["upload-web-api"])
++CurrentUser = Annotated[AuthenticatedUser, Depends(get_current_user)]
++
++
++@router.post("", response_model=UploadSession, status_code=status.HTTP_201_CREATED)
++def create_session(current_user: CurrentUser) -> UploadSession:
++    return create_upload_session(user_oid=current_user.oid, user_name=current_user.name)
++
++
++@router.get("/{session_id}", response_model=UploadSession)
++def read_session(session_id: str, current_user: CurrentUser) -> UploadSession:
++    session = get_upload_session(session_id)
++    if session is None:
++        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload session not found.")
++    if session.user_oid != current_user.oid:
++        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Upload session does not belong to the current user.")
++    return session
+diff --git a/src/upload_web/routes/upload.py b/src/upload_web/routes/upload.py
+index a88a447..739553d 100644
+--- a/src/upload_web/routes/upload.py
++++ b/src/upload_web/routes/upload.py
+@@ -1,6 +1,6 @@
+ from __future__ import annotations
+ 
+-from typing import Annotated
++from typing import Annotated, Any
+ 
+ from fastapi import APIRouter, Depends, Request
+ from fastapi.responses import HTMLResponse, RedirectResponse
+@@ -12,48 +12,59 @@
+ CurrentUser = Annotated[AuthenticatedUser, Depends(get_current_user)]
+ 
+ 
+-@router.get("/", response_class=HTMLResponse, include_in_schema=False)
+-async def index(request: Request) -> HTMLResponse:
++def _build_template_context(
++    request: Request,
++    current_user: AuthenticatedUser,
++    **extra: Any,
++) -> dict[str, Any]:
++    flash_messages = getattr(request.state, "flash_messages", [])
++    context: dict[str, Any] = {
++        "request": request,
++        "current_user": current_user,
++        "flash_messages": flash_messages,
++    }
++    context.update(extra)
++    return context
++
++
++@router.get("/", response_class=HTMLResponse, include_in_schema=False, name="index")
++async def index(request: Request, current_user: CurrentUser) -> HTMLResponse:
+     return request.app.state.templates.TemplateResponse(
+-        "base.html",
+-        {
+-            "request": request,
+-            "page_title": "Verdecora Upload Web",
+-            "hero_title": "Subida de albaranes",
+-            "hero_subtitle": "Scaffold inicial de la app FastAPI para la experiencia de subida en tienda.",
+-            "primary_action_href": "/uploads",
+-            "primary_action_label": "Ver placeholder de subida",
+-            "current_user": None,
+-        },
++        request,
++        "pages/home.html",
++        _build_template_context(
++            request,
++            current_user,
++            page_title="Inicio ┬À Verdecora Upload Web",
++        ),
+     )
+ 
+ 
+-@router.get("/uploads")
+-async def upload_placeholder(current_user: CurrentUser) -> dict[str, object]:
+-    return {
+-        "status": "placeholder",
+-        "message": "Los endpoints de subida se implementar├ín en el siguiente sprint.",
+-        "user": {
+-            "oid": current_user.oid,
+-            "name": current_user.name,
+-            "groups": list(current_user.groups),
+-        },
+-    }
++@router.get("/upload", response_class=HTMLResponse, name="upload_page")
++@router.get("/uploads", response_class=HTMLResponse, include_in_schema=False)
++async def upload_page(request: Request, current_user: CurrentUser) -> HTMLResponse:
++    return request.app.state.templates.TemplateResponse(
++        request,
++        "pages/upload.html",
++        _build_template_context(
++            request,
++            current_user,
++            page_title="Subir albar├ín ┬À Verdecora Upload Web",
++        ),
++    )
+ 
+ 
+-@router.get("/mis-albaranes", response_class=HTMLResponse)
++@router.get("/mis-albaranes", response_class=HTMLResponse, name="my_uploads_page")
+ async def my_uploads_page(request: Request, current_user: CurrentUser) -> HTMLResponse:
+     return request.app.state.templates.TemplateResponse(
+-        "base.html",
+-        {
+-            "request": request,
+-            "page_title": "Mis albaranes",
+-            "hero_title": "Mis albaranes",
+-            "hero_subtitle": "Panel placeholder para el seguimiento de cargas del usuario autenticado.",
+-            "primary_action_href": "/my-uploads",
+-            "primary_action_label": "Refrescar uploads",
+-            "current_user": current_user,
+-        },
++        request,
++        "pages/home.html",
++        _build_template_context(
++            request,
++            current_user,
++            page_title="Mis albaranes ┬À Verdecora Upload Web",
++            my_uploads_message="Tus albaranes enviados aparecer├ín aqu├¡ en el siguiente sprint. Mientras tanto, puedes seguir subiendo documentos desde el bot├│n principal.",
++        ),
+     )
+ 
+ 
+@@ -68,6 +79,6 @@ async def my_uploads_partial(current_user: CurrentUser) -> dict[str, object]:
+     }
+ 
+ 
+-@router.get("/logout", include_in_schema=False)
++@router.get("/logout", include_in_schema=False, name="logout_placeholder")
+ async def logout_placeholder() -> RedirectResponse:
+     return RedirectResponse(url="/", status_code=307)
+diff --git a/src/upload_web/services/__init__.py b/src/upload_web/services/__init__.py
+index 4fa57f7..252610e 100644
+--- a/src/upload_web/services/__init__.py
++++ b/src/upload_web/services/__init__.py
+@@ -1 +1,5 @@
+ """Upload Web service helpers."""
++
++from .upload_session import clear_upload_sessions, create_upload_session, get_upload_session
++
++__all__ = ["clear_upload_sessions", "create_upload_session", "get_upload_session"]
+diff --git a/src/upload_web/services/upload_session.py b/src/upload_web/services/upload_session.py
+new file mode 100644
+index 0000000..b0c92dd
+--- /dev/null
++++ b/src/upload_web/services/upload_session.py
+@@ -0,0 +1,80 @@
++from __future__ import annotations
++
++import os
++from datetime import UTC, datetime, timedelta
++from uuid import uuid4
++
++from azure.storage.blob import BlobServiceClient, ContainerSasPermissions, generate_container_sas
++
++from src.config.security import get_managed_identity_credential
++from src.upload_web.config import UploadWebSettings, get_settings
++from src.upload_web.models.upload import UploadSession
++
++_UPLOAD_SESSIONS: dict[str, UploadSession] = {}
++
++
++def create_upload_session(
++    user_oid: str,
++    user_name: str,
++    settings: UploadWebSettings | None = None,
++) -> UploadSession:
++    resolved_settings = settings or get_settings()
++    session_id = str(uuid4())
++    created_at = datetime.now(UTC)
++    expires_at = created_at + timedelta(hours=1)
++    session = UploadSession(
++        session_id=session_id,
++        user_oid=user_oid,
++        user_name=user_name,
++        created_at=created_at,
++        status="created",
++        files=[],
++        container_name=resolved_settings.raw_blob_container,
++        upload_prefix=_build_upload_prefix(session_id),
++        sas_token=_generate_upload_sas(session_id, resolved_settings, expires_at),
++        sas_expires_at=expires_at,
++    )
++    _UPLOAD_SESSIONS[session_id] = session
++    return session
++
++
++def get_upload_session(session_id: str) -> UploadSession | None:
++    return _UPLOAD_SESSIONS.get(session_id)
++
++
++def clear_upload_sessions() -> None:
++    _UPLOAD_SESSIONS.clear()
++
++
++def _build_upload_prefix(session_id: str) -> str:
++    return f"{session_id}/"
++
++
++def _generate_upload_sas(session_id: str, settings: UploadWebSettings, expiry: datetime) -> str:
++    account_url = os.getenv("STORAGE_ACCOUNT_URL") or os.getenv("BLOB_ACCOUNT")
++    if not account_url:
++        return _build_mock_sas_token(session_id, expiry)
++
++    credential = get_managed_identity_credential()
++    blob_service_client = BlobServiceClient(account_url=account_url, credential=credential)
++    start_time = datetime.now(UTC) - timedelta(minutes=5)
++    delegation_key = blob_service_client.get_user_delegation_key(start_time, expiry)
++    permissions = ContainerSasPermissions(read=True, write=True, create=True)
++    sas_token = generate_container_sas(
++        account_name=blob_service_client.account_name,
++        container_name=settings.raw_blob_container,
++        user_delegation_key=delegation_key,
++        permission=permissions,
++        start=start_time,
++        expiry=expiry,
++        protocol="https",
++    )
++    return sas_token
++
++
++def _build_mock_sas_token(session_id: str, expiry: datetime) -> str:
++    safe_expiry = expiry.isoformat().replace("+00:00", "Z")
++    return f"mock-sas-session={session_id}&prefix={_build_upload_prefix(session_id)}&exp={safe_expiry}"
++
++
++__all__ = ["clear_upload_sessions", "create_upload_session", "get_upload_session"]
+diff --git a/src/upload_web/templates/base.html b/src/upload_web/templates/base.html
+index 2729090..be0b0fd 100644
+--- a/src/upload_web/templates/base.html
++++ b/src/upload_web/templates/base.html
+@@ -7,45 +7,21 @@
+     <style>
+       @import url('https://fonts.googleapis.com/css2?family=Cardo:wght@400;700&family=Open+Sans:wght@400;600;700&display=swap');
+     </style>
+-    <link rel="stylesheet" href="{{ url_for('static', path='css/verdecora.css') }}">
++    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+     <script src="https://unpkg.com/htmx.org@1.9.12" crossorigin="anonymous"></script>
+     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
++    <link rel="stylesheet" href="{{ url_for('static', path='css/verdecora.css') }}">
+   </head>
+-  <body>
+-    <header class="vc-header">
+-      <div class="vc-shell vc-header-content">
+-        <a href="/" class="vc-brand" aria-label="Ir al inicio de Verdecora Upload Web">
+-          <img src="{{ url_for('static', path='img/verdecora-logo.jpg') }}" alt="Verdecora" class="vc-logo">
+-        </a>
+-        <div class="vc-user-meta">
+-          {% if current_user %}
+-          <span>{{ current_user.name }}</span>
+-          {% else %}
+-          <span>Sesi├│n pendiente</span>
+-          {% endif %}
+-          <a href="/logout" class="vc-button">Cerrar sesi├│n</a>
+-        </div>
+-      </div>
+-    </header>
+-
+-    <main class="vc-shell vc-main" x-data="{ ready: true }">
+-      <section class="vc-hero">
+-        <p class="vc-kicker">Upload Web</p>
+-        <h1>{{ hero_title or "Subida de albaranes" }}</h1>
+-        <p>{{ hero_subtitle or "Plantilla base para la experiencia de subida y seguimiento." }}</p>
+-        <div class="vc-actions">
+-          <a href="{{ primary_action_href or '/uploads' }}" class="vc-button">{{ primary_action_label or "Continuar" }}</a>
+-          <a href="/mis-albaranes" class="vc-link">Mis albaranes</a>
++  <body class="min-h-screen bg-[var(--vc-bg)] text-[var(--vc-text)] antialiased">
++    <div class="flex min-h-screen flex-col" x-data="{ mobileMenuOpen: false }">
++      {% include 'components/_header.html' %}
++      {% include 'components/_flash.html' %}
++      <main class="flex-1">
++        <div class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
++          {% block content %}{% endblock %}
+         </div>
+-      </section>
+-      {% block content %}{% endblock %}
+-    </main>
+-
+-    <footer class="vc-footer">
+-      <div class="vc-shell vc-footer-content">
+-        <span>Verdecora ┬À Recepci├│n de mercanc├¡a</span>
+-        <a href="https://verdecora.es" class="vc-link">verdecora.es</a>
+-      </div>
+-    </footer>
++      </main>
++      {% include 'components/_footer.html' %}
++    </div>
+   </body>
+ </html>
+diff --git a/src/upload_web/templates/components/_flash.html b/src/upload_web/templates/components/_flash.html
+new file mode 100644
+index 0000000..ed3de6f
+--- /dev/null
++++ b/src/upload_web/templates/components/_flash.html
+@@ -0,0 +1,12 @@
++{% set messages = flash_messages | default([]) %}
++{% if messages %}
++<section class="mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 lg:px-8" aria-live="polite">
++  <div class="space-y-3">
++    {% for message in messages %}
++    {% set message_level = message.level if message.level is defined else message.get('level', 'info') %}
++    {% set message_text = message.text if message.text is defined else message.get('text', '') %}
++    <div class="rounded-2xl border px-4 py-3 text-sm shadow-sm {% if message_level == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-900{% elif message_level == 'error' %}border-rose-200 bg-rose-50 text-rose-900{% else %}border-cyan-200 bg-cyan-50 text-slate-900{% endif %}">{{ message_text }}</div>
++    {% endfor %}
++  </div>
++</section>
++{% endif %}
+diff --git a/src/upload_web/templates/components/_footer.html b/src/upload_web/templates/components/_footer.html
+new file mode 100644
+index 0000000..a58fff2
+--- /dev/null
++++ b/src/upload_web/templates/components/_footer.html
+@@ -0,0 +1,6 @@
++<footer class="mt-auto bg-[var(--vc-nav-dark)] text-white">
++  <div class="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-6 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
++    <p class="font-semibold">Verdecora ┬À Recepci├│n de mercanc├¡a</p>
++    <p class="text-white/75">Dise├▒ado para equipos de tienda. Simple, claro y r├ípido.</p>
++  </div>
++</footer>
+diff --git a/src/upload_web/templates/components/_header.html b/src/upload_web/templates/components/_header.html
+new file mode 100644
+index 0000000..51fb938
+--- /dev/null
++++ b/src/upload_web/templates/components/_header.html
+@@ -0,0 +1,15 @@
++<header class="bg-[var(--vc-nav-dark)] text-white shadow-sm">
++  <div class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
++    <a href="{{ url_for('index') }}" class="flex items-center gap-3" aria-label="Inicio Verdecora Upload Web">
++      <img src="{{ url_for('static', path='img/verdecora-logo.jpg') }}" alt="Verdecora" class="h-10 w-auto sm:h-12">
++      <div>
++        <p class="text-xs font-semibold uppercase tracking-[0.28em] text-white/70">Upload Web</p>
++        <p class="text-sm font-semibold">Recepci├│n de albaranes</p>
++      </div>
++    </a>
++    <div class="flex flex-col gap-3 sm:items-end">
++      <p class="text-sm text-white/80">Conectado como <span class="font-semibold text-white">{{ current_user.name if current_user else 'Usuario autenticado' }}</span></p>
++      <a href="{{ url_for('logout_placeholder') }}" class="inline-flex min-h-11 items-center justify-center rounded-full border border-white/25 px-5 py-2 text-sm font-semibold text-white transition hover:border-white hover:bg-white/10">Cerrar sesi├│n</a>
++    </div>
++  </div>
++</header>
+diff --git a/src/upload_web/templates/pages/home.html b/src/upload_web/templates/pages/home.html
+new file mode 100644
+index 0000000..1bc195c
+--- /dev/null
++++ b/src/upload_web/templates/pages/home.html
+@@ -0,0 +1,28 @@
++{% extends 'base.html' %}
++
++{% block content %}
++<section class="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
++  <article class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
++    <p class="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--vc-accent)]">Bienvenido</p>
++    <h1 class="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Hola, {{ current_user.name }}</h1>
++    <p class="mt-4 max-w-2xl text-base leading-7 text-slate-600">Sube tus albaranes de compra en pocos pasos. Esta pantalla est├í pensada para equipos de tienda: botones grandes, instrucciones claras y acceso r├ípido a lo importante.</p>
++    <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
++      <a href="{{ url_for('upload_page') }}" class="inline-flex min-h-14 items-center justify-center rounded-full bg-[var(--vc-primary)] px-8 text-lg font-semibold text-white shadow-lg shadow-teal-900/10 transition hover:brightness-105">Subir albar├ín</a>
++      <a href="{{ url_for('my_uploads_page') }}" class="text-base font-semibold text-[var(--vc-nav-dark)] underline decoration-[var(--vc-accent)] decoration-2 underline-offset-4">Mis albaranes</a>
++    </div>
++  </article>
++  <aside class="rounded-3xl bg-slate-50 p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
++    <h2 class="text-lg font-semibold text-slate-900">C├│mo funciona</h2>
++    <ol class="mt-4 space-y-4 text-sm leading-6 text-slate-600">
++      <li><span class="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--vc-primary)] text-xs font-bold text-white">1</span>Abre la pantalla de subida.</li>
++      <li><span class="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--vc-primary)] text-xs font-bold text-white">2</span>A├▒ade PDF o fotos del albar├ín.</li>
++      <li><span class="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--vc-primary)] text-xs font-bold text-white">3</span>Consulta el estado despu├®s en Mis albaranes.</li>
++    </ol>
++    {% if my_uploads_message %}
++    <div class="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
++      {{ my_uploads_message }}
++    </div>
++    {% endif %}
++  </aside>
++</section>
++{% endblock %}
+diff --git a/src/upload_web/templates/pages/upload.html b/src/upload_web/templates/pages/upload.html
+new file mode 100644
+index 0000000..48e76a3
+--- /dev/null
++++ b/src/upload_web/templates/pages/upload.html
+@@ -0,0 +1,26 @@
++{% extends 'base.html' %}
++
++{% block content %}
++<section class="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
++  <article class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
++    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Subir albar├ín</h1>
++    <p class="mt-3 text-base leading-7 text-slate-600">En el siguiente sprint conectaremos esta pantalla con la subida real. Hoy dejamos listo el espacio para que la experiencia sea clara desde el primer momento.</p>
++    <div class="mt-8 rounded-[2rem] border-2 border-dashed border-[var(--vc-primary)] bg-[color:rgba(1,146,143,0.06)] p-8 text-center sm:p-12">
++      <div class="mx-auto flex max-w-md flex-col items-center gap-4">
++        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl shadow-sm">Ôåæ</div>
++        <p class="text-lg font-semibold text-slate-900">Zona de arrastre de archivos</p>
++        <p class="text-sm leading-6 text-slate-600">Aqu├¡ podr├ís arrastrar uno o varios documentos para iniciar la subida.</p>
++        <button type="button" class="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--vc-primary)] px-6 text-base font-semibold text-white shadow-lg shadow-teal-900/10">Seleccionar archivos</button>
++      </div>
++    </div>
++  </article>
++  <aside class="rounded-3xl bg-slate-50 p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
++    <h2 class="text-lg font-semibold text-slate-900">Instrucciones</h2>
++    <ul class="mt-4 space-y-3 text-sm leading-6 text-slate-600">
++      <li>ÔÇó Puedes subir PDF y fotos hechas con el m├│vil.</li>
++      <li>ÔÇó Si el albar├ín tiene varias p├íginas, podr├ís enviarlas juntas.</li>
++      <li>ÔÇó Procura que el documento se vea completo y con buena luz.</li>
++    </ul>
++  </aside>
++</section>
++{% endblock %}
+diff --git a/tests/unit/test_jinja_templates.py b/tests/unit/test_jinja_templates.py
+new file mode 100644
+index 0000000..6ce4c1f
+--- /dev/null
++++ b/tests/unit/test_jinja_templates.py
+@@ -0,0 +1,51 @@
++from __future__ import annotations
++
++import jwt
++import pytest
++from fastapi.testclient import TestClient
++
++from src.upload_web.app import create_app
++
++TEST_SECRET = "test-secret-with-at-least-thirty-two-bytes"
++
++
++def _auth_headers(name: str = "Parker Store") -> dict[str, str]:
++    token = jwt.encode(
++        {
++            "oid": "oid-123",
++            "name": name,
++            "groups": ["verdecora-store-uploaders"],
++            "exp": 9999999999,
++        },
++        TEST_SECRET,
++        algorithm="HS256",
++    )
++    return {"X-MS-TOKEN-AAD-ID-TOKEN": token}
++
++
++@pytest.mark.unit
++@pytest.mark.parametrize("path", ["/", "/upload", "/mis-albaranes"])
++def test_templates_render_without_error(path: str) -> None:
++    app = create_app()
++
++    with TestClient(app) as client:
++        response = client.get(path, headers=_auth_headers())
++
++    assert response.status_code == 200
++    assert "Verdecora" in response.text
++    assert "Cerrar sesi├│n" in response.text
++
++
++@pytest.mark.unit
++def test_home_page_contains_expected_elements() -> None:
++    app = create_app()
++
++    with TestClient(app) as client:
++        response = client.get("/", headers=_auth_headers("Parker Dev"))
++
++    assert response.status_code == 200
++    assert "Hola, Parker Dev" in response.text
++    assert "Subir albar├ín" in response.text
++    assert "Mis albaranes" in response.text
++    assert "tailwindcss.com" in response.text
++    assert "htmx.org" in response.text
+diff --git a/tests/unit/test_upload_session.py b/tests/unit/test_upload_session.py
+new file mode 100644
+index 0000000..723dbeb
+--- /dev/null
++++ b/tests/unit/test_upload_session.py
+@@ -0,0 +1,112 @@
++from __future__ import annotations
++
++from datetime import datetime
++
++import jwt
++import pytest
++from fastapi.testclient import TestClient
++
++from src.upload_web.app import create_app
++from src.upload_web.config import get_settings
++from src.upload_web.services import upload_session
++
++TEST_SECRET = "test-secret-with-at-least-thirty-two-bytes"
++
++
++@pytest.fixture(autouse=True)
++def clear_sessions() -> None:
++    upload_session.clear_upload_sessions()
++    yield
++    upload_session.clear_upload_sessions()
++    get_settings.cache_clear()
++
++
++def _auth_headers(name: str = "Parker Store") -> dict[str, str]:
++    token = jwt.encode(
++        {
++            "oid": "oid-123",
++            "name": name,
++            "groups": ["verdecora-store-uploaders"],
++            "exp": 9999999999,
++        },
++        TEST_SECRET,
++        algorithm="HS256",
++    )
++    return {"X-MS-TOKEN-AAD-ID-TOKEN": token}
++
++
++@pytest.mark.unit
++def test_create_upload_session_returns_mock_sas_when_storage_not_configured(monkeypatch: pytest.MonkeyPatch) -> None:
++    monkeypatch.delenv("STORAGE_ACCOUNT_URL", raising=False)
++    monkeypatch.delenv("BLOB_ACCOUNT", raising=False)
++
++    session = upload_session.create_upload_session(user_oid="oid-123", user_name="Parker Store")
++
++    assert session.user_oid == "oid-123"
++    assert session.user_name == "Parker Store"
++    assert session.status == "created"
++    assert session.upload_prefix == f"{session.session_id}/"
++    assert session.sas_token.startswith(f"mock-sas-session={session.session_id}")
++    assert upload_session.get_upload_session(session.session_id) == session
++
++
++@pytest.mark.unit
++def test_create_upload_session_uses_container_sas_when_storage_configured(monkeypatch: pytest.MonkeyPatch) -> None:
++    captured: dict[str, object] = {}
++
++    class FakeBlobServiceClient:
++        def __init__(self, *, account_url: str, credential: object) -> None:
++            captured["account_url"] = account_url
++            captured["credential"] = credential
++            self.account_name = "stverdecora"
++
++        def get_user_delegation_key(self, start: datetime, expiry: datetime) -> str:
++            captured["delegation_window"] = (start, expiry)
++            return "delegation-key"
++
++    class FakeContainerSasPermissions:
++        def __init__(self, *, read: bool, write: bool, create: bool) -> None:
++            captured["permissions"] = {"read": read, "write": write, "create": create}
++
++    def fake_generate_container_sas(**kwargs: object) -> str:
++        captured["sas_kwargs"] = kwargs
++        return "sig=real-token"
++
++    credential = object()
++    monkeypatch.setenv("STORAGE_ACCOUNT_URL", "https://stverdecora.blob.core.windows.net")
++    monkeypatch.setattr(upload_session, "BlobServiceClient", FakeBlobServiceClient)
++    monkeypatch.setattr(upload_session, "ContainerSasPermissions", FakeContainerSasPermissions)
++    monkeypatch.setattr(upload_session, "generate_container_sas", fake_generate_container_sas)
++    monkeypatch.setattr(upload_session, "get_managed_identity_credential", lambda: credential)
++
++    session = upload_session.create_upload_session(user_oid="oid-123", user_name="Parker Store")
++
++    assert session.sas_token == "sig=real-token"
++    assert captured["account_url"] == "https://stverdecora.blob.core.windows.net"
++    assert captured["credential"] is credential
++    assert captured["permissions"] == {"read": True, "write": True, "create": True}
++    assert captured["sas_kwargs"]["container_name"] == "albaranes-raw"
++    assert captured["sas_kwargs"]["user_delegation_key"] == "delegation-key"
++
++
++@pytest.mark.unit
++def test_get_upload_session_returns_none_for_unknown_id() -> None:
++    assert upload_session.get_upload_session("missing-session") is None
++
++
++@pytest.mark.unit
++def test_api_creates_and_reads_upload_session(monkeypatch: pytest.MonkeyPatch) -> None:
++    monkeypatch.delenv("STORAGE_ACCOUNT_URL", raising=False)
++    monkeypatch.delenv("BLOB_ACCOUNT", raising=False)
++    app = create_app()
++
++    with TestClient(app) as client:
++        create_response = client.post("/api/sessions", headers=_auth_headers())
++        assert create_response.status_code == 201
++        created_session = create_response.json()
++
++        read_response = client.get(f"/api/sessions/{created_session['session_id']}", headers=_auth_headers())
++
++    assert read_response.status_code == 200
++    assert read_response.json()["session_id"] == created_session["session_id"]
++    assert read_response.json()["user_name"] == "Parker Store"

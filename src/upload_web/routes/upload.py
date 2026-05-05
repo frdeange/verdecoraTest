@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.shared.auth.entra import AuthenticatedUser
@@ -72,6 +72,17 @@ async def my_uploads_page(request: Request, current_user: CurrentUser) -> HTMLRe
 async def my_uploads_partial(current_user: CurrentUser) -> dict[str, object]:
     return {
         "items": [],
+        "user": {
+            "oid": current_user.oid,
+            "name": current_user.name,
+        },
+    }
+
+
+@router.post("/api/sessions", status_code=status.HTTP_201_CREATED)
+async def create_upload_session(current_user: CurrentUser) -> dict[str, object]:
+    return {
+        "status": "placeholder",
         "user": {
             "oid": current_user.oid,
             "name": current_user.name,

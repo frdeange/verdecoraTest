@@ -110,6 +110,7 @@ addopts = "-v --strict-markers"
 markers = [
     "unit: unit tests",
     "integration: integration tests",
+    "e2e: end-to-end tests",
 ]
 
 [tool.coverage.run]

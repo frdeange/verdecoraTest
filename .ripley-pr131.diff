@@ -1,0 +1,227 @@
+diff --git a/.squad/agents/vasquez/history.md b/.squad/agents/vasquez/history.md
+index 1d154cd..3939ef9 100644
+--- a/.squad/agents/vasquez/history.md
++++ b/.squad/agents/vasquez/history.md
+@@ -10,3 +10,4 @@
+ ## Learnings
+ 
+ - 2026-05-04: Set up pytest defaults so only unit tests run unless `--run-integration` or `--run-e2e` is explicitly passed. Added reusable mocks for BC MCP, Cosmos DB, ACS Email, and Service Bus plus JSON fixtures for albar├ín and PO payloads.
++- 2026-05-05: Added upload-web smoke coverage for health probes, Easy Auth enforcement, authenticated landing pages, and static assets. Introduced reusable `app_client` + mock Easy Auth headers for E2E tests and verified the new suite with `python -m pytest tests\\unit\\test_upload_web_scaffold.py tests\\e2e\\test_upload_web_smoke.py --run-e2e`.
+diff --git a/.squad/decisions/inbox/vasquez-upload-web-smoke-auth.md b/.squad/decisions/inbox/vasquez-upload-web-smoke-auth.md
+new file mode 100644
+index 0000000..fdb00cf
+--- /dev/null
++++ b/.squad/decisions/inbox/vasquez-upload-web-smoke-auth.md
+@@ -0,0 +1,12 @@
++# Vasquez decision ÔÇö upload-web smoke auth assumptions
++
++- Date: 2026-05-05
++- Issue: #99 / UW-17
++
++## Decision
++
++Treat the upload web landing page (`/`) as Easy Auth protected in smoke coverage, and add a placeholder authenticated `POST /api/sessions` route so auth checks can be exercised end-to-end.
++
++## Why
++
++The requested smoke suite explicitly expects unauthenticated access to `/` to be rejected and `/api/sessions` to require auth. The existing scaffold had no session route and rendered `/` anonymously, so the minimal product change keeps smoke coverage aligned with the acceptance criteria.
+diff --git a/pyproject.toml b/pyproject.toml
+index 356f600..86ed71d 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -109,6 +109,7 @@ addopts = "-v --strict-markers"
+ markers = [
+     "unit: unit tests",
+     "integration: integration tests",
++    "e2e: end-to-end tests",
+ ]
+ 
+ [tool.coverage.run]
+diff --git a/src/upload_web/routes/upload.py b/src/upload_web/routes/upload.py
+index a88a447..ab200a6 100644
+--- a/src/upload_web/routes/upload.py
++++ b/src/upload_web/routes/upload.py
+@@ -2,7 +2,7 @@
+ 
+ from typing import Annotated
+ 
+-from fastapi import APIRouter, Depends, Request
++from fastapi import APIRouter, Depends, Request, status
+ from fastapi.responses import HTMLResponse, RedirectResponse
+ 
+ from src.shared.auth.dependencies import get_current_user
+@@ -13,8 +13,9 @@
+ 
+ 
+ @router.get("/", response_class=HTMLResponse, include_in_schema=False)
+-async def index(request: Request) -> HTMLResponse:
++async def index(request: Request, current_user: CurrentUser) -> HTMLResponse:
+     return request.app.state.templates.TemplateResponse(
++        request,
+         "base.html",
+         {
+             "request": request,
+@@ -23,7 +24,7 @@ async def index(request: Request) -> HTMLResponse:
+             "hero_subtitle": "Scaffold inicial de la app FastAPI para la experiencia de subida en tienda.",
+             "primary_action_href": "/uploads",
+             "primary_action_label": "Ver placeholder de subida",
+-            "current_user": None,
++            "current_user": current_user,
+         },
+     )
+ 
+@@ -44,6 +45,7 @@ async def upload_placeholder(current_user: CurrentUser) -> dict[str, object]:
+ @router.get("/mis-albaranes", response_class=HTMLResponse)
+ async def my_uploads_page(request: Request, current_user: CurrentUser) -> HTMLResponse:
+     return request.app.state.templates.TemplateResponse(
++        request,
+         "base.html",
+         {
+             "request": request,
+@@ -68,6 +70,17 @@ async def my_uploads_partial(current_user: CurrentUser) -> dict[str, object]:
+     }
+ 
+ 
++@router.post("/api/sessions", status_code=status.HTTP_201_CREATED)
++async def create_upload_session(current_user: CurrentUser) -> dict[str, object]:
++    return {
++        "status": "placeholder",
++        "user": {
++            "oid": current_user.oid,
++            "name": current_user.name,
++        },
++    }
++
++
+ @router.get("/logout", include_in_schema=False)
+ async def logout_placeholder() -> RedirectResponse:
+     return RedirectResponse(url="/", status_code=307)
+diff --git a/tests/e2e/conftest.py b/tests/e2e/conftest.py
+index 61ebec0..c6218df 100644
+--- a/tests/e2e/conftest.py
++++ b/tests/e2e/conftest.py
+@@ -1,17 +1,21 @@
+ from __future__ import annotations
+ 
+ import json
+-from collections.abc import Callable
++from collections.abc import AsyncIterator, Callable
+ from types import SimpleNamespace
+ from typing import Any
+ from unittest.mock import AsyncMock
+ 
++import httpx
++import jwt
+ import pytest
++import pytest_asyncio
+ 
+ from src.agents.pipeline import AlbaranPipeline
+ from src.services.flow0_dedup.dedup_handler import Flow0DedupHandler
+ from src.services.orchestrator.config import OrchestratorConfig
+ from src.services.orchestrator.orchestration import OrchestratorService
++from src.upload_web.app import create_app
+ from tests.unit.agent_test_helpers import FakeAsyncStream, FakeEvent, FakeWorkflow
+ 
+ pytestmark = pytest.mark.e2e
+@@ -250,3 +254,27 @@ def _build() -> tuple[OrchestratorService, FakeAsyncServiceBusClient]:
+         return service, service_bus_client
+ 
+     return _build
++
++
++@pytest_asyncio.fixture()
++async def app_client() -> AsyncIterator[httpx.AsyncClient]:
++    app = create_app()
++    transport = httpx.ASGITransport(app=app)
++    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
++        yield client
++
++
++@pytest.fixture()
++def auth_headers() -> dict[str, str]:
++    token = jwt.encode(
++        {
++            "oid": "oid-e2e-smoke-001",
++            "name": "Vasquez QA",
++            "preferred_username": "vasquez.qa@verdecora.example",
++            "groups": ["verdecora-store-uploaders"],
++            "exp": 9999999999,
++        },
++        "test-secret-with-at-least-thirty-two-bytes",
++        algorithm="HS256",
++    )
++    return {"X-MS-TOKEN-AAD-ID-TOKEN": token}
+diff --git a/tests/e2e/test_upload_web_smoke.py b/tests/e2e/test_upload_web_smoke.py
+new file mode 100644
+index 0000000..e9655cf
+--- /dev/null
++++ b/tests/e2e/test_upload_web_smoke.py
+@@ -0,0 +1,68 @@
++from __future__ import annotations
++
++import httpx
++import pytest
++
++pytestmark = [pytest.mark.e2e, pytest.mark.asyncio]
++
++
++async def test_healthz_returns_200(app_client: httpx.AsyncClient) -> None:
++    response = await app_client.get("/healthz")
++
++    assert response.status_code == 200
++    assert response.json() == {"status": "ok"}
++
++
++async def test_readyz_returns_200(app_client: httpx.AsyncClient) -> None:
++    response = await app_client.get("/readyz")
++
++    assert response.status_code == 200
++    assert response.json() == {"status": "ready"}
++
++
++async def test_home_redirects_unauthenticated(app_client: httpx.AsyncClient) -> None:
++    response = await app_client.get("/", follow_redirects=False)
++
++    assert response.status_code in {302, 401}
++
++
++async def test_api_sessions_requires_auth(app_client: httpx.AsyncClient) -> None:
++    response = await app_client.post("/api/sessions")
++
++    assert response.status_code == 401
++
++
++async def test_upload_page_requires_auth(app_client: httpx.AsyncClient) -> None:
++    response = await app_client.get("/uploads", follow_redirects=False)
++
++    assert response.status_code in {302, 401}
++
++
++async def test_home_renders_for_authenticated_user(
++    app_client: httpx.AsyncClient, auth_headers: dict[str, str]
++) -> None:
++    response = await app_client.get("/", headers=auth_headers)
++
++    assert response.status_code == 200
++    assert "Vasquez QA" in response.text
++
++
++async def test_mis_albaranes_renders(app_client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
++    response = await app_client.get("/mis-albaranes", headers=auth_headers)
++
++    assert response.status_code == 200
++    assert "Mis albaranes" in response.text
++
++
++async def test_verdecora_css_accessible(app_client: httpx.AsyncClient) -> None:
++    response = await app_client.get("/static/css/verdecora.css")
++
++    assert response.status_code == 200
++    assert "text/css" in response.headers["content-type"]
++
++
++async def test_logo_accessible(app_client: httpx.AsyncClient) -> None:
++    response = await app_client.get("/static/img/verdecora-logo.jpg")
++
++    assert response.status_code == 200
++    assert response.headers["content-type"] == "image/jpeg"

@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
 
+import httpx
+import jwt
 import pytest
+import pytest_asyncio
 
 from src.agents.pipeline import AlbaranPipeline
 from src.services.flow0_dedup.dedup_handler import Flow0DedupHandler
 from src.services.orchestrator.config import OrchestratorConfig
 from src.services.orchestrator.orchestration import OrchestratorService
+from src.upload_web.app import create_app
 from tests.unit.agent_test_helpers import FakeAsyncStream, FakeEvent, FakeWorkflow
 
 pytestmark = pytest.mark.e2e
@@ -250,3 +254,27 @@ def orchestrator_factory(
         return service, service_bus_client
 
     return _build
+
+
+@pytest_asyncio.fixture()
+async def app_client() -> AsyncIterator[httpx.AsyncClient]:
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        yield client
+
+
+@pytest.fixture()
+def auth_headers() -> dict[str, str]:
+    token = jwt.encode(
+        {
+            "oid": "oid-e2e-smoke-001",
+            "name": "Vasquez QA",
+            "preferred_username": "vasquez.qa@verdecora.example",
+            "groups": ["verdecora-store-uploaders"],
+            "exp": 9999999999,
+        },
+        "test-secret-with-at-least-thirty-two-bytes",
+        algorithm="HS256",
+    )
+    return {"X-MS-TOKEN-AAD-ID-TOKEN": token}
