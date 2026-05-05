@@ -43,3 +43,9 @@ gh label create "squad" --color "0078d4" --description "Untriaged squad work" --
 - Squad workflow benefits from a deterministic `key -> issue#` map persisted to disk so dependent agents can reference issues without re-querying GitHub.
 - Reworks for rejected stacked PRs are safest in an isolated worktree from `origin/master` so unrelated local changes and lockout branches stay untouched.
 - The Upload Web store detector should consume the canonical JSON catalog via `src.shared.stores.loader.load_stores()` and keep the heuristic logic free of hardcoded store lists.
+
+### 2026-05-05: Upload Web Dockerfile + CI pipeline (UW-16 / #98)
+- Created `docker/upload-web/Dockerfile` as a multi-stage Python 3.12 image for the Upload Web service with a dedicated runtime dependency list, non-root `appuser`, `HEALTHCHECK`, and `uvicorn` entrypoint on port 8000.
+- Added `docker/upload-web/requirements.txt` with the Upload Web runtime dependency subset extracted from `pyproject.toml`.
+- Added `.github/workflows/upload-web-ci.yml` to lint `src/upload_web` + `src/shared`, run the targeted Upload Web/store pytest suite, and verify the Docker image builds on `ubuntu-latest` for `squad/*` pushes touching the Upload Web paths.
+- Verified local Ruff and targeted pytest checks in an isolated worktree from `origin/master`; local Docker image build was blocked because the Docker daemon was unavailable in the environment.
