@@ -64,8 +64,21 @@ a {
   flex-wrap: wrap;
 }
 
+.vc-user-name {
+  font-family: 'Open Sans', var(--vc-font-semibold);
+}
+
 .vc-main {
   padding: 3rem 0 4rem;
+}
+
+.vc-notice {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  border-left: 4px solid var(--vc-primary);
+  border-radius: 0.75rem;
+  background: rgba(1, 146, 143, 0.08);
+  font-family: 'Open Sans', var(--vc-font-semibold);
 }
 
 .vc-hero {
@@ -106,6 +119,14 @@ a {
   color: var(--vc-bg);
   font-family: 'Open Sans', var(--vc-font-semibold);
   text-decoration: none;
+}
+
+.vc-logout-button {
+  gap: 0.5rem;
+  background: #ffffff;
+  color: var(--vc-nav-dark);
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
 }
 
 .vc-link {

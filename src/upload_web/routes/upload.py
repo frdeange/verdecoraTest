@@ -3,27 +3,27 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 
-from src.shared.auth.dependencies import get_current_user
 from src.shared.auth.entra import AuthenticatedUser
+from src.upload_web.middleware import get_upload_current_user
 
 router = APIRouter(tags=["upload-web"])
-CurrentUser = Annotated[AuthenticatedUser, Depends(get_current_user)]
+CurrentUser = Annotated[AuthenticatedUser, Depends(get_upload_current_user)]
 
 
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def index(request: Request) -> HTMLResponse:
     return request.app.state.templates.TemplateResponse(
-        "base.html",
-        {
-            "request": request,
+        request=request,
+        name="base.html",
+        context={
             "page_title": "Verdecora Upload Web",
             "hero_title": "Subida de albaranes",
             "hero_subtitle": "Scaffold inicial de la app FastAPI para la experiencia de subida en tienda.",
             "primary_action_href": "/uploads",
             "primary_action_label": "Ver placeholder de subida",
-            "current_user": None,
+            "current_user": getattr(request.state, "authenticated_user", None),
         },
     )
 
@@ -44,9 +44,9 @@ async def upload_placeholder(current_user: CurrentUser) -> dict[str, object]:
 @router.get("/mis-albaranes", response_class=HTMLResponse)
 async def my_uploads_page(request: Request, current_user: CurrentUser) -> HTMLResponse:
     return request.app.state.templates.TemplateResponse(
-        "base.html",
-        {
-            "request": request,
+        request=request,
+        name="base.html",
+        context={
             "page_title": "Mis albaranes",
             "hero_title": "Mis albaranes",
             "hero_subtitle": "Panel placeholder para el seguimiento de cargas del usuario autenticado.",
@@ -67,7 +67,3 @@ async def my_uploads_partial(current_user: CurrentUser) -> dict[str, object]:
         },
     }
 
-
-@router.get("/logout", include_in_schema=False)
-async def logout_placeholder() -> RedirectResponse:
-    return RedirectResponse(url="/", status_code=307)
