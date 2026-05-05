@@ -559,3 +559,39 @@ SequentialBuilder and HandoffBuilder from `agent-framework` v1.0 GA are validate
 - All meaningful changes require team consensus
 - Document architectural decisions here
 - Keep history focused on work, decisions focused on direction
+
+### 2026-05-05T10:17: PR #86 Approved — MAF v1.2.2 Migration Complete
+**From:** Ripley (Lead Architect)
+**Date:** 2026-05-05
+**PR:** #86 — chore: Upgrade MAF to v1.2.2 and adapt breaking changes
+**Author:** Bishop (AI Agent Developer)
+**Status:** ✅ APPROVED
+
+**What:** Clean, surgical migration of all MAF touchpoints in codebase to v1.2.2. Breaking changes adapted:
+- Agent direct import (no ChatAgent alias).
+- Constructor migrated from chat_client= keyword to positional client arg.
+- esponse_format= relocated to default_options={"response_format": ...} for all six factory agents.
+- SequentialBuilder / HandoffBuilder imports moved to gent_framework.orchestrations.
+- AgentResponse fallback chain added: .text → .messages[-1].content → raw data.
+
+Version pinning: gent-framework>=1.2.2,<2.0 + gent-framework-azure-cosmos>=1.2.2,<2.0 (SemVer compliant).
+
+Test coverage: 171 passed / 7 skipped. New tests validate AgentResponse fallback behavior.
+
+**Why:** Unblocks Sprint 1 architecture (WorkflowBuilder, CosmosCheckpointStorage). Orchestrations namespace move and structured-output pattern align with planned work.
+
+**Key findings:**
+- All current MAF call sites updated (factory.py, pipeline.py, orchestrator.py, stub_agents.py, run_poc.py, plus tests/helpers).
+- Ash's note about econciler.py / nalyzer.py does NOT apply — those files don't exist yet (Sprint backlog, not regressions).
+- Zero negative architectural impact on Sprint 1 design.
+
+**Non-blocking follow-ups (Sprint 1 backlog):**
+1. Consolidate duplicate output normalization logic (_resolve_workflow_output() duplication).
+2. Standardize constructor call style (prefer keyword over positional).
+3. Harden edge case: use if text: vs if text is not None for empty string handling.
+4. Document empty messages list fallback to str(data) as acceptable.
+5. Promote agent pattern (Agent + default_options["response_format"] + orchestrations namespace) to team-wide standard.
+
+**Risk:** Low. Fallback chain handles realistic MAF shapes. <2.0 pin prevents major-version surprises. gent-framework-azure-cosmos is passive dependency (not yet imported).
+
+**Merge decision:** APPROVED. Ready for merge.
