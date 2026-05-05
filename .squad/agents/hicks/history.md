@@ -41,3 +41,5 @@ gh label create "squad" --color "0078d4" --description "Untriaged squad work" --
 ## Learnings
 - EMU GitHub accounts cannot write to non-enterprise personal repos even with `repo` token scope; must hand off to a non-EMU user for create operations.
 - Squad workflow benefits from a deterministic `key -> issue#` map persisted to disk so dependent agents can reference issues without re-querying GitHub.
+- Reworks for rejected stacked PRs are safest in an isolated worktree from `origin/master` so unrelated local changes and lockout branches stay untouched.
+- The Upload Web store detector should consume the canonical JSON catalog via `src.shared.stores.loader.load_stores()` and keep the heuristic logic free of hardcoded store lists.
