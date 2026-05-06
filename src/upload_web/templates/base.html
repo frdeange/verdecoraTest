@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{{ page_title or "Verdecora Upload Web" }}</title>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Cardo:wght@400;700&family=Open+Sans:wght@400;600;700&display=swap');
@@ -19,16 +20,24 @@
         </a>
         <div class="vc-user-meta">
           {% if current_user %}
-          <span>{{ current_user.name }}</span>
+          <span class="vc-user-name">{{ current_user.name }}</span>
           {% else %}
-          <span>Sesión pendiente</span>
+          <span class="vc-user-name">Sesión pendiente</span>
           {% endif %}
-          <a href="/logout" class="vc-button">Cerrar sesión</a>
+          <a href="/logout" class="vc-button vc-logout-button" aria-label="Cerrar sesión de forma segura">
+            <span aria-hidden="true">⎋</span>
+            <span>Cerrar sesión</span>
+          </a>
         </div>
       </div>
     </header>
 
     <main class="vc-shell vc-main" x-data="{ ready: true }">
+      {% if session_notice %}
+      <section class="vc-notice" role="status">
+        {{ session_notice }}
+      </section>
+      {% endif %}
       <section class="vc-hero">
         <p class="vc-kicker">Upload Web</p>
         <h1>{{ hero_title or "Subida de albaranes" }}</h1>
@@ -47,5 +56,13 @@
         <a href="https://verdecora.es" class="vc-link">verdecora.es</a>
       </div>
     </footer>
+    <script>
+      document.addEventListener('htmx:configRequest', function (event) {
+        const token = document.querySelector('meta[name="csrf-token"]')?.content;
+        if (token) {
+          event.detail.headers['X-CSRF-Token'] = token;
+        }
+      });
+    </script>
   </body>
 </html>

@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .config import UploadWebSettings, get_settings
+from .middleware.session_security import SessionSecurityMiddleware, security_template_context
 from .routes import router
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -17,7 +18,11 @@ def create_app(settings: UploadWebSettings | None = None) -> FastAPI:
 
     app = FastAPI(title="Verdecora Upload Web")
     app.state.settings = resolved_settings
-    app.state.templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+    app.add_middleware(SessionSecurityMiddleware, settings=resolved_settings)
+    app.state.templates = Jinja2Templates(
+        directory=str(BASE_DIR / "templates"),
+        context_processors=[security_template_context],
+    )
     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
     @app.get("/healthz")

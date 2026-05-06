@@ -31,6 +31,10 @@ class UploadWebSettings(BaseSettings):
     azure_tenant_id: str = Field(default="", validation_alias=AliasChoices("AZURE_TENANT_ID"))
     key_vault_url: str = Field(default="", validation_alias=AliasChoices("KEY_VAULT_URL"))
     docintell_endpoint: str = Field(default="", validation_alias=AliasChoices("DOCINTELL_ENDPOINT"))
+    session_signing_key: str = Field(
+        default="dev-only-upload-web-session-signing-key-change-me",
+        validation_alias=AliasChoices("SESSION_SIGNING_KEY"),
+    )
     allowed_uploader_group: str = Field(
         default="verdecora-store-uploaders",
         validation_alias=AliasChoices("UPLOAD_ALLOWED_GROUP"),
