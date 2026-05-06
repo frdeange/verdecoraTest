@@ -117,7 +117,7 @@ resource keyVaultSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01
 
 // AcrPush — allows the runner to build and push images via `az acr build`
 resource acrPushRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(acrResourceId)) {
-  name: guid(acrResourceId, runnerIdentity.name, acrPushRoleDefinitionId)
+  name: guid(acrResourceId, runnerIdentity.name, acrPushRoleDefinitionId, 'bicep')
   properties: {
     principalId: runnerIdentity.properties.principalId
     principalType: 'ServicePrincipal'
@@ -127,7 +127,7 @@ resource acrPushRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (
 
 // Contributor on RG — allows the runner to update Container Apps via `az containerapp update`
 resource rgContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(resourceGroupId)) {
-  name: guid(resourceGroupId, runnerIdentity.name, contributorRoleDefinitionId)
+  name: guid(resourceGroupId, runnerIdentity.name, contributorRoleDefinitionId, 'bicep')
   properties: {
     principalId: runnerIdentity.properties.principalId
     principalType: 'ServicePrincipal'
