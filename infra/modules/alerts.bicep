@@ -363,5 +363,179 @@ resource agentProcessingTimeAlert 'Microsoft.Insights/scheduledQueryRules@2023-1
   }
 }
 
+// ── Upload Web alerts (#118) ────────────────────────────────────────────
+
+var uploadWeb5xxRateQuery = '''
+let windowStart = ago(15m);
+let totalRequests = toscalar(
+    AppRequests
+    | where TimeGenerated >= windowStart
+    | where AppRoleName has 'upload-web'
+    | count
+);
+let errorRequests = toscalar(
+    AppRequests
+    | where TimeGenerated >= windowStart
+    | where AppRoleName has 'upload-web'
+    | where toint(ResultCode) >= 500
+    | count
+);
+print ErrorRatePct = iff(totalRequests == 0, 0.0, todouble(errorRequests) * 100.0 / todouble(totalRequests))
+'''
+
+var uploadWebAbandonedRateQuery = '''
+let windowStart = ago(1h);
+let created = toscalar(
+    customMetrics
+    | where TimeGenerated >= windowStart
+    | where name == 'upload_sessions_created'
+    | summarize sum(valueCount)
+);
+let abandoned = toscalar(
+    customMetrics
+    | where TimeGenerated >= windowStart
+    | where name == 'upload_session_abandoned'
+    | summarize sum(valueCount)
+);
+print AbandonedRatePct = iff(created == 0, 0.0, todouble(abandoned) * 100.0 / todouble(created))
+'''
+
+var uploadWebAuthFailureQuery = '''
+AppRequests
+| where TimeGenerated >= ago(5m)
+| where AppRoleName has 'upload-web'
+| where toint(ResultCode) in (401, 403)
+| summarize AuthFailures = count()
+'''
+
+resource uploadWeb5xxAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = {
+  name: 'la-verdecora-upload-web-5xx-${environment}'
+  location: location
+  tags: tags
+  kind: 'LogAlert'
+  properties: {
+    description: 'Critical: Upload Web 5xx error rate exceeds 5% over 15 minutes.'
+    displayName: 'Upload Web 5xx error rate'
+    enabled: true
+    severity: 0
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT15M'
+    scopes: [
+      logAnalyticsWorkspaceId
+    ]
+    criteria: {
+      allOf: [
+        {
+          query: uploadWeb5xxRateQuery
+          metricMeasureColumn: 'ErrorRatePct'
+          timeAggregation: 'Maximum'
+          operator: 'GreaterThan'
+          threshold: 5
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+    autoMitigate: true
+    actions: {
+      actionGroups: [
+        opsActionGroup.id
+      ]
+      customProperties: {
+        alert_key: 'upload-web-5xx-rate'
+        severity: 'critical'
+      }
+    }
+  }
+}
+
+resource uploadWebAbandonedAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = {
+  name: 'la-verdecora-upload-web-abandoned-${environment}'
+  location: location
+  tags: tags
+  kind: 'LogAlert'
+  properties: {
+    description: 'Warning: Upload Web session abandonment rate exceeds 20% over 1 hour.'
+    displayName: 'Upload Web session abandonment rate'
+    enabled: true
+    severity: 2
+    evaluationFrequency: 'PT15M'
+    windowSize: 'PT1H'
+    scopes: [
+      logAnalyticsWorkspaceId
+    ]
+    criteria: {
+      allOf: [
+        {
+          query: uploadWebAbandonedRateQuery
+          metricMeasureColumn: 'AbandonedRatePct'
+          timeAggregation: 'Maximum'
+          operator: 'GreaterThan'
+          threshold: 20
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+    autoMitigate: true
+    actions: {
+      actionGroups: [
+        opsActionGroup.id
+      ]
+      customProperties: {
+        alert_key: 'upload-web-abandoned-rate'
+        severity: 'warning'
+      }
+    }
+  }
+}
+
+resource uploadWebAuthFailureAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = {
+  name: 'la-verdecora-upload-web-auth-${environment}'
+  location: location
+  tags: tags
+  kind: 'LogAlert'
+  properties: {
+    description: 'Warning: Upload Web auth failures exceed 10 in 5 minutes (possible brute force).'
+    displayName: 'Upload Web auth failure spike'
+    enabled: true
+    severity: 2
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT5M'
+    scopes: [
+      logAnalyticsWorkspaceId
+    ]
+    criteria: {
+      allOf: [
+        {
+          query: uploadWebAuthFailureQuery
+          metricMeasureColumn: 'AuthFailures'
+          timeAggregation: 'Total'
+          operator: 'GreaterThan'
+          threshold: 10
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+    autoMitigate: true
+    actions: {
+      actionGroups: [
+        opsActionGroup.id
+      ]
+      customProperties: {
+        alert_key: 'upload-web-auth-failures'
+        severity: 'warning'
+      }
+    }
+  }
+}
+
 @description('Action group resource id.')
 output actionGroupId string = opsActionGroup.id

@@ -1,0 +1,111 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/Application-Insights-Workbooks/master/schema/workbook.json",
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Upload Web — Panel de Observabilidad\nMétricas operativas del portal de subida de albaranes."
+      },
+      "name": "title"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "name": "TimeRange",
+            "type": 4,
+            "defaultValue": {
+              "durationMs": 86400000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 3600000, "displayName": "Última hora" },
+                { "durationMs": 14400000, "displayName": "Últimas 4 h" },
+                { "durationMs": 86400000, "displayName": "Últimas 24 h" },
+                { "durationMs": 604800000, "displayName": "Últimos 7 días" }
+              ]
+            }
+          }
+        ]
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customMetrics\n| where name == 'upload_sessions_created'\n| where timestamp {TimeRange}\n| summarize Sessions = sum(valueCount) by bin(timestamp, 1h)\n| order by timestamp asc",
+        "size": 0,
+        "title": "Upload Volume per Hour",
+        "queryType": 0,
+        "visualization": "barchart"
+      },
+      "name": "upload-volume-hourly"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customMetrics\n| where name == 'upload_sessions_created'\n| where timestamp {TimeRange}\n| summarize Sessions = sum(valueCount) by bin(timestamp, 1d)\n| order by timestamp asc",
+        "size": 0,
+        "title": "Upload Volume per Day",
+        "queryType": 0,
+        "visualization": "barchart"
+      },
+      "name": "upload-volume-daily"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let created = customMetrics\n| where name == 'upload_sessions_created'\n| where timestamp {TimeRange}\n| summarize Created = sum(valueCount);\nlet abandoned = customMetrics\n| where name == 'upload_session_abandoned'\n| where timestamp {TimeRange}\n| summarize Abandoned = sum(valueCount);\nlet errors = customMetrics\n| where name == 'upload_errors'\n| where timestamp {TimeRange}\n| summarize Errors = sum(valueCount);\ncreated | extend Abandoned = toscalar(abandoned | project Abandoned), Errors = toscalar(errors | project Errors)\n| extend Confirmed = Created - Abandoned\n| project Created, Confirmed, Abandoned, Errors",
+        "size": 3,
+        "title": "Success / Abandon / Error Rates",
+        "queryType": 0,
+        "visualization": "tiles"
+      },
+      "name": "rates-summary"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customMetrics\n| where name == 'upload_preflight_duration_seconds'\n| where timestamp {TimeRange}\n| summarize P50 = percentile(value, 50), P95 = percentile(value, 95), P99 = percentile(value, 99) by bin(timestamp, 1h)\n| order by timestamp asc",
+        "size": 0,
+        "title": "Preflight Duration (p50 / p95 / p99)",
+        "queryType": 0,
+        "visualization": "linechart"
+      },
+      "name": "preflight-accuracy"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customMetrics\n| where name == 'upload_files_processed'\n| where timestamp {TimeRange}\n| extend supplier = tostring(customDimensions['supplier'])\n| summarize Files = sum(valueCount) by supplier\n| top 10 by Files desc",
+        "size": 0,
+        "title": "Top Uploaders (by supplier)",
+        "queryType": 0,
+        "visualization": "table"
+      },
+      "name": "top-uploaders"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customMetrics\n| where name == 'upload_confirm_duration_seconds'\n| where timestamp {TimeRange}\n| summarize AvgDuration = avg(value), P95 = percentile(value, 95) by bin(timestamp, 1h)\n| order by timestamp asc",
+        "size": 0,
+        "title": "Average Session Duration (confirm latency)",
+        "queryType": 0,
+        "visualization": "linechart"
+      },
+      "name": "session-duration"
+    }
+  ],
+  "fallbackResourceIds": [],
+  "fromTemplateId": "verdecora-upload-web-workbook"
+}
