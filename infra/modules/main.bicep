@@ -24,15 +24,8 @@ param escalationTimerJobImage string = ''
 @description('Optional override for the upload-web image during infrastructure deployments.')
 param uploadWebImage string = ''
 
-@secure()
-@description('Key Vault secret identifier for the Application Gateway TLS certificate (PFX secret, versionless URI recommended).')
-param appGwFrontendCertificateSecretId string = ''
-
 @description('Enable upload-web Container App deployment.')
 param enableUploadWeb bool = false
-
-@description('Enable Application Gateway deployment for upload-web once the TLS certificate secret is ready.')
-param enableUploadWebAppGateway bool = false
 
 @description('Microsoft Entra application client id used by upload-web Easy Auth.')
 param uploadWebEntraClientId string = ''
@@ -294,19 +287,17 @@ module uploadWebApp './upload-web-app.bicep' = if (enableUploadWeb) {
 var uploadWebAppName = 'verdecora-upload-web-${environment}'
 var uploadWebBackendFqdn = '${uploadWebAppName}.internal.${containerApps.outputs.managedEnvironmentDefaultDomain}'
 
-module appGateway './appgw.bicep' = if (enableUploadWebAppGateway) {
-  name: 'appGateway'
+module frontDoor './frontdoor.bicep' = if (enableUploadWeb) {
+  name: 'frontDoor'
   scope: az.resourceGroup(resourceGroupName)
   params: {
     environment: environment
-    location: location
-    subnetId: network.outputs.subnetAppGatewayId
     backendFqdn: uploadWebBackendFqdn
-    keyVaultName: keyVault.outputs.keyVaultName
-    frontendSslCertificateSecretId: appGwFrontendCertificateSecretId
+    containerAppEnvironmentId: containerApps.outputs.managedEnvironmentId
   }
   dependsOn: [
     rg
+    uploadWebApp
   ]
 }
 
@@ -503,11 +494,14 @@ output escalationTimerJobId string = containerApps.outputs.escalationTimerJobId
 @description('Upload-web container app id.')
 output uploadWebAppId string = enableUploadWeb ? uploadWebApp.outputs.uploadWebAppId : ''
 
-@description('Application Gateway public FQDN for upload-web.')
-output appGwPublicFqdn string = enableUploadWebAppGateway ? appGateway!.outputs.appGwPublicFqdn : ''
+@description('Front Door endpoint hostname for upload-web.')
+output frontDoorEndpointHostname string = enableUploadWeb ? frontDoor.outputs.frontDoorEndpointHostname : ''
 
-@description('Application Gateway public IP resource id for upload-web.')
-output appGwPublicIpId string = enableUploadWebAppGateway ? appGateway!.outputs.appGwPublicIpId : ''
+@description('Front Door profile resource id.')
+output frontDoorProfileId string = enableUploadWeb ? frontDoor.outputs.frontDoorProfileId : ''
+
+@description('WAF policy resource id.')
+output wafPolicyId string = enableUploadWeb ? frontDoor.outputs.wafPolicyId : ''
 
 @description('Whether production-only network hardening is enabled.')
 output networkHardeningEnabled bool = enableNetworkHardening
