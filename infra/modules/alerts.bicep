@@ -451,7 +451,8 @@ resource uploadWeb5xxAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' =
   }
 }
 
-resource uploadWebAbandonedAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = {
+// Disabled until app emits OTel custom metrics to the customMetrics table
+resource uploadWebAbandonedAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = if (false) {
   name: 'la-verdecora-upload-web-abandoned-${environment}'
   location: location
   tags: tags

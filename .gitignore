@@ -5,3 +5,12 @@
 .squad/sessions/
 # Squad: SubSquad activation file (local to this machine)
 .squad-workstream
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.coverage
+*.diff
+htmlcov/
+.worktrees/

@@ -30,7 +30,7 @@ var tags = {
   service: 'upload-web'
   'managed-by': 'bicep'
 }
-var resolvedUploadWebImage = empty(uploadWebImage) ? '${acrLoginServer}/verdecora-upload-web:latest' : uploadWebImage
+var resolvedUploadWebImage = empty(uploadWebImage) ? 'mcr.microsoft.com/k8se/quickstart:latest' : uploadWebImage
 
 resource uploadWebApp 'Microsoft.App/containerApps@2025-01-01' = {
   name: 'verdecora-upload-web-${environment}'
