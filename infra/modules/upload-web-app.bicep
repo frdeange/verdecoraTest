@@ -50,7 +50,7 @@ resource uploadWebApp 'Microsoft.App/containerApps@2025-01-01' = {
         }
       ]
       ingress: {
-        external: true
+        external: false // Internal — only accessible via Front Door Private Link
         allowInsecure: false
         targetPort: 8000
         transport: 'Auto'
