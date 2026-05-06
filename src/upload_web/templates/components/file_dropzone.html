@@ -1,0 +1,7 @@
+{# Reusable drag-and-drop file upload zone #}
+<div id="dropzone" class="dropzone" data-session-id="{{ session_id | default('') }}">
+  <div class="dropzone-icon">📤</div>
+  <p class="dropzone-title">Arrastra archivos aquí o haz clic para seleccionar</p>
+  <p class="dropzone-hint">PDF, JPG, PNG o TIFF · Máximo 50 MB por archivo</p>
+  <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.tiff" aria-label="Seleccionar archivos">
+</div>

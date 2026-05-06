@@ -1,0 +1,28 @@
+{# File list component — HTMX partial #}
+<div id="file-list" class="file-list">
+  {% for file in files | default([]) %}
+  <div class="file-item" data-file-id="{{ file.file_id }}" draggable="true">
+    {% if file.content_type and file.content_type.startswith('image/') %}
+    <img class="file-thumb" src="/api/sessions/{{ session_id }}/files/{{ file.file_id }}/thumb" alt="">
+    {% else %}
+    <span class="file-icon">📄</span>
+    {% endif %}
+    <span class="file-name">{{ file.filename }}</span>
+    <span class="file-size">
+      {% if file.size_bytes < 1024 %}{{ file.size_bytes }} B
+      {% elif file.size_bytes < 1048576 %}{{ (file.size_bytes / 1024) | round(1) }} KB
+      {% else %}{{ (file.size_bytes / 1048576) | round(1) }} MB
+      {% endif %}
+    </span>
+    <button type="button" class="file-remove"
+            hx-delete="/api/sessions/{{ session_id }}/files/{{ file.file_id }}"
+            hx-target="closest .file-item"
+            hx-swap="outerHTML"
+            hx-confirm="¿Quitar este archivo?"
+            title="Quitar archivo">✕</button>
+  </div>
+  {% endfor %}
+  {% if not files %}
+  <div class="empty-state">Aún no se han añadido archivos.</div>
+  {% endif %}
+</div>
