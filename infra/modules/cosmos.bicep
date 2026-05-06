@@ -98,6 +98,25 @@ resource dlqContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/contai
   }
 }
 
+resource uploadSessionsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
+  name: '${cosmosAccount.name}/albaranes-db/upload-sessions'
+  properties: {
+    resource: {
+      id: 'upload-sessions'
+      partitionKey: {
+        paths: [
+          '/user_oid'
+        ]
+        kind: 'Hash'
+      }
+      defaultTtl: 86400
+    }
+    options: {
+      throughput: 400
+    }
+  }
+}
+
 @description('Cosmos DB account id.')
 output cosmosAccountId string = cosmosAccount.id
 
@@ -118,3 +137,6 @@ output tiendasContainerId string = tiendasContainer.id
 
 @description('DLQ container id.')
 output dlqContainerId string = dlqContainer.id
+
+@description('Upload sessions container id.')
+output uploadSessionsContainerId string = uploadSessionsContainer.id

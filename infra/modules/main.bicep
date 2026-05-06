@@ -21,9 +21,15 @@ param hitlWebformImage string = ''
 @description('Optional override for the escalation timer job image during infrastructure deployments.')
 param escalationTimerJobImage string = ''
 
+@description('Optional override for the upload-web image during infrastructure deployments.')
+param uploadWebImage string = ''
+
 @secure()
 @description('Key Vault secret identifier for the Application Gateway TLS certificate (PFX secret, versionless URI recommended).')
 param appGwFrontendCertificateSecretId string = ''
+
+@description('Enable upload-web Container App deployment.')
+param enableUploadWeb bool = false
 
 @description('Enable Application Gateway deployment for upload-web once the TLS certificate secret is ready.')
 param enableUploadWebAppGateway bool = false
@@ -268,6 +274,21 @@ module containerApps './container-apps.bicep' = {
   ]
 }
 
+module uploadWebApp './upload-web-app.bicep' = if (enableUploadWeb) {
+  name: 'uploadWebApp'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    environment: environment
+    location: location
+    managedEnvironmentId: containerApps.outputs.managedEnvironmentId
+    acrLoginServer: acr.outputs.acrLoginServer
+    storageAccountUrl: storageAccountUrl
+    cosmosEndpoint: cosmos.outputs.cosmosEndpoint
+    applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
+    uploadWebImage: uploadWebImage
+  }
+}
+
 var uploadWebAppName = 'verdecora-upload-web-${environment}'
 var uploadWebBackendFqdn = '${uploadWebAppName}.internal.${containerApps.outputs.managedEnvironmentDefaultDomain}'
 
@@ -333,6 +354,7 @@ module identity './identity.bicep' = {
     hitlWebformPrincipalId: containerApps.outputs.hitlWebformPrincipalId
     flow0WorkerPrincipalId: containerApps.outputs.flow0DedupPrincipalId
     escalationTimerPrincipalId: containerApps.outputs.escalationTimerPrincipalId
+    uploadWebPrincipalId: enableUploadWeb ? uploadWebApp.outputs.uploadWebPrincipalId : ''
   }
   dependsOn: [
     rg
@@ -382,6 +404,9 @@ output cosmosAccountId string = cosmos.outputs.cosmosAccountId
 
 @description('Cosmos DB endpoint.')
 output cosmosEndpoint string = cosmos.outputs.cosmosEndpoint
+
+@description('Upload sessions container id.')
+output uploadSessionsContainerId string = cosmos.outputs.uploadSessionsContainerId
 
 @description('Storage account id.')
 output storageAccountId string = storage.outputs.storageAccountId
@@ -472,6 +497,9 @@ output hitlWebformAppId string = containerApps.outputs.hitlWebformAppId
 
 @description('Escalation timer ACA Job id.')
 output escalationTimerJobId string = containerApps.outputs.escalationTimerJobId
+
+@description('Upload-web container app id.')
+output uploadWebAppId string = enableUploadWeb ? uploadWebApp.outputs.uploadWebAppId : ''
 
 @description('Application Gateway public FQDN for upload-web.')
 output appGwPublicFqdn string = enableUploadWebAppGateway ? appGateway!.outputs.appGwPublicFqdn : ''

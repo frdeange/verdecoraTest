@@ -36,6 +36,9 @@ param flow0WorkerPrincipalId string = ''
 @description('Optional system-assigned principal id for the escalation timer ACA Job.')
 param escalationTimerPrincipalId string = ''
 
+@description('Optional system-assigned principal id for the upload-web ACA app.')
+param uploadWebPrincipalId string = ''
+
 var cosmosBuiltInDataContributorRoleDefinitionId = '00000000-0000-0000-0000-000000000002'
 var serviceBusDataSenderRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')
 var serviceBusDataReceiverRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4f6d3b9b-027b-4f4c-9142-0e5a2a2247e0')
@@ -331,9 +334,50 @@ resource escalationTimerSystemAssignedAcrPullRoleAssignment 'Microsoft.Authoriza
   }
 }
 
+resource uploadWebSystemAssignedBlobContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(uploadWebPrincipalId)) {
+  name: guid(storageAccount.id, uploadWebPrincipalId, storageBlobDataContributorRoleDefinitionId, 'system')
+  scope: storageAccount
+  properties: {
+    principalId: uploadWebPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: storageBlobDataContributorRoleDefinitionId
+  }
+}
+
+resource uploadWebSystemAssignedBlobDelegatorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(uploadWebPrincipalId)) {
+  name: guid(storageAccount.id, uploadWebPrincipalId, storageBlobDelegatorRoleDefinitionId, 'system')
+  scope: storageAccount
+  properties: {
+    principalId: uploadWebPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: storageBlobDelegatorRoleDefinitionId
+  }
+}
+
+resource uploadWebSystemAssignedCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = if (!empty(uploadWebPrincipalId)) {
+  parent: cosmosAccount
+  name: guid(cosmosAccount.id, uploadWebPrincipalId, cosmosBuiltInDataContributorRoleDefinitionId, 'system')
+  properties: {
+    principalId: uploadWebPrincipalId
+    roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosBuiltInDataContributorRoleDefinitionId}'
+    scope: cosmosAccount.id
+  }
+}
+
+resource uploadWebSystemAssignedAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(uploadWebPrincipalId) && !empty(acrName)) {
+  name: guid(acr.id, uploadWebPrincipalId, acrPullRoleDefinitionId, 'system')
+  scope: acr
+  properties: {
+    principalId: uploadWebPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: acrPullRoleDefinitionId
+  }
+}
+
 output identities object = {
   orchestratorSystemAssignedPrincipalId: orchestratorPrincipalId
   hitlWebformSystemAssignedPrincipalId: hitlWebformPrincipalId
   flow0WorkerSystemAssignedPrincipalId: flow0WorkerPrincipalId
   escalationTimerSystemAssignedPrincipalId: escalationTimerPrincipalId
+  uploadWebSystemAssignedPrincipalId: uploadWebPrincipalId
 }
