@@ -91,6 +91,8 @@ class ProcessingRecord(BaseModel):
     blob_name: str
     blob_etag: str | None = None
     source_metadata: dict[str, Any] = Field(default_factory=dict)
+    upload_session_id: str | None = None
+    uploader_oid: str | None = None
 
 
 class ForwardedExtractionMessage(BaseModel):
@@ -109,3 +111,6 @@ class ForwardedExtractionMessage(BaseModel):
     event_id: str
     event_time: datetime
     metadata: dict[str, Any] = Field(default_factory=dict)
+    upload_session_id: str | None = None
+    uploader_oid: str | None = None
+    albaran_group: str | None = None

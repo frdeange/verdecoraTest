@@ -42,6 +42,11 @@ def get_upload_session(session_id: str) -> UploadSession | None:
     return _UPLOAD_SESSIONS.get(session_id)
 
 
+def get_all_user_sessions(user_oid: str) -> list[UploadSession]:
+    """Return all sessions belonging to the given user."""
+    return [s for s in _UPLOAD_SESSIONS.values() if s.user_oid == user_oid]
+
+
 def clear_upload_sessions() -> None:
     _UPLOAD_SESSIONS.clear()
 
@@ -77,4 +82,4 @@ def _build_mock_sas_token(session_id: str, expiry: datetime) -> str:
     return f"mock-sas-session={session_id}&prefix={_build_upload_prefix(session_id)}&exp={safe_expiry}"
 
 
-__all__ = ["clear_upload_sessions", "create_upload_session", "get_upload_session"]
+__all__ = ["clear_upload_sessions", "create_upload_session", "get_all_user_sessions", "get_upload_session"]
