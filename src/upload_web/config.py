@@ -31,6 +31,18 @@ class UploadWebSettings(BaseSettings):
     azure_tenant_id: str = Field(default="", validation_alias=AliasChoices("AZURE_TENANT_ID"))
     key_vault_url: str = Field(default="", validation_alias=AliasChoices("KEY_VAULT_URL"))
     docintell_endpoint: str = Field(default="", validation_alias=AliasChoices("DOCINTELL_ENDPOINT"))
+    servicebus_namespace: str = Field(
+        default="",
+        validation_alias=AliasChoices("SERVICEBUS_FQ_NAMESPACE", "SERVICEBUS_NAMESPACE"),
+    )
+    servicebus_topic: str = Field(
+        default="albaran-processing",
+        validation_alias=AliasChoices("SERVICEBUS_TOPIC"),
+    )
+    cosmos_database: str = Field(
+        default="verdecora",
+        validation_alias=AliasChoices("COSMOS_DATABASE"),
+    )
     session_signing_key: str = Field(
         default="dev-only-upload-web-session-signing-key-change-me",
         validation_alias=AliasChoices("SESSION_SIGNING_KEY"),
