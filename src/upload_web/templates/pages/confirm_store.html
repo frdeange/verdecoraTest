@@ -1,102 +1,56 @@
 {% extends "base.html" %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', path='css/upload.css') }}">
+<section class="space-y-6">
+  <h1 class="text-2xl font-bold">Confirmar tienda</h1>
 
-{# Step indicator #}
-<div class="step-indicator">
-  <div class="step completed">
-    <span class="step-number">✓</span>
-    <span>Archivos</span>
-  </div>
-  <div class="step-divider"></div>
-  <div class="step active">
-    <span class="step-number">2</span>
-    <span>Análisis</span>
-  </div>
-  <div class="step-divider"></div>
-  <div class="step">
-    <span class="step-number">3</span>
-    <span>Confirmar</span>
-  </div>
-</div>
-
-<section class="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
-  <article class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
-    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Confirmar tienda</h1>
-    <p class="mt-3 text-base leading-7 text-slate-600">Revisa los resultados del análisis y confirma la tienda de destino.</p>
-
-    {# Detected store #}
-    <div class="mt-6">
-      <label for="store-select" class="block text-sm font-semibold text-slate-700 mb-2">Tienda detectada</label>
-      <select id="store-select" name="store" class="store-selector"
-              hx-post="/api/sessions/{{ session.session_id }}/store"
-              hx-trigger="change"
-              hx-vals='js:{"store": document.getElementById("store-select").value}'
-              hx-swap="none">
-        {% for store in stores | default([]) %}
-        <option value="{{ store.id }}" {% if store.id == detected_store %}selected{% endif %}>
-          {{ store.name }}
-        </option>
-        {% endfor %}
-        {% if not stores %}
-        <option value="" selected>{{ preflight.detected_store if preflight else 'Sin detectar' }}</option>
-        {% endif %}
-      </select>
-    </div>
-
-    {# Preflight results #}
-    {% if preflight %}
-    {% set conf = preflight.confidence | default(0) %}
-    <div class="mt-6">
-      <h3 class="text-lg font-semibold text-slate-900">Resultados del análisis</h3>
-      <div class="result-card {% if conf > 0.8 %}success{% elif conf > 0.5 %}warning{% else %}error{% endif %}">
-        <p><strong>Proveedor:</strong> {{ preflight.detected_supplier or 'No detectado' }}</p>
-        <p><strong>Nº Albarán:</strong> {{ preflight.detected_albaran_number or 'No detectado' }}</p>
-        <p><strong>Fecha:</strong> {{ preflight.detected_date or 'No detectada' }}</p>
-        <p>
-          <strong>Confianza:</strong>
-          <span class="confidence-badge {% if conf > 0.8 %}confidence-high{% elif conf > 0.5 %}confidence-medium{% else %}confidence-low{% endif %}">
-            {{ (conf * 100) | round }}%
-          </span>
-        </p>
-        {% if preflight.warnings %}
-        <div class="mt-3">
-          {% for w in preflight.warnings %}
-          <span class="warning-badge">⚠ {{ w }}</span>
-          {% endfor %}
-        </div>
-        {% endif %}
+  {% if preflight %}
+  <div class="rounded-lg border p-6 space-y-4 bg-white shadow-sm">
+    <h2 class="text-lg font-semibold">Resultado del análisis previo</h2>
+    <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Proveedor detectado</dt>
+        <dd class="text-base">{{ preflight.detected_supplier or '—' }}</dd>
       </div>
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Fecha detectada</dt>
+        <dd class="text-base">{{ preflight.detected_date or '—' }}</dd>
+      </div>
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Nº albarán</dt>
+        <dd class="text-base">{{ preflight.detected_albaran_number or '—' }}</dd>
+      </div>
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Tienda detectada</dt>
+        <dd class="text-base font-semibold">{{ preflight.detected_store or 'No detectada' }}</dd>
+      </div>
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Confianza</dt>
+        <dd class="text-base">{{ (preflight.confidence * 100)|round(0) }}%</dd>
+      </div>
+    </dl>
+
+    {% if preflight.warnings %}
+    <div class="rounded bg-yellow-50 p-3 text-sm text-yellow-800">
+      <ul class="list-disc pl-5 space-y-1">
+        {% for warning in preflight.warnings %}
+        <li>{{ warning }}</li>
+        {% endfor %}
+      </ul>
     </div>
     {% endif %}
+  </div>
+  {% endif %}
 
-    {# File summary #}
-    <div class="mt-6">
-      <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">
-        Archivos subidos ({{ session.files | length }})
-      </h3>
-      {% set files = session.files %}
-      {% set session_id = session.session_id %}
-      {% include 'components/file_list.html' %}
-    </div>
-
-    {# Actions #}
-    <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <a href="{{ url_for('upload_page') }}" class="btn-secondary">← Volver a archivos</a>
-      <a href="{{ url_for('upload_summary', session_id=session.session_id) }}" class="btn-primary">
-        Confirmar y continuar →
-      </a>
-    </div>
-  </article>
-
-  <aside class="rounded-3xl bg-slate-50 p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
-    <h2 class="text-lg font-semibold text-slate-900">¿Datos incorrectos?</h2>
-    <ul class="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-      <li>• Si la tienda no es correcta, cámbiala en el desplegable.</li>
-      <li>• Podrás editar el proveedor, fecha y número de albarán en el siguiente paso.</li>
-      <li>• Si la confianza es baja, revisa que las fotos sean legibles.</li>
-    </ul>
-  </aside>
+  <div class="flex gap-3">
+    <a href="{{ url_for('upload_summary', session_id=session.session_id) }}"
+       class="inline-flex items-center rounded-md bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">
+      Confirmar y continuar
+    </a>
+    <a href="{{ url_for('upload_page') }}"
+       class="inline-flex items-center rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+      Cancelar
+    </a>
+  </div>
 </section>
 {% endblock %}
