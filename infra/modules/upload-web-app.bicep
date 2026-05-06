@@ -50,7 +50,7 @@ resource uploadWebApp 'Microsoft.App/containerApps@2025-01-01' = {
         }
       ]
       ingress: {
-        external: false
+        external: true
         allowInsecure: false
         targetPort: 8000
         transport: 'Auto'

@@ -18,6 +18,9 @@ env:
   ACA_HITL: verdecora-hitl-webform-dev
   ACA_DEDUP_JOB: verdecora-dedup-job-dev
   ACA_ESCALATION_JOB: verdecora-escalation-timer-dev
+  ACA_UPLOAD_WEB: verdecora-upload-web-dev
+  RUNNER_CLIENT_ID: 290efdba-37d1-4bd2-b990-b6e9e4b3a900
+  AZURE_SUBSCRIPTION_ID: 0acbc8a1-0f3e-498e-b86b-6fa5468730e2
 
 jobs:
   detect-changes:
@@ -27,6 +30,7 @@ jobs:
       hitl: ${{ steps.manual.outputs.hitl || steps.filter.outputs.hitl }}
       dedup: ${{ steps.manual.outputs.dedup || steps.filter.outputs.dedup }}
       escalation: ${{ steps.manual.outputs.escalation || steps.filter.outputs.escalation }}
+      upload-web: ${{ steps.manual.outputs.upload-web || steps.filter.outputs.upload-web }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,6 +45,7 @@ jobs:
           echo 'hitl=true' >> "$GITHUB_OUTPUT"
           echo 'dedup=true' >> "$GITHUB_OUTPUT"
           echo 'escalation=true' >> "$GITHUB_OUTPUT"
+          echo 'upload-web=true' >> "$GITHUB_OUTPUT"
 
       - name: Detect changed services
         if: github.event_name != 'workflow_dispatch'
@@ -87,6 +92,13 @@ jobs:
               - 'src/mcp/**'
               - 'src/models/**'
               - 'src/services/escalation/**'
+            upload-web:
+              - '.github/workflows/build-deploy.yml'
+              - 'docker/.dockerignore'
+              - 'docker/upload-web/**'
+              - 'pyproject.toml'
+              - 'src/upload_web/**'
+              - 'src/shared/**'
 
   build-orchestrator:
     needs: detect-changes
@@ -99,6 +111,8 @@ jobs:
         uses: azure/login@v2
         with:
           auth-type: IDENTITY
+          client-id: ${{ env.RUNNER_CLIENT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Build and push orchestrator image
         run: |
@@ -121,6 +135,8 @@ jobs:
         uses: azure/login@v2
         with:
           auth-type: IDENTITY
+          client-id: ${{ env.RUNNER_CLIENT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Build and push HITL webform image
         run: |
@@ -143,6 +159,8 @@ jobs:
         uses: azure/login@v2
         with:
           auth-type: IDENTITY
+          client-id: ${{ env.RUNNER_CLIENT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Build and push Flow0 dedup image
         run: |
@@ -165,6 +183,8 @@ jobs:
         uses: azure/login@v2
         with:
           auth-type: IDENTITY
+          client-id: ${{ env.RUNNER_CLIENT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Build and push escalation timer image
         run: |
@@ -185,6 +205,8 @@ jobs:
         uses: azure/login@v2
         with:
           auth-type: IDENTITY
+          client-id: ${{ env.RUNNER_CLIENT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy orchestrator
         run: |
@@ -202,6 +224,8 @@ jobs:
         uses: azure/login@v2
         with:
           auth-type: IDENTITY
+          client-id: ${{ env.RUNNER_CLIENT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy HITL webform
         run: |
@@ -219,6 +243,8 @@ jobs:
         uses: azure/login@v2
         with:
           auth-type: IDENTITY
+          client-id: ${{ env.RUNNER_CLIENT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy Flow0 dedup job
         run: |
@@ -236,6 +262,8 @@ jobs:
         uses: azure/login@v2
         with:
           auth-type: IDENTITY
+          client-id: ${{ env.RUNNER_CLIENT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy escalation timer job
         run: |
@@ -243,3 +271,46 @@ jobs:
             --name ${{ env.ACA_ESCALATION_JOB }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR_NAME }}.azurecr.io/verdecora-escalation-timer:${{ github.sha }}
+
+  build-upload-web:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.upload-web == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          auth-type: IDENTITY
+          client-id: ${{ env.RUNNER_CLIENT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push upload-web image
+        run: |
+          az acr build \
+            --registry ${{ env.ACR_NAME }} \
+            --agent-pool ${{ env.ACR_AGENT_POOL }} \
+            --image verdecora-upload-web:${{ github.sha }} \
+            --image verdecora-upload-web:latest \
+            --file docker/upload-web/Dockerfile \
+            .
+
+  deploy-upload-web:
+    needs: build-upload-web
+    if: needs.build-upload-web.result == 'success'
+    runs-on: self-hosted
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          auth-type: IDENTITY
+          client-id: ${{ env.RUNNER_CLIENT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy upload-web
+        run: |
+          az containerapp update \
+            --name ${{ env.ACA_UPLOAD_WEB }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/verdecora-upload-web:${{ github.sha }}
