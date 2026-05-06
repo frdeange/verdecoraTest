@@ -29,6 +29,10 @@
 | HITL web form | `hitl-webform` | Blob Storage account | Storage Blob Data Contributor | Generate User Delegation Keys and serve read-only SAS URLs for original PDFs without storage account keys. |
 | HITL web form | `hitl-webform` | Service Bus namespace | Azure Service Bus Data Sender | Resume workflows after human approval, rejection, or modification. |
 | HITL web form | `hitl-webform` | Key Vault | Key Vault Secrets User | Read approved secret-backed configuration without embedding credentials in code. |
+| Upload web app | `upload-web` | Cosmos DB NoSQL account | Cosmos DB Built-in Data Contributor | Persist upload session state in `upload-sessions` and query upload status without account keys. |
+| Upload web app | `upload-web` | Blob Storage account | Storage Blob Data Contributor | Create upload payloads in `albaranes-raw` using managed identity instead of storage account keys. |
+| Upload web app | `upload-web` | Blob Storage account | Storage Blob Delegator | Issue user delegation SAS tokens for browser/mobile uploads without exposing storage keys. |
+| Upload web app | `upload-web` | Azure Container Registry | AcrPull | Pull the private `verdecora-upload-web` image into the ACA environment. |
 | Flow 0 worker | `flow0-worker` | Cosmos DB NoSQL account | Cosmos DB Built-in Data Contributor | Write deduplication records and initial ingestion state. |
 | Flow 0 worker | `flow0-worker` | Service Bus namespace | Azure Service Bus Data Sender | Publish `albaran.recibido` events after deduplication. |
 | Flow 0 worker | `flow0-worker` | Blob Storage account | Storage Blob Data Reader | Read source PDFs and blob metadata during ingestion. |

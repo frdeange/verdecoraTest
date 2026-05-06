@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "6784977157700746004"
+      "templateHash": "13582473259998606215"
     }
   },
   "parameters": {
@@ -57,11 +57,25 @@
         "description": "Optional override for the escalation timer job image during infrastructure deployments."
       }
     },
+    "uploadWebImage": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional override for the upload-web image during infrastructure deployments."
+      }
+    },
     "appGwFrontendCertificateSecretId": {
       "type": "securestring",
       "defaultValue": "",
       "metadata": {
         "description": "Key Vault secret identifier for the Application Gateway TLS certificate (PFX secret, versionless URI recommended)."
+      }
+    },
+    "enableUploadWeb": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable upload-web Container App deployment."
       }
     },
     "enableUploadWebAppGateway": {
@@ -791,7 +805,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "7924333133771176499"
+              "templateHash": "14336631258523432210"
             }
           },
           "parameters": {
@@ -917,6 +931,29 @@
               "dependsOn": [
                 "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('accountName'))]"
               ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2023-04-15",
+              "name": "[format('{0}/albaranes-db/upload-sessions', variables('accountName'))]",
+              "properties": {
+                "resource": {
+                  "id": "upload-sessions",
+                  "partitionKey": {
+                    "paths": [
+                      "/user_oid"
+                    ],
+                    "kind": "Hash"
+                  },
+                  "defaultTtl": 86400
+                },
+                "options": {
+                  "throughput": 400
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('accountName'))]"
+              ]
             }
           ],
           "outputs": {
@@ -968,6 +1005,13 @@
                 "description": "DLQ container id."
               },
               "value": "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers', split(format('{0}/albaranes-db/dlq', variables('accountName')), '/')[0], split(format('{0}/albaranes-db/dlq', variables('accountName')), '/')[1], split(format('{0}/albaranes-db/dlq', variables('accountName')), '/')[2])]"
+            },
+            "uploadSessionsContainerId": {
+              "type": "string",
+              "metadata": {
+                "description": "Upload sessions container id."
+              },
+              "value": "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers', split(format('{0}/albaranes-db/upload-sessions', variables('accountName')), '/')[0], split(format('{0}/albaranes-db/upload-sessions', variables('accountName')), '/')[1], split(format('{0}/albaranes-db/upload-sessions', variables('accountName')), '/')[2])]"
             }
           }
         }
@@ -3329,7 +3373,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "9811920103377580210"
+              "templateHash": "1526511513243205740"
             }
           },
           "parameters": {
@@ -3466,6 +3510,20 @@
               "metadata": {
                 "description": "Optional override for the escalation timer ACA Job image."
               }
+            },
+            "reconciliationJobImage": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional override for the reconciliation ACA Job image."
+              }
+            },
+            "learningJobImage": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional override for the learning ACA Job image."
+              }
             }
           },
           "variables": {
@@ -3479,7 +3537,9 @@
             "resolvedOrchestratorImage": "[if(empty(parameters('orchestratorImage')), format('{0}/verdecora-orchestrator:latest', parameters('acrLoginServer')), parameters('orchestratorImage'))]",
             "resolvedDedupJobImage": "[if(empty(parameters('dedupJobImage')), format('{0}/verdecora-flow0-dedup:latest', parameters('acrLoginServer')), parameters('dedupJobImage'))]",
             "resolvedHitlWebformImage": "[if(empty(parameters('hitlWebformImage')), format('{0}/verdecora-hitl-webform:latest', parameters('acrLoginServer')), parameters('hitlWebformImage'))]",
-            "resolvedEscalationTimerJobImage": "[if(empty(parameters('escalationTimerJobImage')), format('{0}/verdecora-escalation-timer:latest', parameters('acrLoginServer')), parameters('escalationTimerJobImage'))]"
+            "resolvedEscalationTimerJobImage": "[if(empty(parameters('escalationTimerJobImage')), format('{0}/verdecora-escalation-timer:latest', parameters('acrLoginServer')), parameters('escalationTimerJobImage'))]",
+            "resolvedReconciliationJobImage": "[if(empty(parameters('reconciliationJobImage')), 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest', parameters('reconciliationJobImage'))]",
+            "resolvedLearningJobImage": "[if(empty(parameters('learningJobImage')), 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest', parameters('learningJobImage'))]"
           },
           "resources": [
             {
@@ -3850,6 +3910,122 @@
               "dependsOn": [
                 "[resourceId('Microsoft.App/managedEnvironments', variables('managedEnvironmentName'))]"
               ]
+            },
+            {
+              "type": "Microsoft.App/jobs",
+              "apiVersion": "2025-01-01",
+              "name": "[format('verdecora-reconciliation-{0}', parameters('environment'))]",
+              "location": "[parameters('location')]",
+              "tags": "[union(variables('tags'), createObject('service', 'reconciliation'))]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "environmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('managedEnvironmentName'))]",
+                "configuration": {
+                  "registries": [
+                    {
+                      "server": "[parameters('acrLoginServer')]",
+                      "identity": "system"
+                    }
+                  ],
+                  "triggerType": "Schedule",
+                  "replicaTimeout": 1800,
+                  "replicaRetryLimit": 1,
+                  "scheduleTriggerConfig": {
+                    "cronExpression": "0 6 * * *",
+                    "parallelism": 1,
+                    "replicaCompletionCount": 1
+                  }
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "reconciliation",
+                      "image": "[variables('resolvedReconciliationJobImage')]",
+                      "env": [
+                        {
+                          "name": "COSMOS_ENDPOINT",
+                          "value": "[parameters('cosmosEndpoint')]"
+                        },
+                        {
+                          "name": "SERVICE_BUS_NAMESPACE",
+                          "value": "[parameters('serviceBusNamespaceName')]"
+                        },
+                        {
+                          "name": "ACS_ENDPOINT",
+                          "value": "[parameters('acsEndpoint')]"
+                        },
+                        {
+                          "name": "AZURE_AI_PROJECT_ENDPOINT",
+                          "value": "[parameters('aiServicesEndpoint')]"
+                        }
+                      ],
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments', variables('managedEnvironmentName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/jobs",
+              "apiVersion": "2025-01-01",
+              "name": "[format('verdecora-learning-{0}', parameters('environment'))]",
+              "location": "[parameters('location')]",
+              "tags": "[union(variables('tags'), createObject('service', 'learning'))]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "environmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('managedEnvironmentName'))]",
+                "configuration": {
+                  "registries": [
+                    {
+                      "server": "[parameters('acrLoginServer')]",
+                      "identity": "system"
+                    }
+                  ],
+                  "triggerType": "Schedule",
+                  "replicaTimeout": 1800,
+                  "replicaRetryLimit": 1,
+                  "scheduleTriggerConfig": {
+                    "cronExpression": "0 4 * * 0",
+                    "parallelism": 1,
+                    "replicaCompletionCount": 1
+                  }
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "learning",
+                      "image": "[variables('resolvedLearningJobImage')]",
+                      "env": [
+                        {
+                          "name": "COSMOS_ENDPOINT",
+                          "value": "[parameters('cosmosEndpoint')]"
+                        },
+                        {
+                          "name": "AZURE_AI_PROJECT_ENDPOINT",
+                          "value": "[parameters('aiServicesEndpoint')]"
+                        }
+                      ],
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments', variables('managedEnvironmentName'))]"
+              ]
             }
           ],
           "outputs": {
@@ -3929,6 +4105,34 @@
                 "description": "Escalation timer ACA Job managed identity principal id."
               },
               "value": "[reference(resourceId('Microsoft.App/jobs', format('verdecora-escalation-timer-{0}', parameters('environment'))), '2025-01-01', 'full').identity.principalId]"
+            },
+            "reconciliationJobId": {
+              "type": "string",
+              "metadata": {
+                "description": "Reconciliation ACA Job id."
+              },
+              "value": "[resourceId('Microsoft.App/jobs', format('verdecora-reconciliation-{0}', parameters('environment')))]"
+            },
+            "reconciliationPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Reconciliation ACA Job managed identity principal id."
+              },
+              "value": "[reference(resourceId('Microsoft.App/jobs', format('verdecora-reconciliation-{0}', parameters('environment'))), '2025-01-01', 'full').identity.principalId]"
+            },
+            "learningJobId": {
+              "type": "string",
+              "metadata": {
+                "description": "Learning ACA Job id."
+              },
+              "value": "[resourceId('Microsoft.App/jobs', format('verdecora-learning-{0}', parameters('environment')))]"
+            },
+            "learningPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Learning ACA Job managed identity principal id."
+              },
+              "value": "[reference(resourceId('Microsoft.App/jobs', format('verdecora-learning-{0}', parameters('environment'))), '2025-01-01', 'full').identity.principalId]"
             }
           }
         }
@@ -3946,6 +4150,217 @@
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'privateEndpoints')]",
         "[subscriptionResourceId('Microsoft.Resources/deployments', 'resourceGroup')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'serviceBus')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableUploadWeb')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "uploadWebApp",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "managedEnvironmentId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'containerApps'), '2025-04-01').outputs.managedEnvironmentId.value]"
+          },
+          "acrLoginServer": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr'), '2025-04-01').outputs.acrLoginServer.value]"
+          },
+          "storageAccountUrl": {
+            "value": "[format('https://{0}.blob.{1}/', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage'), '2025-04-01').outputs.storageAccountName.value, environment().suffixes.storage)]"
+          },
+          "cosmosEndpoint": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cosmos'), '2025-04-01').outputs.cosmosEndpoint.value]"
+          },
+          "applicationInsightsConnectionString": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.applicationInsightsConnectionString.value]"
+          },
+          "uploadWebImage": {
+            "value": "[parameters('uploadWebImage')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "5620655351156105687"
+            }
+          },
+          "parameters": {
+            "environment": {
+              "type": "string",
+              "metadata": {
+                "description": "Deployment environment name (dev/test/prod)."
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for Container Apps resources."
+              }
+            },
+            "managedEnvironmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Existing Container Apps managed environment resource id used by upload-web."
+              }
+            },
+            "acrLoginServer": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure Container Registry login server used for the upload-web image."
+              }
+            },
+            "storageAccountUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account blob endpoint exposed to upload-web."
+              }
+            },
+            "cosmosEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "Cosmos DB endpoint exposed to upload-web."
+              }
+            },
+            "applicationInsightsConnectionString": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Insights connection string injected into upload-web."
+              }
+            },
+            "uploadWebImage": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional override for the upload-web image."
+              }
+            }
+          },
+          "variables": {
+            "tags": {
+              "project": "verdecora-albaranes",
+              "env": "[parameters('environment')]",
+              "service": "upload-web",
+              "managed-by": "bicep"
+            },
+            "resolvedUploadWebImage": "[if(empty(parameters('uploadWebImage')), format('{0}/verdecora-upload-web:latest', parameters('acrLoginServer')), parameters('uploadWebImage'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2025-01-01",
+              "name": "[format('verdecora-upload-web-{0}', parameters('environment'))]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('tags')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "environmentId": "[parameters('managedEnvironmentId')]",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "registries": [
+                    {
+                      "server": "[parameters('acrLoginServer')]",
+                      "identity": "system"
+                    }
+                  ],
+                  "ingress": {
+                    "external": false,
+                    "allowInsecure": false,
+                    "targetPort": 8000,
+                    "transport": "Auto"
+                  }
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "upload-web",
+                      "image": "[variables('resolvedUploadWebImage')]",
+                      "env": [
+                        {
+                          "name": "STORAGE_ACCOUNT_URL",
+                          "value": "[parameters('storageAccountUrl')]"
+                        },
+                        {
+                          "name": "COSMOS_ENDPOINT",
+                          "value": "[parameters('cosmosEndpoint')]"
+                        },
+                        {
+                          "name": "APPINSIGHTS_CONNECTION_STRING",
+                          "value": "[parameters('applicationInsightsConnectionString')]"
+                        }
+                      ],
+                      "resources": {
+                        "cpu": "[json('0.5')]",
+                        "memory": "1Gi"
+                      },
+                      "probes": [
+                        {
+                          "type": "Liveness",
+                          "httpGet": {
+                            "path": "/healthz",
+                            "port": 8000
+                          },
+                          "initialDelaySeconds": 5,
+                          "periodSeconds": 30
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 1,
+                    "maxReplicas": 5
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "uploadWebAppId": {
+              "type": "string",
+              "metadata": {
+                "description": "Upload-web container app id."
+              },
+              "value": "[resourceId('Microsoft.App/containerApps', format('verdecora-upload-web-{0}', parameters('environment')))]"
+            },
+            "uploadWebAppName": {
+              "type": "string",
+              "metadata": {
+                "description": "Upload-web container app name."
+              },
+              "value": "[format('verdecora-upload-web-{0}', parameters('environment'))]"
+            },
+            "uploadWebPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Upload-web managed identity principal id."
+              },
+              "value": "[reference(resourceId('Microsoft.App/containerApps', format('verdecora-upload-web-{0}', parameters('environment'))), '2025-01-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'containerApps')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cosmos')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'monitoring')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
       ]
     },
@@ -4509,7 +4924,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "6832764745457073911"
+              "templateHash": "4496258555352146639"
             }
           },
           "parameters": {
@@ -4603,7 +5018,7 @@
                   "includedEventTypes": [
                     "Microsoft.Storage.BlobCreated"
                   ],
-                  "subjectBeginsWith": "/blobServices/default/containers/albaranes-raw",
+                  "subjectBeginsWith": "/blobServices/default/containers/albaranes-raw/blobs/",
                   "isSubjectCaseSensitive": false
                 },
                 "retryPolicy": {
@@ -4687,7 +5102,8 @@
           },
           "escalationTimerPrincipalId": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'containerApps'), '2025-04-01').outputs.escalationTimerPrincipalId.value]"
-          }
+          },
+          "uploadWebPrincipalId": "[if(parameters('enableUploadWeb'), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'uploadWebApp'), '2025-04-01').outputs.uploadWebPrincipalId.value), createObject('value', ''))]"
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -4696,7 +5112,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "144572381153987395"
+              "templateHash": "2956969929273550838"
             }
           },
           "parameters": {
@@ -4779,6 +5195,13 @@
               "defaultValue": "",
               "metadata": {
                 "description": "Optional system-assigned principal id for the escalation timer ACA Job."
+              }
+            },
+            "uploadWebPrincipalId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional system-assigned principal id for the upload-web ACA app."
               }
             }
           },
@@ -5091,6 +5514,53 @@
                 "principalType": "ServicePrincipal",
                 "roleDefinitionId": "[variables('acrPullRoleDefinitionId')]"
               }
+            },
+            {
+              "condition": "[not(empty(parameters('uploadWebPrincipalId')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), parameters('uploadWebPrincipalId'), variables('storageBlobDataContributorRoleDefinitionId'), 'system')]",
+              "properties": {
+                "principalId": "[parameters('uploadWebPrincipalId')]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('storageBlobDataContributorRoleDefinitionId')]"
+              }
+            },
+            {
+              "condition": "[not(empty(parameters('uploadWebPrincipalId')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), parameters('uploadWebPrincipalId'), variables('storageBlobDelegatorRoleDefinitionId'), 'system')]",
+              "properties": {
+                "principalId": "[parameters('uploadWebPrincipalId')]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('storageBlobDelegatorRoleDefinitionId')]"
+              }
+            },
+            {
+              "condition": "[not(empty(parameters('uploadWebPrincipalId')))]",
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments",
+              "apiVersion": "2024-05-15",
+              "name": "[format('{0}/{1}', parameters('cosmosAccountName'), guid(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')), parameters('uploadWebPrincipalId'), variables('cosmosBuiltInDataContributorRoleDefinitionId'), 'system'))]",
+              "properties": {
+                "principalId": "[parameters('uploadWebPrincipalId')]",
+                "roleDefinitionId": "[format('{0}/sqlRoleDefinitions/{1}', resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')), variables('cosmosBuiltInDataContributorRoleDefinitionId'))]",
+                "scope": "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName'))]"
+              }
+            },
+            {
+              "condition": "[and(not(empty(parameters('uploadWebPrincipalId'))), not(empty(parameters('acrName'))))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName'))]",
+              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName')), parameters('uploadWebPrincipalId'), variables('acrPullRoleDefinitionId'), 'system')]",
+              "properties": {
+                "principalId": "[parameters('uploadWebPrincipalId')]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('acrPullRoleDefinitionId')]"
+              }
             }
           ],
           "outputs": {
@@ -5100,7 +5570,8 @@
                 "orchestratorSystemAssignedPrincipalId": "[parameters('orchestratorPrincipalId')]",
                 "hitlWebformSystemAssignedPrincipalId": "[parameters('hitlWebformPrincipalId')]",
                 "flow0WorkerSystemAssignedPrincipalId": "[parameters('flow0WorkerPrincipalId')]",
-                "escalationTimerSystemAssignedPrincipalId": "[parameters('escalationTimerPrincipalId')]"
+                "escalationTimerSystemAssignedPrincipalId": "[parameters('escalationTimerPrincipalId')]",
+                "uploadWebSystemAssignedPrincipalId": "[parameters('uploadWebPrincipalId')]"
               }
             }
           }
@@ -5116,7 +5587,8 @@
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'keyVault')]",
         "[subscriptionResourceId('Microsoft.Resources/deployments', 'resourceGroup')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'serviceBus')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'uploadWebApp')]"
       ]
     },
     {
@@ -5621,6 +6093,13 @@
       },
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cosmos'), '2025-04-01').outputs.cosmosEndpoint.value]"
     },
+    "uploadSessionsContainerId": {
+      "type": "string",
+      "metadata": {
+        "description": "Upload sessions container id."
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cosmos'), '2025-04-01').outputs.uploadSessionsContainerId.value]"
+    },
     "storageAccountId": {
       "type": "string",
       "metadata": {
@@ -5830,6 +6309,13 @@
         "description": "Escalation timer ACA Job id."
       },
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'containerApps'), '2025-04-01').outputs.escalationTimerJobId.value]"
+    },
+    "uploadWebAppId": {
+      "type": "string",
+      "metadata": {
+        "description": "Upload-web container app id."
+      },
+      "value": "[if(parameters('enableUploadWeb'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'uploadWebApp'), '2025-04-01').outputs.uploadWebAppId.value, '')]"
     },
     "appGwPublicFqdn": {
       "type": "string",

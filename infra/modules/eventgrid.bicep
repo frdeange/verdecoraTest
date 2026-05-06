@@ -79,7 +79,9 @@ resource blobCreatedSubscription 'Microsoft.EventGrid/systemTopics/eventSubscrip
       includedEventTypes: [
         'Microsoft.Storage.BlobCreated'
       ]
-      subjectBeginsWith: '/blobServices/default/containers/albaranes-raw'
+      // upload-web writes blobs under albaranes-raw/{session_id}/... (and deeper nested prefixes),
+      // so filtering at the container blob root keeps Event Grid -> Flow 0 working for every new upload path.
+      subjectBeginsWith: '/blobServices/default/containers/albaranes-raw/blobs/'
       isSubjectCaseSensitive: false
     }
     retryPolicy: {

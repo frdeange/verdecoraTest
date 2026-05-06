@@ -28,3 +28,9 @@
 - Added `infra/modules/appgw.bicep` wiring for Standard_v2 autoscale, HTTP→HTTPS redirect, `/healthz` probing, backend HTTPS to the ACA internal FQDN, and Key Vault-backed TLS certificate access via managed identity.
 - Added `infra/modules/upload-web-auth.bicep` so Easy Auth can be switched on for `verdecora-upload-web-${environment}` with Entra audiences plus optional `verdecora-store-uploaders` group enforcement once the app exists.
 - Documented that the Entra group itself must still be created manually in the Azure portal before rollout.
+
+### 2026-05-05 — Upload-web ACA app + session store wiring
+- Added `infra/modules/upload-web-app.bicep` and a new `enableUploadWeb` feature flag in `infra/modules/main.bicep` so the private `verdecora-upload-web-${environment}` Container App can be deployed into the shared ACA environment without exposing public ingress.
+- Provisioned the Cosmos `upload-sessions` container in `albaranes-db` with `/user_oid` partitioning, 24-hour TTL, and baseline throughput for short-lived upload UI session state.
+- Extended managed-identity RBAC so upload-web can pull from ACR and use Blob/Cosmos data-plane access without secrets.
+- Tightened the Event Grid subject prefix documentation/filter to the `albaranes-raw/blobs/` root so nested upload-web blob paths still trigger Flow 0 ingestion.
