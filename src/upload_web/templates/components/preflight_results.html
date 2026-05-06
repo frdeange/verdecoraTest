@@ -1,0 +1,23 @@
+{# Preflight results partial — swapped in via HTMX #}
+<div id="preflight-results">
+  <h3 class="text-lg font-semibold text-slate-900">Resultados del análisis</h3>
+  {% set conf = confidence | default(0) %}
+  <div class="result-card {% if conf > 0.8 %}success{% elif conf > 0.5 %}warning{% else %}error{% endif %}">
+    <p><strong>Proveedor:</strong> {{ detected_supplier or 'No detectado' }}</p>
+    <p><strong>Nº Albarán:</strong> {{ detected_albaran_number or 'No detectado' }}</p>
+    <p><strong>Fecha:</strong> {{ detected_date or 'No detectada' }}</p>
+    <p>
+      <strong>Confianza:</strong>
+      <span class="confidence-badge {% if conf > 0.8 %}confidence-high{% elif conf > 0.5 %}confidence-medium{% else %}confidence-low{% endif %}">
+        {{ (conf * 100) | round }}%
+      </span>
+    </p>
+    {% if warnings %}
+    <div class="mt-3">
+      {% for w in warnings %}
+      <span class="warning-badge">⚠ {{ w }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
