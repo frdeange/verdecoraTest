@@ -182,6 +182,42 @@ def confirm_session(session_id: str, current_user: CurrentUser) -> dict[str, Any
     return {"status": "confirmed", "processing_started": processing_started}
 
 
+@router.get("/{session_id}/status")
+def session_status(session_id: str, current_user: CurrentUser) -> dict[str, Any]:
+    """Return current session state, per-file status, and overall progress."""
+    session = _get_session_or_404(session_id)
+    _enforce_ownership(session, current_user)
+
+    files_status = []
+    completed_count = 0
+    for f in session.files:
+        file_state = getattr(f, "processing_status", None) or "pending"
+        if file_state == "completed":
+            completed_count += 1
+        files_status.append(
+            {
+                "file_id": f.file_id,
+                "filename": f.filename,
+                "status": file_state,
+                "blob_path": f.blob_path,
+                "albaran_group": f.albaran_group,
+            }
+        )
+
+    total = len(session.files)
+    progress = (completed_count / total * 100) if total > 0 else 0
+
+    return {
+        "session_id": session.session_id,
+        "status": session.status,
+        "total_files": total,
+        "completed_files": completed_count,
+        "progress_percent": round(progress, 1),
+        "files": files_status,
+        "confirmed_at": session.confirmed_at.isoformat() if session.confirmed_at else None,
+    }
+
+
 def _publish_to_service_bus(session: UploadSession) -> bool:
     """Best-effort publish to Service Bus. Returns True on success."""
     from src.upload_web.config import get_settings

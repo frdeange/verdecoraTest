@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="mx-auto max-w-3xl space-y-6"
+         hx-get="{{ url_for('upload_status', session_id=session.session_id) }}"
+         hx-trigger="every 5s"
+         hx-select="section"
+         hx-swap="outerHTML">
+  <div class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+    <p class="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--vc-accent)]">Estado</p>
+    <h1 class="mt-3 text-2xl font-bold tracking-tight text-slate-900">Procesamiento de albaranes</h1>
+    <p class="mt-2 text-sm text-slate-500">Sesión: {{ session.session_id }}</p>
+
+    <!-- Progress bar -->
+    <div class="mt-6">
+      <div class="flex items-center justify-between text-sm text-slate-600">
+        <span>{{ completed }} de {{ total }} archivos procesados</span>
+        <span class="font-semibold">{{ progress }}%</span>
+      </div>
+      <div class="mt-2 h-3 w-full rounded-full bg-slate-200">
+        <div class="h-3 rounded-full bg-[var(--vc-primary)] transition-all duration-500"
+             style="width: {{ progress }}%"></div>
+      </div>
+    </div>
+
+    <!-- Status badge -->
+    <div class="mt-4">
+      {% if session.status == 'completed' %}
+        <span class="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">Completado</span>
+      {% elif session.status == 'failed' %}
+        <span class="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-700">Error</span>
+      {% elif session.status == 'confirmed' or session.status == 'processing' %}
+        <span class="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-700">En proceso</span>
+      {% else %}
+        <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">{{ session.status | capitalize }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Per-file status table -->
+  <div class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+    <h2 class="text-lg font-semibold text-slate-900">Detalle por archivo</h2>
+    <div class="mt-4 overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <th class="pb-3 pr-4">Archivo</th>
+            <th class="pb-3 pr-4">Grupo</th>
+            <th class="pb-3">Estado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for f in session.files %}
+          <tr>
+            <td class="py-3 pr-4 font-medium text-slate-900">{{ f.filename }}</td>
+            <td class="py-3 pr-4 text-slate-600">{{ f.albaran_group or '—' }}</td>
+            <td class="py-3">
+              {% set fstatus = f.processing_status if f.processing_status is defined else 'pending' %}
+              {% if fstatus == 'completed' %}
+                <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">Completado</span>
+              {% elif fstatus == 'processing' %}
+                <span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-700">Procesando</span>
+              {% elif fstatus == 'failed' %}
+                <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">Error</span>
+              {% else %}
+                <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">Pendiente</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Final state link -->
+  {% if session.status == 'completed' %}
+  <div class="text-center">
+    <a href="{{ url_for('my_uploads_page') }}"
+       class="inline-flex items-center rounded-full bg-[var(--vc-primary)] px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:brightness-105">
+      Ver mis albaranes
+    </a>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

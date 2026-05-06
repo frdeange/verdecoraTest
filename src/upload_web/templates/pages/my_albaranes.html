@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="space-y-6">
+  <div class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+    <p class="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--vc-accent)]">Historial</p>
+    <h1 class="mt-3 text-2xl font-bold tracking-tight text-slate-900">Mis albaranes</h1>
+    <p class="mt-2 text-base text-slate-600">Consulta el estado de tus albaranes enviados.</p>
+
+    <!-- Filter buttons -->
+    <div class="mt-6 flex flex-wrap gap-2">
+      <a href="{{ url_for('my_uploads_page') }}"
+         class="rounded-full px-4 py-1.5 text-sm font-medium transition
+                {% if not status_filter %}bg-[var(--vc-primary)] text-white{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+        Todos
+      </a>
+      {% for st in ['created', 'uploading', 'confirmed', 'processing', 'completed', 'failed'] %}
+      <a hx-get="{{ url_for('my_uploads_filter') }}?status_filter={{ st }}"
+         hx-target="#uploads-table"
+         hx-swap="innerHTML"
+         class="cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition
+                {% if status_filter == st %}bg-[var(--vc-primary)] text-white{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+        {{ st | capitalize }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div id="uploads-table" class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+    {% if uploads %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <th class="pb-3 pr-4">Fecha</th>
+            <th class="pb-3 pr-4">Archivo</th>
+            <th class="pb-3 pr-4">Grupo albarán</th>
+            <th class="pb-3">Estado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for u in uploads %}
+          <tr class="cursor-pointer hover:bg-slate-50 transition"
+              onclick="window.location='{{ url_for('upload_status', session_id=u.session_id) }}'">
+            <td class="py-3 pr-4 text-slate-600">{{ u.uploaded_at }}</td>
+            <td class="py-3 pr-4 font-medium text-slate-900">{{ u.filename }}</td>
+            <td class="py-3 pr-4 text-slate-600">{{ u.albaran_group or '—' }}</td>
+            <td class="py-3">
+              {% if u.status == 'completed' %}
+                <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">Completado</span>
+              {% elif u.status == 'confirmed' or u.status == 'processing' %}
+                <span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-700">En proceso</span>
+              {% elif u.status == 'failed' %}
+                <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">Error</span>
+              {% else %}
+                <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{{ u.status | capitalize }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+      <p class="text-base text-slate-500">No tienes albaranes enviados todavía.</p>
+      <a href="{{ url_for('upload_page') }}"
+         class="mt-4 inline-flex items-center rounded-full bg-[var(--vc-primary)] px-6 py-2 text-sm font-semibold text-white shadow transition hover:brightness-105">
+        Subir albarán
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

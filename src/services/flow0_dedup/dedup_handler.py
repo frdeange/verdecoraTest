@@ -81,7 +81,13 @@ class Flow0DedupHandler:
         )
         return dict(items[0]) if items else None
 
-    def build_processing_record(self, event: EventGridEnvelope) -> ProcessingRecord:
+    def build_processing_record(
+        self,
+        event: EventGridEnvelope,
+        *,
+        upload_session_id: str | None = None,
+        uploader_oid: str | None = None,
+    ) -> ProcessingRecord:
         """Build the Cosmos processing record for a newly ingested blob."""
 
         store_id = extract_store_id(event.blob_path)
@@ -108,6 +114,8 @@ class Flow0DedupHandler:
                 "storage_diagnostics": event.data.storageDiagnostics,
                 "blob_metadata": event.data.metadata,
             },
+            upload_session_id=upload_session_id,
+            uploader_oid=uploader_oid,
         )
 
     def build_forward_message(self, record: ProcessingRecord) -> ForwardedExtractionMessage:
@@ -124,6 +132,8 @@ class Flow0DedupHandler:
             event_id=record.event_id,
             event_time=record.event_time,
             metadata=record.source_metadata,
+            upload_session_id=record.upload_session_id,
+            uploader_oid=record.uploader_oid,
         )
 
     def forward_to_extraction_queue(self, record: ProcessingRecord) -> None:
@@ -136,6 +146,91 @@ class Flow0DedupHandler:
             json.dumps(outbound.model_dump(mode="json")),
             application_properties={"eventType": "albaran.recibido"},
             subject="albaran.recibido",
+        )
+        self._sender.send_messages(message)
+
+    def handle_session_message(self, session_payload: dict[str, Any]) -> list[ProcessingRecord]:
+        """Process a confirmed upload session, grouping files by albaran_group.
+
+        Returns a list of ProcessingRecord instances created for each group.
+        """
+        from collections import defaultdict
+        from datetime import UTC, datetime
+
+        session_id = session_payload.get("session_id", "")
+        user_oid = session_payload.get("user_oid", "")
+        files = session_payload.get("files", [])
+        confirmed_at = session_payload.get("confirmed_at")
+
+        groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for file_entry in files:
+            group_key = file_entry.get("albaran_group") or "default"
+            groups[group_key].append(file_entry)
+
+        records: list[ProcessingRecord] = []
+        now = datetime.now(tz=UTC)
+
+        for group_key, group_files in groups.items():
+            first_file = group_files[0]
+            blob_paths = [f.get("blob_path", "") for f in group_files]
+            blob_names = [f.get("filename", "") for f in group_files]
+            primary_blob_path = blob_paths[0]
+            primary_blob_name = blob_names[0]
+
+            store_id = extract_store_id(primary_blob_path) if "/" in primary_blob_path else "upload-web"
+            dedup_key = f"session:{session_id}:group:{group_key}"
+            record_id = f"albaran-{hashlib.sha256(dedup_key.encode('utf-8')).hexdigest()[:24]}"
+            pk = build_partition_key(store_id, now)
+
+            record = ProcessingRecord(
+                id=record_id,
+                pk=pk,
+                store_id=store_id,
+                event_id=f"session-{session_id}",
+                event_type="upload.session.confirmed",
+                event_time=now,
+                event_date=now.date().isoformat(),
+                dedup_key=dedup_key,
+                blob_url=first_file.get("blob_path", ""),
+                blob_path=primary_blob_path,
+                blob_name=primary_blob_name,
+                source_metadata={
+                    "session_id": session_id,
+                    "confirmed_at": confirmed_at,
+                    "albaran_group": group_key,
+                    "blob_paths": blob_paths,
+                    "blob_names": blob_names,
+                    "page_count": len(group_files),
+                },
+                upload_session_id=session_id,
+                uploader_oid=user_oid,
+            )
+
+            self._container_client.upsert_item(body=record.model_dump(mode="json"))
+            self._forward_session_group(record, group_key)
+            records.append(record)
+            self._logger.info(
+                "Session group record created and forwarded",
+                extra={
+                    "albaran_id": record.id,
+                    "session_id": session_id,
+                    "albaran_group": group_key,
+                    "file_count": len(group_files),
+                },
+            )
+
+        return records
+
+    def _forward_session_group(self, record: ProcessingRecord, albaran_group: str) -> None:
+        """Forward a session-based group to the extraction queue."""
+        from azure.servicebus import ServiceBusMessage
+
+        outbound = self.build_forward_message(record)
+        outbound.albaran_group = albaran_group
+        message = ServiceBusMessage(
+            json.dumps(outbound.model_dump(mode="json")),
+            application_properties={"eventType": "albaran.session.confirmed"},
+            subject="albaran.session.confirmed",
         )
         self._sender.send_messages(message)
 

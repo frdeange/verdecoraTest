@@ -199,6 +199,10 @@ class OrchestratorService:
         container = await self.dependencies.get_processing_container()
         record = result.model_dump(mode="json")
         record["id"] = result.processing_id
+        if result.metadata.get("upload_session_id"):
+            record["upload_session_id"] = result.metadata["upload_session_id"]
+        if result.metadata.get("uploader_oid"):
+            record["uploader_oid"] = result.metadata["uploader_oid"]
         await container.upsert_item(record)
 
     async def _write_processing_status(
