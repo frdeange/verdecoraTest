@@ -14,7 +14,6 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "agent-framework>=1.2.2,<2.0",
-    "agent-framework-azure-cosmos>=1.2.2,<2.0",
     "aiohttp>=3.11.0",
     "azure-ai-documentintelligence>=1.0.2",
     "azure-communication-email>=1.0.0",
