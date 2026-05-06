@@ -73,6 +73,14 @@ var registrationTokenApiUrl = '${githubApiUrl}/repos/${repoOwner}/${repoName}/ac
 var removeTokenApiUrl = '${githubApiUrl}/repos/${repoOwner}/${repoName}/actions/runners/remove-token'
 var runnerStartupScript = 'set -euo pipefail; request_runner_token() { local url="$1"; curl -fsSL -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_PAT" -H "X-GitHub-Api-Version: 2022-11-28" "$url" | sed -n "s/.*\\"token\\"[[:space:]]*:[[:space:]]*\\"\\([^\\"]*\\)\\".*/\\1/p"; }; RUNNER_DIR="$(dirname "$(find /home/runner /actions-runner -maxdepth 3 -name config.sh 2>/dev/null | head -n 1)")"; if [ -z "$RUNNER_DIR" ]; then echo "Unable to locate config.sh in the runner image."; exit 1; fi; RUNNER_NAME="$(printf "%s-%s-%s" "$RUNNER_NAME_PREFIX" "$(hostname)" "$(date +%s)")"; REGISTRATION_TOKEN="$(request_runner_token "$REGISTRATION_TOKEN_API_URL")"; if [ -z "$REGISTRATION_TOKEN" ]; then echo "Failed to acquire a GitHub registration token."; exit 1; fi; cleanup() { if [ -f "$RUNNER_DIR/.runner" ]; then REMOVE_TOKEN="$(request_runner_token "$REMOVE_TOKEN_API_URL" || true)"; if [ -n "$REMOVE_TOKEN" ]; then "$RUNNER_DIR/config.sh" remove --unattended --token "$REMOVE_TOKEN" || true; fi; fi; }; trap cleanup EXIT INT TERM; cd "$RUNNER_DIR"; echo "Configuring runner $RUNNER_NAME for $GH_URL"; ./config.sh --unattended --replace --ephemeral --url "$GH_URL" --token "$REGISTRATION_TOKEN" --name "$RUNNER_NAME" --work "_work"; echo "Runner $RUNNER_NAME registered; waiting for a job."; ./run.sh'
 var keyVaultSecretsUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
+var acrPushRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8311e382-0749-4cb8-b61a-304f252e45ec')
+var contributorRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')
+
+@description('ACR resource id — required for AcrPush role assignment.')
+param acrResourceId string = ''
+
+@description('Resource group resource id — required for Contributor role on RG.')
+param resourceGroupId string = ''
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: logAnalyticsWorkspaceName
@@ -104,6 +112,26 @@ resource keyVaultSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01
     principalId: runnerIdentity.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: keyVaultSecretsUserRoleDefinitionId
+  }
+}
+
+// AcrPush — allows the runner to build and push images via `az acr build`
+resource acrPushRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(acrResourceId)) {
+  name: guid(acrResourceId, runnerIdentity.name, acrPushRoleDefinitionId)
+  properties: {
+    principalId: runnerIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: acrPushRoleDefinitionId
+  }
+}
+
+// Contributor on RG — allows the runner to update Container Apps via `az containerapp update`
+resource rgContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(resourceGroupId)) {
+  name: guid(resourceGroupId, runnerIdentity.name, contributorRoleDefinitionId)
+  properties: {
+    principalId: runnerIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: contributorRoleDefinitionId
   }
 }
 
