@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
+  <article class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+    <p class="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--vc-accent)]">Bienvenido</p>
+    <h1 class="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Hola, {{ current_user.name }}</h1>
+    <p class="mt-4 max-w-2xl text-base leading-7 text-slate-600">Sube tus albaranes de compra en pocos pasos. Esta pantalla está pensada para equipos de tienda: botones grandes, instrucciones claras y acceso rápido a lo importante.</p>
+    <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
+      <a href="{{ url_for('upload_page') }}" class="inline-flex min-h-14 items-center justify-center rounded-full bg-[var(--vc-primary)] px-8 text-lg font-semibold text-white shadow-lg shadow-teal-900/10 transition hover:brightness-105">Subir albarán</a>
+      <a href="{{ url_for('my_uploads_page') }}" class="text-base font-semibold text-[var(--vc-nav-dark)] underline decoration-[var(--vc-accent)] decoration-2 underline-offset-4">Mis albaranes</a>
+    </div>
+  </article>
+  <aside class="rounded-3xl bg-slate-50 p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+    <h2 class="text-lg font-semibold text-slate-900">Cómo funciona</h2>
+    <ol class="mt-4 space-y-4 text-sm leading-6 text-slate-600">
+      <li><span class="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--vc-primary)] text-xs font-bold text-white">1</span>Abre la pantalla de subida.</li>
+      <li><span class="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--vc-primary)] text-xs font-bold text-white">2</span>Añade PDF o fotos del albarán.</li>
+      <li><span class="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--vc-primary)] text-xs font-bold text-white">3</span>Consulta el estado después en Mis albaranes.</li>
+    </ol>
+    {% if my_uploads_message %}
+    <div class="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
+      {{ my_uploads_message }}
+    </div>
+    {% endif %}
+  </aside>
+</section>
+{% endblock %}

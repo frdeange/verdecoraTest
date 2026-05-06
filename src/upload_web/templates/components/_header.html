@@ -1,0 +1,15 @@
+<header class="bg-[var(--vc-nav-dark)] text-white shadow-sm">
+  <div class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+    <a href="{{ url_for('index') }}" class="flex items-center gap-3" aria-label="Inicio Verdecora Upload Web">
+      <img src="{{ url_for('static', path='img/verdecora-logo.jpg') }}" alt="Verdecora" class="h-10 w-auto sm:h-12">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.28em] text-white/70">Upload Web</p>
+        <p class="text-sm font-semibold">Recepción de albaranes</p>
+      </div>
+    </a>
+    <div class="flex flex-col gap-3 sm:items-end">
+      <p class="text-sm text-white/80">Conectado como <span class="font-semibold text-white">{{ current_user.name if current_user else 'Usuario autenticado' }}</span></p>
+      <a href="{{ url_for('logout_placeholder') }}" class="inline-flex min-h-11 items-center justify-center rounded-full border border-white/25 px-5 py-2 text-sm font-semibold text-white transition hover:border-white hover:bg-white/10">Cerrar sesión</a>
+    </div>
+  </div>
+</header>

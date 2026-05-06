@@ -38,7 +38,9 @@ def detect_store(extracted_address: str, stores: list[Store]) -> StoreMatch:
     postal_matches = [store for store in stores if store.postal_code and store.postal_code in postal_codes]
     if postal_matches:
         best_postal_match = max(postal_matches, key=lambda store: _street_score(normalized_address, store))
-        best_context = max(_city_score(normalized_address, best_postal_match), _street_score(normalized_address, best_postal_match))
+        best_context = max(
+            _city_score(normalized_address, best_postal_match), _street_score(normalized_address, best_postal_match)
+        )
         confidence = round(min(0.95 + (0.05 * best_context), 1.0), 2)
         return StoreMatch(store=best_postal_match, confidence=confidence, method="postal_code")
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -23,6 +24,7 @@ def create_app(settings: UploadWebSettings | None = None) -> FastAPI:
         directory=str(BASE_DIR / "templates"),
         context_processors=[security_template_context],
     )
+    app.state.templates.env.globals.update(app_name="Verdecora Upload Web", current_year=datetime.now(UTC).year)
     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
     @app.get("/healthz")

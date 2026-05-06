@@ -215,7 +215,9 @@ class SessionSecurityMiddleware(BaseHTTPMiddleware):
 
         if resolved_payload is not None and request.method.upper() not in SAFE_METHODS and not _is_exempt_path(path):
             if not await _validate_csrf_token(request, resolved_payload["csrf_token"]):
-                response = JSONResponse({"detail": "CSRF token validation failed."}, status_code=status.HTTP_403_FORBIDDEN)
+                response = JSONResponse(
+                    {"detail": "CSRF token validation failed."}, status_code=status.HTTP_403_FORBIDDEN
+                )
                 return _apply_security_headers(response)
 
         response = await call_next(request)
@@ -288,7 +290,9 @@ async def _validate_csrf_token(request: Request, expected_token: str) -> bool:
     submitted_token = request.headers.get("X-CSRF-Token")
     if submitted_token is None or not submitted_token.strip():
         content_type = request.headers.get("content-type", "")
-        if content_type.startswith("application/x-www-form-urlencoded") or content_type.startswith("multipart/form-data"):
+        if content_type.startswith("application/x-www-form-urlencoded") or content_type.startswith(
+            "multipart/form-data"
+        ):
             form = await request.form()
             raw_form_token = form.get("csrf_token") or form.get("_csrf_token")
             if raw_form_token is not None:
