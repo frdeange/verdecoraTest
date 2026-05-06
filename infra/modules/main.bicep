@@ -234,6 +234,8 @@ module runners './runners.bicep' = {
     keyVaultName: keyVault.outputs.keyVaultName
     githubPatSecretUri: keyVault.outputs.githubPatSecretUri
     repoUrl: 'https://github.com/frdeange/verdecoraTest'
+    acrResourceId: acr.outputs.acrId
+    resourceGroupId: rg.outputs.resourceGroupId
   }
   dependsOn: [
     rg
