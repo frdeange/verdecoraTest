@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 import base64
 import json
+from datetime import datetime
+
 import pytest
 from fastapi.testclient import TestClient
 from itsdangerous import URLSafeSerializer

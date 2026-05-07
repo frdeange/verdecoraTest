@@ -10,9 +10,8 @@ import os
 import sys
 import time
 
-from azure.identity import DefaultAzureCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
-
+from azure.identity import DefaultAzureCredential
 
 ENDPOINT = os.getenv(
     "DOCINTELL_ENDPOINT",
@@ -150,7 +149,7 @@ def main():
         print(f"\n❌ {len(errors)} test(s) failed")
         sys.exit(1)
     else:
-        print(f"\n✅ All tests passed/skipped")
+        print("\n✅ All tests passed/skipped")
 
 
 if __name__ == "__main__":

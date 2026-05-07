@@ -155,6 +155,38 @@ def _build_authenticated_user_from_client_principal_headers(headers: ClaimsMappi
     return AuthenticatedUser(oid=principal_id, name=principal_name, groups=(), claims=claims)
 
 
+def _normalize_claims(
+    raw_claims: list[Any],
+    name_claim_type: str | None,
+    role_claim_type: str | None,
+) -> dict[str, Any]:
+    """Extract and normalize claims from the Easy Auth client principal."""
+    normalized: dict[str, Any] = {}
+    groups: list[str] = []
+
+    for raw_claim in raw_claims:
+        if not isinstance(raw_claim, dict):
+            continue
+        claim_type = _clean_header_value(raw_claim.get("typ"))
+        claim_value = _clean_header_value(raw_claim.get("val"))
+        if claim_type is None or claim_value is None:
+            continue
+
+        if claim_type == name_claim_type and "name" not in normalized:
+            normalized["name"] = claim_value
+
+        mapped_claim_name = CLIENT_PRINCIPAL_CLAIM_MAP.get(claim_type)
+        if mapped_claim_name == "groups" or claim_type == role_claim_type:
+            groups.append(claim_value)
+            continue
+        if mapped_claim_name is not None and mapped_claim_name not in normalized:
+            normalized[mapped_claim_name] = claim_value
+
+    if groups:
+        normalized["groups"] = groups
+    return normalized
+
+
 def decode_client_principal_claims(encoded_principal: str) -> dict[str, Any]:
     padded_principal = encoded_principal + "=" * (-len(encoded_principal) % 4)
     try:
@@ -172,29 +204,7 @@ def decode_client_principal_claims(encoded_principal: str) -> dict[str, Any]:
 
     name_claim_type = _clean_header_value(decoded_json.get("name_typ"))
     role_claim_type = _clean_header_value(decoded_json.get("role_typ"))
-    normalized_claims: dict[str, Any] = {}
-    groups: list[str] = []
-
-    for raw_claim in raw_claims:
-        if not isinstance(raw_claim, dict):
-            continue
-        claim_type = _clean_header_value(raw_claim.get("typ"))
-        claim_value = _clean_header_value(raw_claim.get("val"))
-        if claim_type is None or claim_value is None:
-            continue
-
-        if claim_type == name_claim_type and "name" not in normalized_claims:
-            normalized_claims["name"] = claim_value
-
-        mapped_claim_name = CLIENT_PRINCIPAL_CLAIM_MAP.get(claim_type)
-        if mapped_claim_name == "groups" or claim_type == role_claim_type:
-            groups.append(claim_value)
-            continue
-        if mapped_claim_name is not None and mapped_claim_name not in normalized_claims:
-            normalized_claims[mapped_claim_name] = claim_value
-
-    if groups:
-        normalized_claims["groups"] = groups
+    normalized_claims = _normalize_claims(raw_claims, name_claim_type, role_claim_type)
 
     auth_type = _clean_header_value(decoded_json.get("auth_typ"))
     if auth_type is not None:

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import base64
 import json
+
 import pytest
 from fastapi.testclient import TestClient
 
 from src.upload_web.app import create_app
+
 
 def _auth_headers(name: str = "Parker Store") -> dict[str, str]:
     principal = {

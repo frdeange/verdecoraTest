@@ -15,7 +15,6 @@ import sys
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AzureOpenAI
 
-
 ENDPOINT = os.getenv(
     "AZURE_AI_ENDPOINT",
     "https://verdecora-ais-dev.cognitiveservices.azure.com/",
