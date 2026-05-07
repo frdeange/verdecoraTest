@@ -4,7 +4,12 @@ from typing import Annotated
 
 from fastapi import Header, HTTPException, Request, status
 
-from .entra import AuthenticatedUser, EntraAuthError, LEGACY_ID_TOKEN_HEADER, build_authenticated_user_from_easy_auth_headers
+from .entra import (
+    LEGACY_ID_TOKEN_HEADER,
+    AuthenticatedUser,
+    EntraAuthError,
+    build_authenticated_user_from_easy_auth_headers,
+)
 
 
 async def get_current_user(
