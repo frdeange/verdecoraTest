@@ -2,7 +2,7 @@
 
 {% block content %}
 <section class="mx-auto max-w-3xl space-y-6"
-         hx-get="{{ url_for('upload_status', session_id=session.session_id) }}"
+         hx-get="/upload/{{ session.session_id }}/status"
          hx-trigger="every 5s"
          hx-select="section"
          hx-swap="outerHTML">
@@ -76,7 +76,7 @@
   <!-- Final state link -->
   {% if session.status == 'completed' %}
   <div class="text-center">
-    <a href="{{ url_for('my_uploads_page') }}"
+    <a href="/mis-albaranes"
        class="inline-flex items-center rounded-full bg-[var(--vc-primary)] px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:brightness-105">
       Ver mis albaranes
     </a>

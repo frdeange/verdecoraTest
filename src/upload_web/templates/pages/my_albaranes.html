@@ -9,13 +9,13 @@
 
     <!-- Filter buttons -->
     <div class="mt-6 flex flex-wrap gap-2">
-      <a href="{{ url_for('my_uploads_page') }}"
+      <a href="/mis-albaranes"
          class="rounded-full px-4 py-1.5 text-sm font-medium transition
                 {% if not status_filter %}bg-[var(--vc-primary)] text-white{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
         Todos
       </a>
       {% for st in ['created', 'uploading', 'confirmed', 'processing', 'completed', 'failed'] %}
-      <a hx-get="{{ url_for('my_uploads_filter') }}?status_filter={{ st }}"
+      <a hx-get="/mis-albaranes/filter?status_filter={{ st }}"
          hx-target="#uploads-table"
          hx-swap="innerHTML"
          class="cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition
@@ -41,7 +41,7 @@
         <tbody class="divide-y divide-slate-100">
           {% for u in uploads %}
           <tr class="cursor-pointer hover:bg-slate-50 transition"
-              onclick="window.location='{{ url_for('upload_status', session_id=u.session_id) }}'">
+              onclick="window.location='/upload/{{ u.session_id }}/status'">
             <td class="py-3 pr-4 text-slate-600">{{ u.uploaded_at }}</td>
             <td class="py-3 pr-4 font-medium text-slate-900">{{ u.filename }}</td>
             <td class="py-3 pr-4 text-slate-600">{{ u.albaran_group or '—' }}</td>
@@ -64,7 +64,7 @@
     {% else %}
     <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
       <p class="text-base text-slate-500">No tienes albaranes enviados todavía.</p>
-      <a href="{{ url_for('upload_page') }}"
+      <a href="/upload"
          class="mt-4 inline-flex items-center rounded-full bg-[var(--vc-primary)] px-6 py-2 text-sm font-semibold text-white shadow transition hover:brightness-105">
         Subir albarán
       </a>

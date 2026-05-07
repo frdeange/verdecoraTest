@@ -6,6 +6,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from src.upload_web.models.upload import UploadFile
 from src.upload_web.app import create_app
 from src.upload_web.services import upload_session
 
@@ -66,6 +67,9 @@ def test_home_page_contains_expected_elements() -> None:
     assert "Hola, Parker Dev" in response.text
     assert "Subir albarán" in response.text
     assert "Mis albaranes" in response.text
+    assert 'href="/upload"' in response.text
+    assert 'href="/mis-albaranes"' in response.text
+    assert 'href="/logout"' in response.text
     assert "/static/css/tailwind.min.css" in response.text
     assert "/static/js/htmx.min.js" in response.text
 
@@ -97,5 +101,36 @@ def test_upload_page_creates_session_and_binds_preflight_urls() -> None:
     session_id = sessions[0].session_id
 
     assert f'data-session-id="{session_id}"' in response.text
+    assert 'href="/dashboard"' in response.text
     assert f'hx-post="/api/sessions/{session_id}/preflight"' in response.text
     assert 'id="preflight-loading"' in response.text
+
+
+@pytest.mark.unit
+def test_my_uploads_page_uses_relative_routes() -> None:
+    app = create_app()
+
+    with TestClient(app) as client:
+        headers = _auth_headers("Parker Flow")
+        client.get("/upload", headers=headers)
+
+        sessions = upload_session.get_all_user_sessions("oid-123")
+        assert len(sessions) == 1
+        session = sessions[0]
+        session_id = session.session_id
+        session.files.append(
+            UploadFile(
+                file_id="file-1",
+                filename="albaran.pdf",
+                blob_path=f"{session_id}/albaran.pdf",
+                content_type="application/pdf",
+                size_bytes=1024,
+            )
+        )
+
+        response = client.get("/mis-albaranes", headers=headers)
+
+    assert response.status_code == 200
+    assert 'href="/mis-albaranes"' in response.text
+    assert 'hx-get="/mis-albaranes/filter?status_filter=created"' in response.text
+    assert f"window.location='/upload/{session_id}/status'" in response.text
