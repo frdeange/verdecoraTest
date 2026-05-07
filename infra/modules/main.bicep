@@ -105,7 +105,6 @@ module acr './acr.bicep' = {
   params: {
     environment: environment
     location: location
-    agentPoolSubnetId: network.outputs.subnetEgressId
   }
   dependsOn: [
     rg
@@ -205,7 +204,6 @@ module privateEndpoints './private-endpoints.bicep' = if (enableNetworkHardening
     subnetId: network.outputs.subnetPeId
     storageResourceId: storage.outputs.storageAccountId
     cosmosResourceId: cosmos.outputs.cosmosAccountId
-    acrResourceId: acr.outputs.acrId
     keyVaultResourceId: keyVault.outputs.keyVaultId
     serviceBusResourceId: serviceBus.outputs.serviceBusNamespaceId
     aiServicesResourceId: aiFoundry.outputs.aiServicesId

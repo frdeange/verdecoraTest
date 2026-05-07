@@ -12,7 +12,6 @@ on:
 
 env:
   ACR_NAME: acralbaranesdev
-  ACR_AGENT_POOL: buildpool-dev
   RESOURCE_GROUP: rg-verdecoratest-dev
   ACA_ORCHESTRATOR: verdecora-orchestrator-dev
   ACA_HITL: verdecora-hitl-webform-dev
@@ -118,7 +117,6 @@ jobs:
         run: |
           az acr build \
             --registry ${{ env.ACR_NAME }} \
-            --agent-pool ${{ env.ACR_AGENT_POOL }} \
             --image verdecora-orchestrator:${{ github.sha }} \
             --image verdecora-orchestrator:latest \
             --file docker/orchestrator/Dockerfile \
@@ -142,7 +140,6 @@ jobs:
         run: |
           az acr build \
             --registry ${{ env.ACR_NAME }} \
-            --agent-pool ${{ env.ACR_AGENT_POOL }} \
             --image verdecora-hitl-webform:${{ github.sha }} \
             --image verdecora-hitl-webform:latest \
             --file docker/hitl-webform/Dockerfile \
@@ -166,7 +163,6 @@ jobs:
         run: |
           az acr build \
             --registry ${{ env.ACR_NAME }} \
-            --agent-pool ${{ env.ACR_AGENT_POOL }} \
             --image verdecora-flow0-dedup:${{ github.sha }} \
             --image verdecora-flow0-dedup:latest \
             --file docker/flow0-dedup/Dockerfile \
@@ -190,7 +186,6 @@ jobs:
         run: |
           az acr build \
             --registry ${{ env.ACR_NAME }} \
-            --agent-pool ${{ env.ACR_AGENT_POOL }} \
             --image verdecora-escalation-timer:${{ github.sha }} \
             --image verdecora-escalation-timer:latest \
             --file docker/escalation-timer/Dockerfile \
@@ -290,7 +285,6 @@ jobs:
         run: |
           az acr build \
             --registry ${{ env.ACR_NAME }} \
-            --agent-pool ${{ env.ACR_AGENT_POOL }} \
             --image verdecora-upload-web:${{ github.sha }} \
             --image verdecora-upload-web:latest \
             --file docker/upload-web/Dockerfile \
