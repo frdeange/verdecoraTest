@@ -24,6 +24,9 @@ param runnerNamePrefix string = 'verdecora'
 @description('Container image used for the runner job. Override with a hardened custom image when available.')
 param runnerImage string = 'ghcr.io/actions/actions-runner:latest'
 
+@description('Container registry server for the runner image. When set, ACA authenticates with the runner managed identity.')
+param runnerRegistryServer string = ''
+
 @description('ACA managed environment name for runner jobs.')
 param runnerEnvironmentName string = 'acae-runners-${environment}'
 
@@ -170,6 +173,14 @@ resource runnerJob 'Microsoft.App/jobs@2025-01-01' = {
       triggerType: 'Event'
       replicaTimeout: replicaTimeout
       replicaRetryLimit: replicaRetryLimit
+      registries: empty(runnerRegistryServer)
+        ? []
+        : [
+            {
+              server: runnerRegistryServer
+              identity: runnerIdentity.id
+            }
+          ]
       secrets: [
         {
           name: 'github-pat'
