@@ -20,3 +20,11 @@
 - Added `src/upload_web/models/upload.py` and `src/upload_web/services/upload_session.py` for in-memory upload sessions plus one-hour SAS issuance. For local/dev without `STORAGE_ACCOUNT_URL`, the service returns a deterministic mock SAS token.
 - Added `POST /api/sessions` and `GET /api/sessions/{session_id}` under `src/upload_web/routes/api.py`, guarded by shared Easy Auth dependencies.
 - Added unit coverage for template rendering and upload session creation/retrieval, including mocked Azure SAS generation.
+
+### 2026-05-07 — Orchestrator E2E integration + Sprint 0 closure
+- Created `tests/integration/test_orchestrator.py` with 3 passing integration tests: orchestrator health, OCR blob → extract → classify pipeline, Event Grid message routing via Service Bus.
+- Fixed OCR blob analysis handler: now correctly parses event payload and triggers extraction.
+- Fixed queue handler: Event Grid messages routed through Service Bus correctly consumed by orchestrator.
+- Validated WorkflowBuilder pattern with deterministic routing (no HandoffBuilder overhead needed at A1/A2 stage).
+- **Team decision:** Orchestrator pattern locked. PR #165 merged; ready for Sprint 1 agent expansion (A3–A6).
+- **Team context:** Dallas Event Grid integration complete (PR #167). Bishop A1/A2 agents validated. Store catalog + detector unified in PR #129. All Sprint 0 dependencies clear for Sprint 1 agent development.
