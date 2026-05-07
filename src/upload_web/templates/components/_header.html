@@ -1,7 +1,7 @@
 <header class="bg-[var(--vc-nav-dark)] text-white shadow-sm">
   <div class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
     <a href="{{ url_for('dashboard') if current_user else url_for('index') }}" class="flex items-center gap-3" aria-label="Inicio Verdecora Upload Web">
-      <img src="{{ url_for('static', path='img/verdecora-logo.jpg') }}" alt="Verdecora" class="h-10 w-auto sm:h-12">
+      <img src="/static/img/verdecora-logo.jpg" alt="Verdecora" class="h-10 w-auto sm:h-12">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.28em] text-white/70">Upload Web</p>
         <p class="text-sm font-semibold">Recepción de albaranes</p>
