@@ -48,3 +48,8 @@
 - The upload page must create an `UploadSession` before the user selects files; `pages/upload.html` and the dropzone/button HTMX attributes depend on a concrete `session_id` and break when it renders empty.
 - The browser upload client must follow the backend contract exactly: request SAS with `POST /api/sessions/{session_id}/sas?filename=...`, use `upload_url` from the response, and register metadata with `mime_type`.
 - The analyze CTA should stay disabled until at least one file has finished SAS upload + backend registration, and the upload template must include the `#preflight-loading` HTMX indicator referenced by the button.
+
+### 2026-05-08T00:23:20.028+02:00 — Upload Web relative Front Door URLs
+- Upload Web templates must use literal relative paths for internal navigation/HTMX (`/dashboard`, `/upload`, `/mis-albaranes`, `/upload/{session_id}/status`, etc.); `url_for()` in Jinja can emit the ACA hostname and break Front Door cookie scope.
+- The only logout handler should be the auth route that clears the upload session cookie and redirects to `/.auth/logout?post_logout_redirect_uri=/`; placeholder `/logout` redirects are not acceptable behind Front Door.
+- `src/upload_web/static/js/upload.js` already follows the required pattern: all browser API calls stay relative under `/api/sessions/...`, so Front Door compatibility there is a verification point, not a new code path.

@@ -162,11 +162,6 @@ async def my_uploads_partial(current_user: CurrentUser) -> dict[str, object]:
     }
 
 
-@router.get("/logout", include_in_schema=False, name="logout_placeholder")
-async def logout_placeholder() -> RedirectResponse:
-    return RedirectResponse(url="/", status_code=307)
-
-
 @router.get("/upload/{session_id}/status", response_class=HTMLResponse, name="upload_status")
 async def upload_status(request: Request, session_id: str, current_user: CurrentUser) -> HTMLResponse:
     """Show processing status with HTMX auto-refresh."""
