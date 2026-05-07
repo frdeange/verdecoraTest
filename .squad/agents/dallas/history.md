@@ -22,4 +22,5 @@
 - For private Service Bus namespaces, Event Grid delivery required trustedServiceAccessEnabled=true plus Azure Service Bus Data Sender on the queue for the system topic managed identity.
 - Azure CLI az eventgrid event-subscription create rejected managed-identity delivery for this system topic, so the working path was ARM REST with deliveryWithResourceIdentity against API version 2024-06-01-preview.
 - End-to-end smoke test succeeded: uploaded a PDF to albaranes-raw and observed albaran-incoming active message count increase from 0 to 1. Temporary Storage public access/CIDR allowlist and Storage Blob Data Contributor were granted only for the smoke test and then reverted.
-
+- Completed issue #171 ACR rollback in IaC + runtime: `acralbaranesdev` moved from Premium/private to Standard/public, `buildpool-dev` agent pool was removed, and the ACR private endpoint / `privatelink.azurecr.io` DNS assets were deleted.
+- Updated `build-deploy.yml` so all five `az acr build` invocations use the registry directly without `--agent-pool`; Container Apps keep pulling through managed identity + `AcrPull`.

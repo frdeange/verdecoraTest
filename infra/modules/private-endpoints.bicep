@@ -24,9 +24,6 @@ param keyVaultResourceId string = ''
 @description('Service Bus namespace resource id.')
 param serviceBusResourceId string = ''
 
-@description('Azure Container Registry resource id.')
-param acrResourceId string = ''
-
 @description('Azure AI Foundry resource id.')
 param aiServicesResourceId string = ''
 
@@ -76,12 +73,6 @@ resource serviceBusDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (
   tags: tags
 }
 
-resource acrDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (!empty(acrResourceId)) {
-  name: 'privatelink.azurecr.io'
-  location: 'global'
-  tags: tags
-}
-
 resource cognitiveServicesDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (!empty(aiServicesResourceId) || !empty(documentIntelligenceResourceId)) {
   name: 'privatelink.cognitiveservices.azure.com'
   location: 'global'
@@ -126,17 +117,6 @@ resource keyVaultDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@
 
 resource serviceBusDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (!empty(serviceBusResourceId)) {
   name: '${serviceBusDnsZone.name}/${virtualNetworkName}-link'
-  location: 'global'
-  properties: {
-    virtualNetwork: {
-      id: vnet.id
-    }
-    registrationEnabled: false
-  }
-}
-
-resource acrDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (!empty(acrResourceId)) {
-  name: '${acrDnsZone.name}/${virtualNetworkName}-link'
   location: 'global'
   properties: {
     virtualNetwork: {
@@ -299,43 +279,6 @@ resource serviceBusDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZo
         name: 'servicebus-namespace'
         properties: {
           privateDnsZoneId: serviceBusDnsZone.id
-        }
-      }
-    ]
-  }
-}
-
-resource acrPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-04-01' = if (!empty(acrResourceId)) {
-  name: 'pe-acr-${environment}'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: privateEndpointSubnetResourceId
-    }
-    privateLinkServiceConnections: [
-      {
-        name: 'acr-registry'
-        properties: {
-          privateLinkServiceId: acrResourceId
-          groupIds: [
-            'registry'
-          ]
-        }
-      }
-    ]
-  }
-}
-
-resource acrDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-04-01' = if (!empty(acrResourceId)) {
-  parent: acrPrivateEndpoint
-  name: 'default'
-  properties: {
-    privateDnsZoneConfigs: [
-      {
-        name: 'acr-registry'
-        properties: {
-          privateDnsZoneId: acrDnsZone.id
         }
       }
     ]
