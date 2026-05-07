@@ -26,15 +26,20 @@ from .prompts import (
 )
 
 ToolRegistry = Mapping[str, Sequence[Any]]
+DEFAULT_GPT5_MAX_TOKENS = 1200
 
 
 def _load_foundry_chat_client() -> type[Any]:
-    module = importlib.import_module("agent_framework_foundry")
+    module = importlib.import_module("agent_framework.foundry")
     return module.FoundryChatClient
 
 
 def _resolve_tool_names(tools: Sequence[Any]) -> tuple[str, ...]:
     return tuple(getattr(tool, "name", str(tool)) for tool in tools)
+
+
+def _default_options(response_format: type[Any]) -> dict[str, Any]:
+    return {"response_format": response_format, "max_tokens": DEFAULT_GPT5_MAX_TOKENS}
 
 
 def create_clients(project_endpoint: str, credential: Any) -> tuple[Any, Any]:
@@ -76,55 +81,55 @@ def create_agents(
             gpt5_mini,
             name="Triage",
             instructions=build_triage_instructions(),
-            default_options={"response_format": TriageResult},
+            default_options=_default_options(TriageResult),
         ),
         "extractor": Agent(
             gpt5,
             name="Extractor",
             instructions=build_extractor_instructions(_resolve_tool_names(extractor_tools)),
-            default_options={"response_format": AlbaranExtraction},
+            default_options=_default_options(AlbaranExtraction),
             tools=extractor_tools,
         ),
         "coherence": Agent(
             gpt5_mini,
             name="Coherence",
             instructions=build_coherence_instructions(_resolve_tool_names(coherence_tools)),
-            default_options={"response_format": CoherenceCheckResult},
+            default_options=_default_options(CoherenceCheckResult),
             tools=coherence_tools,
         ),
         "validator": Agent(
             gpt5_mini,
             name="Validator",
             instructions=build_validator_instructions(_resolve_tool_names(validator_tools)),
-            default_options={"response_format": ValidationResult},
+            default_options=_default_options(ValidationResult),
             tools=validator_tools,
         ),
         "inventory": Agent(
             gpt5_mini,
             name="Inventory",
             instructions=build_inventory_instructions(_resolve_tool_names(inventory_tools)),
-            default_options={"response_format": PostingResult},
+            default_options=_default_options(PostingResult),
             tools=inventory_tools,
         ),
         "communication": Agent(
             gpt5_mini,
             name="Communication",
             instructions=build_communication_instructions(),
-            default_options={"response_format": CommunicationSummary},
+            default_options=_default_options(CommunicationSummary),
             tools=communication_tools,
         ),
         "reconciliation": Agent(
-            chat_client=gpt5_mini,
+            gpt5_mini,
             name="Reconciliation",
             instructions=build_reconciliation_instructions(_resolve_tool_names(reconciliation_tools)),
-            response_format=ReconciliationReport,
+            default_options=_default_options(ReconciliationReport),
             tools=reconciliation_tools,
         ),
         "learning": Agent(
-            chat_client=gpt5_mini,
+            gpt5_mini,
             name="Learning",
             instructions=build_learning_instructions(_resolve_tool_names(learning_tools)),
-            response_format=LearningReport,
+            default_options=_default_options(LearningReport),
             tools=learning_tools,
         ),
     }

@@ -20,3 +20,9 @@
 - Added `src/upload_web/models/upload.py` and `src/upload_web/services/upload_session.py` for in-memory upload sessions plus one-hour SAS issuance. For local/dev without `STORAGE_ACCOUNT_URL`, the service returns a deterministic mock SAS token.
 - Added `POST /api/sessions` and `GET /api/sessions/{session_id}` under `src/upload_web/routes/api.py`, guarded by shared Easy Auth dependencies.
 - Added unit coverage for template rendering and upload session creation/retrieval, including mocked Azure SAS generation.
+
+### 2026-05-07 — Orchestrator E2E coverage + private blob OCR fix
+- Fixed `src/agents/factory.py` to use the current Agent Framework import path/signature, and set GPT-5-safe default generation limits through `max_tokens` so the SDK emits `max_completion_tokens`.
+- Fixed orchestrator queue parsing so it can deserialize raw Event Grid `BlobCreated` messages directly, not only Flow 0 forwarded extraction payloads.
+- Fixed orchestrator OCR to analyze downloaded blob bytes (base64) instead of raw blob URLs, which is required for private Storage accounts.
+- Added `tests/integration/test_orchestrator_e2e.py` for a live Azure path (Storage + Service Bus + Doc Intelligence + GPT pipeline) gated by `RUN_LIVE_AZURE_TESTS=1`; from this runner the live Service Bus test is skipped because the namespace blocks this IP at the data plane.

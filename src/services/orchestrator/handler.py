@@ -4,6 +4,7 @@ import asyncio
 import json
 from typing import Any
 
+from src.services.flow0_dedup.dedup_handler import parse_event_grid_payload
 from src.services.flow0_dedup.models import ForwardedExtractionMessage
 
 from .orchestration import OrchestrationError, OrchestrationRequest, OrchestrationResult, OrchestratorService
@@ -13,33 +14,66 @@ class QueueMessageError(ValueError):
     """Raised when a Service Bus payload cannot be converted into an orchestration request."""
 
 
-def deserialize_message(message: Any) -> OrchestrationRequest:
+def _extract_store_id(blob_path: str) -> str:
+    segments = [segment for segment in blob_path.split("/") if segment]
+    return segments[3] if len(segments) >= 4 else "unknown-store"
+
+
+def _request_from_event_grid_payload(payload: Any) -> OrchestrationRequest:
+    event = parse_event_grid_payload(payload)
+    metadata = {
+        "blob_path": event.blob_path,
+        "blob_name": event.blob_name,
+        "blob_etag": event.data.eTag,
+        "store_id": _extract_store_id(event.blob_path),
+        "event_id": event.id,
+        "event_type": event.eventType,
+        "event_time": event.eventTime.isoformat(),
+        "content_type": event.data.contentType,
+        "content_length": event.data.contentLength,
+        "blob_metadata": event.data.metadata,
+        "subject": event.subject,
+    }
+    metadata.update({key: value for key, value in event.data.metadata.items() if key not in metadata})
+    return OrchestrationRequest(
+        processing_id=event.id,
+        blob_url=event.blob_url,
+        metadata=metadata,
+    )
+
+
+def _extract_message_body(message: Any) -> Any:
     if hasattr(message, "body"):
-        body = b"".join(bytes(part) for part in message.body)
-    else:
-        body = message
+        return b"".join(bytes(part) for part in message.body)
+    return message
 
+
+def _deserialize_payload(body: Any) -> Any:
     if isinstance(body, bytes):
-        payload: Any = json.loads(body.decode("utf-8"))
-    elif isinstance(body, str):
-        payload = json.loads(body)
-    else:
-        payload = body
+        return json.loads(body.decode("utf-8"))
+    if isinstance(body, str):
+        return json.loads(body)
+    return body
 
-    if isinstance(payload, dict) and "albaran_id" in payload:
+
+def _try_event_grid_request(payload: Any) -> OrchestrationRequest | None:
+    if isinstance(payload, list):
         try:
-            forwarded = ForwardedExtractionMessage.model_validate(payload)
-        except Exception as exc:  # pragma: no cover - defensive parsing path.
-            raise QueueMessageError("Invalid Service Bus payload for orchestration.") from exc
-    else:
-        try:
-            return OrchestrationRequest.model_validate(payload)
+            return _request_from_event_grid_payload(payload)
         except Exception:
-            try:
-                forwarded = ForwardedExtractionMessage.model_validate(payload)
-            except Exception as exc:  # pragma: no cover - defensive parsing path.
-                raise QueueMessageError("Invalid Service Bus payload for orchestration.") from exc
+            return None
 
+    if isinstance(payload, dict) and {"id", "eventType", "data"}.issubset(payload):
+        try:
+            return _request_from_event_grid_payload(payload)
+        except Exception:
+            return None
+
+    return None
+
+
+def _request_from_forwarded_message(payload: Any) -> OrchestrationRequest:
+    forwarded = ForwardedExtractionMessage.model_validate(payload)
     metadata = dict(forwarded.metadata)
     metadata.update(
         {
@@ -57,6 +91,27 @@ def deserialize_message(message: Any) -> OrchestrationRequest:
         blob_url=forwarded.blob_url,
         metadata=metadata,
     )
+
+
+def deserialize_message(message: Any) -> OrchestrationRequest:
+    payload = _deserialize_payload(_extract_message_body(message))
+
+    if event_grid_request := _try_event_grid_request(payload):
+        return event_grid_request
+
+    if isinstance(payload, dict) and "albaran_id" in payload:
+        try:
+            return _request_from_forwarded_message(payload)
+        except Exception as exc:  # pragma: no cover - defensive parsing path.
+            raise QueueMessageError("Invalid Service Bus payload for orchestration.") from exc
+
+    try:
+        return OrchestrationRequest.model_validate(payload)
+    except Exception:
+        try:
+            return _request_from_forwarded_message(payload)
+        except Exception as exc:  # pragma: no cover - defensive parsing path.
+            raise QueueMessageError("Invalid Service Bus payload for orchestration.") from exc
 
 
 async def handle_message(
