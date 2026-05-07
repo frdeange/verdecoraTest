@@ -227,6 +227,8 @@ module runners './runners.bicep' = {
     keyVaultName: keyVault.outputs.keyVaultName
     githubPatSecretUri: keyVault.outputs.githubPatSecretUri
     repoUrl: 'https://github.com/frdeange/verdecoraTest'
+    runnerImage: '${acr.outputs.acrLoginServer}/github-runner-azure-cli:latest'
+    runnerRegistryServer: acr.outputs.acrLoginServer
     acrResourceId: acr.outputs.acrId
     resourceGroupId: rg.outputs.resourceGroupId
   }

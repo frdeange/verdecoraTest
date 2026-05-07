@@ -89,5 +89,6 @@ Phase 0 intentionally keeps the Key Vault reachable so the runner job can resolv
 ## Operational notes
 
 - The ACA runner pattern is viable for Bicep, ARM, `az`, `azd`, Python tests, and private validation work.
+- The runner image must include Azure CLI because `azure/login@v2` and the deploy scripts shell out to `az`; the post-bootstrap/main deployment now swaps the public bootstrap image for the private `github-runner-azure-cli` image in ACR.
 - Do **not** rely on ACA runners for Docker-heavy builds, Docker Compose, service containers, or `kind`.
 - If the team needs container image builds later, prefer `az acr build` / ACR Tasks or a separate VM-based runner pool.
