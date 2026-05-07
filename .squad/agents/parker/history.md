@@ -33,3 +33,8 @@
 - Fixed orchestrator queue parsing so it can deserialize raw Event Grid `BlobCreated` messages directly, not only Flow 0 forwarded extraction payloads.
 - Fixed orchestrator OCR to analyze downloaded blob bytes (base64) instead of raw blob URLs, which is required for private Storage accounts.
 - Added `tests/integration/test_orchestrator_e2e.py` for a live Azure path (Storage + Service Bus + Doc Intelligence + GPT pipeline) gated by `RUN_LIVE_AZURE_TESTS=1`; from this runner the live Service Bus test is skipped because the namespace blocks this IP at the data plane.
+
+### 2026-05-07 — Upload Web public landing + dashboard split
+- Upload Web now supports a public landing flow: `/` and `/login` are middleware-exempt exact paths, render a branded Microsoft sign-in page, and redirect authenticated users to `/dashboard`.
+- The authenticated home screen moved from `/` to `/dashboard`; templates that offer a “volver” or header-home action should target `/dashboard` for signed-in users and `/` for anonymous users.
+- Upload Web coverage is currently validated with `python -m pytest tests/unit/test_jinja_templates.py tests/unit/test_session_security.py tests/unit/test_upload_web_scaffold.py tests/unit/test_upload_backend.py tests/unit/test_upload_flow.py tests/unit/test_upload_session.py tests/e2e/test_upload_web_smoke.py tests/e2e/test_upload_e2e.py -q`.

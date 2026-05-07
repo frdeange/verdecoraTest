@@ -5,12 +5,14 @@ from datetime import datetime
 import jwt
 import pytest
 from fastapi.testclient import TestClient
+from itsdangerous import URLSafeSerializer
 
 from src.upload_web.app import create_app
 from src.upload_web.config import get_settings
 from src.upload_web.services import upload_session
 
 TEST_SECRET = "test-secret-with-at-least-thirty-two-bytes"
+SIGNING_KEY = "dev-only-upload-web-session-signing-key-change-me"
 
 
 @pytest.fixture(autouse=True)
@@ -33,6 +35,17 @@ def _auth_headers(name: str = "Parker Store") -> dict[str, str]:
         algorithm="HS256",
     )
     return {"X-MS-TOKEN-AAD-ID-TOKEN": token}
+
+
+def _establish_session(client: TestClient, name: str = "Parker Store") -> dict[str, str]:
+    headers = _auth_headers(name)
+    client.get("/", headers=headers)
+    cookie_value = client.cookies.get("upload_web_session", "")
+    if cookie_value:
+        serializer = URLSafeSerializer(SIGNING_KEY, salt="upload-web-session")
+        payload = serializer.loads(cookie_value)
+        headers["X-CSRF-Token"] = payload.get("csrf_token", "")
+    return headers
 
 
 @pytest.mark.unit
@@ -100,12 +113,13 @@ def test_api_creates_and_reads_upload_session(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.delenv("BLOB_ACCOUNT", raising=False)
     app = create_app()
 
-    with TestClient(app) as client:
-        create_response = client.post("/api/sessions", headers=_auth_headers())
+    with TestClient(app, base_url="https://testserver") as client:
+        headers = _establish_session(client)
+        create_response = client.post("/api/sessions", headers=headers)
         assert create_response.status_code == 201
         created_session = create_response.json()
 
-        read_response = client.get(f"/api/sessions/{created_session['session_id']}", headers=_auth_headers())
+        read_response = client.get(f"/api/sessions/{created_session['session_id']}", headers=headers)
 
     assert read_response.status_code == 200
     assert read_response.json()["session_id"] == created_session["session_id"]

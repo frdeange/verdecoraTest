@@ -24,7 +24,7 @@ def _auth_headers(name: str = "Parker Store") -> dict[str, str]:
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("path", ["/", "/upload", "/mis-albaranes"])
+@pytest.mark.parametrize("path", ["/dashboard", "/upload", "/mis-albaranes"])
 def test_templates_render_without_error(path: str) -> None:
     app = create_app()
 
@@ -41,7 +41,7 @@ def test_home_page_contains_expected_elements() -> None:
     app = create_app()
 
     with TestClient(app) as client:
-        response = client.get("/", headers=_auth_headers("Parker Dev"))
+        response = client.get("/dashboard", headers=_auth_headers("Parker Dev"))
 
     assert response.status_code == 200
     assert "Hola, Parker Dev" in response.text
@@ -49,3 +49,16 @@ def test_home_page_contains_expected_elements() -> None:
     assert "Mis albaranes" in response.text
     assert "tailwindcss.com" in response.text
     assert "htmx.org" in response.text
+
+
+@pytest.mark.unit
+def test_public_landing_page_contains_login_cta() -> None:
+    app = create_app()
+
+    with TestClient(app) as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    assert "Sistema de Gestión de Albaranes" in response.text
+    assert "Iniciar sesión con Microsoft" in response.text
+    assert "/.auth/login/aad?post_login_redirect_uri=%2Fdashboard" in response.text
