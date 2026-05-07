@@ -8,8 +8,8 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from src.shared.auth.dependencies import get_current_user
 from src.shared.auth.entra import AuthenticatedUser
+from src.upload_web.middleware.session_security import get_upload_current_user
 from src.upload_web.models.file_metadata import FileMetadata
 from src.upload_web.models.preflight import PreflightResult
 from src.upload_web.models.upload import UploadFile, UploadSession
@@ -19,7 +19,7 @@ from src.upload_web.services.preflight import run_preflight
 from src.upload_web.services.upload_session import create_upload_session, get_upload_session
 
 router = APIRouter(prefix="/sessions", tags=["upload-web-api"])
-CurrentUser = Annotated[AuthenticatedUser, Depends(get_current_user)]
+CurrentUser = Annotated[AuthenticatedUser, Depends(get_upload_current_user)]
 
 logger = logging.getLogger(__name__)
 
