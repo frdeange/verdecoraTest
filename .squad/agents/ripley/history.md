@@ -53,3 +53,19 @@
 - **New decisions: D‑R‑019 (rewritten), D‑R‑020 through D‑R‑025.** D‑R‑003 also rewritten ("Service Bus + Cosmos, no Durable"). D‑R‑004 closed-accepted (ACS Email).
 - **New open items: O‑11 (Triage rule-set v1, Lambert), O‑12 (email-template inventory), O‑13 (Service Bus 72h scheduled-message TTL on Standard, Brett), O‑14 (MAF HandOff persistence backing store, Ash), O‑15 (A7 cron mechanism, Brett), O‑16 (ACS Email private-link / NSP, Brett+Newt).** O‑1 reframed (was WorkIQ feasibility, now ACS Email feasibility). O‑5 reframed (was Foundry prompt-agent GA, now Azure OpenAI / Foundry private-net GA — much lower risk now that we don't depend on Foundry-hosted agents). O‑10 closed (no longer need Power Automate fallback).
 - **Files:** `prerequisites/analysis/ripley-agentic-redesign.md` (new, full justification), `docs/architecture/architecture-decision-record.md` (rewritten as v3, all Durable/WorkIQ refs purged or marked as "what changed"). Diagram now shows MAF in-process inside an ACA `agentic-orchestrator` container running A1→A2→A3→A4→A5, with A6 + `hitl-webform` as separate ACA apps reacting to topic events.
+
+### 2026-05-07 — PR batch review learnings (#165, #166, #167)
+- GitHub blocks `frdeange` from formally approving PRs authored by `frdeange`; the corporate EMU identity also could not review this repo, so architectural approval sometimes has to be recorded out-of-band even when merge proceeds.
+- Parker's orchestrator work is directionally correct: private blob OCR must run on downloaded bytes, not source URLs, and raw Event Grid `BlobCreated` envelopes can be deserialized directly into the orchestrator path.
+- Bishop's live OCR coverage matches our conventions: `DefaultAzureCredential`, GPT-5-safe request options (`max_completion_tokens`, no `temperature`), and network-gated integration tests under `tests/integration/`.
+- Dallas's runtime notes exposed an important ops discipline point: when live Azure setup diverges from IaC/default naming (for example queue targets), the divergence must be called out explicitly or reconciled quickly to avoid documentation drift.
+## Decisions (Team Integration — 2026-05-07)
+
+### 2026-05-07 — Merged from decisions/inbox/ripley-pr-review-batch.md
+- **PR #165 (Orchestrator E2E):** Approved. Fixes private-blob OCR by sending bytes instead of URLs. Updates agent construction to current MAF signature. Adds gated live integration test. Caveat: blob-path-to-store_id parsing should be hardened.
+- **PR #166 (A1+A2 OCR tests):** Approved. Uses DefaultAzureCredential, GPT-5-safe options, network-gated integration tests. No caveats beyond normal live-test portability.
+- **PR #167 (Event Grid → Service Bus):** Approved. No secrets introduced. Managed-identity architecture correct. Caveat: documented queue name (albaran-incoming) diverges from IaC default (extraccion-queue); reconciliation follow-up needed.
+
+**Follow-ups (no blockers):**
+- Harden blob-path parsing for raw Event Grid albaránes
+- Reconcile queue name drift between Event Grid documentation and IaC defaults

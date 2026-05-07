@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import hashlib
 import json
+import os
 from typing import Any
 from urllib.parse import urlparse
 
@@ -184,10 +186,14 @@ class OrchestratorService:
         finally:
             await blob_client.close()
 
-    async def analyze_document(self, blob_url: str) -> dict[str, Any]:
+    async def analyze_document(self, blob_url: str, *, document_bytes: bytes | None = None) -> dict[str, Any]:
+        os.environ.setdefault("DOCINTELL_ENDPOINT", self.config.docintell_endpoint)
         from src.mcp.content_understanding_mcp.server import run_analysis, to_key_value_pairs, to_tables
 
-        analysis_result = await asyncio.to_thread(run_analysis, blob_url, "prebuilt-layout")
+        analysis_source = (
+            base64.b64encode(document_bytes).decode("ascii") if document_bytes is not None else blob_url
+        )
+        analysis_result = await asyncio.to_thread(run_analysis, analysis_source, "prebuilt-layout")
         return {
             "content": analysis_result.content,
             "page_count": len(analysis_result.pages or []),
@@ -264,7 +270,7 @@ class OrchestratorService:
         )
 
     def _resolve_status(self, routing_decision: str) -> str:
-        if routing_decision in {"posted", "approve"}:
+        if routing_decision in {"posted", "approve", "extract"}:
             return "completed"
         if routing_decision == "hitl_review":
             return "hitl_pending"
@@ -294,7 +300,7 @@ class OrchestratorService:
 
         try:
             blob_bytes = await self.download_blob(normalized_request.blob_url)
-            ocr_payload = await self.analyze_document(normalized_request.blob_url)
+            ocr_payload = await self.analyze_document(normalized_request.blob_url, document_bytes=blob_bytes)
             pipeline_result = await self.pipeline.run(
                 self._build_pipeline_input(
                     blob_url=normalized_request.blob_url,

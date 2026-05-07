@@ -689,6 +689,58 @@ Good parts to preserve: `src/models/store.py` canonical, `data/stores/verdecora-
 
 **Why:** The requested smoke suite explicitly expects unauthenticated access to `/` to be rejected and `/api/sessions` to require auth. The existing scaffold had no session route and rendered `/` anonymously, so the minimal product change keeps smoke coverage aligned with the acceptance criteria.
 
+### 2026-05-07: Ripley — PR review batch (#165, #166, #167)
+**Scope:** 3 PRs covering orchestrator E2E, A1/A2 OCR tests, Event Grid trigger setup.
+**Outcome:** All 3 approved and merged. GitHub formal approvals blocked due to identity restrictions (author = personal identity frdeange, corporate identity has EMU restriction).
+
+**PR #165 — Orchestrator E2E integration test + fixes** → **MERGED (commit: squashed)**
+- Why: Fixes private-storage OCR path by sending document bytes instead of raw blob URLs. Updates agent construction to current Agent Framework signature. Adds gated live integration test.
+- Caveat: New raw Event Grid path inherits blob-path-to-`store_id` parsing assumption; hardening follow-up needed.
+
+**PR #166 — A1 + A2 real OCR tests** → **MERGED (commit: squashed)**
+- Why: Uses `DefaultAzureCredential`, avoids API keys. Uses `max_completion_tokens` without `temperature`. Gated behind `RUN_AGENT_REAL_INTEGRATION=1`.
+- Caveat: None beyond normal live-test portability.
+
+**PR #167 — Event Grid → Service Bus trigger setup** → **MERGED (commit: squashed)**
+- Why: No secrets introduced. Managed-identity architecture correctly aligned. Runtime notes document Event Grid/Service Bus flow.
+- Caveat: Documented runtime queue name (`albaran-incoming`) does not match IaC default (`extraccion-queue`); ops documentation reconciliation follow-up needed.
+
+**Follow-ups (no blockers):**
+- Harden blob-path-to-`store_id` parsing for raw Event Grid events
+- Reconcile queue name drift between Event Grid → Service Bus documentation and IaC defaults
+
+### 2026-05-07: Parker — Orchestrator E2E decisions
+**Scope:** Updated orchestrator OCR flow, queue deserialization, agent construction, integration test gating.
+**Outcome:** All implementation changes complete; live test gated by infrastructure availability.
+
+**Key changes:**
+- Orchestrator OCR flow now analyzes downloaded blob bytes via Document Intelligence base64 input instead of passing raw blob URL. Avoids failures when storage account is private.
+- Extended orchestrator queue deserialization to accept raw Event Grid BlobCreated payloads in addition to Flow 0 forwarded messages. Maps Event Grid metadata into `OrchestrationRequest` with stable `processing_id` from event id.
+- Normalized agent construction for Reconciliation/Learning agents to match current Agent Framework `Agent(...)` signature with GPT-5-safe defaults (`max_tokens` → `max_completion_tokens`).
+- Added live integration test gated by `RUN_LIVE_AZURE_TESTS=1`. On this runner, Service Bus data plane is IP-filtered, so test skips with explicit infrastructure reason instead of failing indistinctly.
+
+### 2026-05-07: Lambert — Security audit (GPS Demo Subscription)
+**Scope:** Azure exposure posture of `rg-verdecoratest-dev` in Sweden Central before E2E.
+**Outcome:** Public surface reduced to Azure Front Door + Upload Web Container App FQDN. Core resources locked down.
+
+**Audit results:**
+| Resource | Type | Status |
+|---|---|---|
+| `verdecora-ais-dev` | Azure AI Services | ✅ `publicNetworkAccess=Disabled`, `networkAcls.defaultAction=Deny` |
+| `verdecora-docintell-dev` | Document Intelligence | ✅ `publicNetworkAccess=Disabled` |
+| `cosmos-albaranes-dev` | Cosmos DB | ✅ `publicNetworkAccess=Disabled`, firewall IP rule removed |
+| `acralbaranesdev` | Azure Container Registry | ✅ `publicNetworkAccess=Disabled` |
+| `kv-albaranes-dev` | Key Vault | ✅ Already `publicNetworkAccess=Disabled`, `defaultAction=Deny` |
+| `sb-albaranes-dev` | Service Bus | ✅ `publicNetworkAccess=Disabled`, `trustedServiceAccessEnabled=true` for Event Grid delivery |
+| `stalbaranesdev` | Storage | ✅ Already `publicNetworkAccess=Disabled`, `defaultAction=Deny` |
+| `afd-verdecora-dev` | Azure Front Door | ⚠️ Public by design (intentional) |
+| `verdecora-upload-web-dev` | Azure Container App | ⚠️ External ingress enabled, public ACA FQDN (unchanged per instruction) |
+
+**Notes:**
+- Document Intelligence resource shape did not expose writable `networkAcls.defaultAction` but is still locked from public ingress.
+- Service Bus keeps trusted Microsoft services enabled for safe Event Grid delivery while public access remains disabled.
+- Upload Web Container App remains directly reachable on ACA hostname. For strict "Front Door + nothing else," next step is ACA ingress restrictions or private ingress + Front Door origin hardening.
+
 ## Governance
 
 - All meaningful changes require team consensus
