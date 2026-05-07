@@ -9,11 +9,9 @@ Requires:
 import os
 import sys
 import uuid
-import time
 
+from azure.cosmos import CosmosClient
 from azure.identity import DefaultAzureCredential
-from azure.cosmos import CosmosClient, PartitionKey, exceptions
-
 
 ENDPOINT = os.getenv(
     "COSMOS_ENDPOINT",
@@ -155,7 +153,7 @@ def main():
         print(f"\n❌ {len(errors)} test(s) failed")
         sys.exit(1)
     else:
-        print(f"\n✅ All tests passed")
+        print("\n✅ All tests passed")
 
 
 if __name__ == "__main__":

@@ -2,23 +2,23 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Header, HTTPException, status
+from fastapi import Header, HTTPException, Request, status
 
-from .entra import AuthenticatedUser, EntraAuthError, build_authenticated_user
+from .entra import (
+    LEGACY_ID_TOKEN_HEADER,
+    AuthenticatedUser,
+    EntraAuthError,
+    build_authenticated_user_from_easy_auth_headers,
+)
 
 
 async def get_current_user(
-    x_ms_token_aad_id_token: Annotated[str | None, Header(alias="X-MS-TOKEN-AAD-ID-TOKEN")] = None,
+    request: Request,
+    _legacy_id_token: Annotated[str | None, Header(alias=LEGACY_ID_TOKEN_HEADER)] = None,
 ) -> AuthenticatedUser:
-    """Return the authenticated Easy Auth user from the Entra ID token header."""
-
-    if x_ms_token_aad_id_token is None or not x_ms_token_aad_id_token.strip():
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing X-MS-TOKEN-AAD-ID-TOKEN header.",
-        )
+    """Return the authenticated Easy Auth user from client principal or legacy token headers."""
 
     try:
-        return build_authenticated_user(x_ms_token_aad_id_token)
+        return build_authenticated_user_from_easy_auth_headers(request.headers)
     except EntraAuthError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc

@@ -11,7 +11,12 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 from itsdangerous import BadSignature, URLSafeSerializer
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from src.shared.auth.entra import AuthenticatedUser, EntraAuthError, build_authenticated_user
+from src.shared.auth.entra import (
+    LEGACY_ID_TOKEN_HEADER,
+    AuthenticatedUser,
+    EntraAuthError,
+    build_authenticated_user_from_easy_auth_headers,
+)
 from src.upload_web.config import UploadWebSettings
 
 SESSION_COOKIE_NAME = "upload_web_session"
@@ -192,22 +197,16 @@ class SessionSecurityMiddleware(BaseHTTPMiddleware):
         resolved_payload: SessionCookiePayload | None = None
         resolved_user: AuthenticatedUser | None = None
 
-        header_token = request.headers.get("X-MS-TOKEN-AAD-ID-TOKEN")
-        if header_token is not None and header_token.strip():
-            try:
-                resolved_user = build_authenticated_user(header_token)
-            except EntraAuthError:
-                resolved_user = None
-            else:
-                token_expiry = _extract_expiry(resolved_user.claims)
-                if token_expiry is not None and now.timestamp() >= token_expiry:
-                    return _apply_security_headers(RedirectResponse(url="/logout?reason=expired", status_code=307))
-                resolved_payload = self._manager.build_payload(
-                    resolved_user,
-                    now,
-                    token_expiry=token_expiry,
-                    existing_payload=existing_payload,
-                )
+        resolved_user, token_expiry = _resolve_authenticated_user(request)
+        if resolved_user is not None:
+            if token_expiry is not None and now.timestamp() >= token_expiry:
+                return _apply_security_headers(RedirectResponse(url="/logout?reason=expired", status_code=307))
+            resolved_payload = self._manager.build_payload(
+                resolved_user,
+                now,
+                token_expiry=token_expiry,
+                existing_payload=existing_payload,
+            )
         elif existing_payload is not None:
             resolved_payload = dict(existing_payload)
             resolved_payload["last_activity"] = int(now.timestamp())
@@ -234,19 +233,17 @@ class SessionSecurityMiddleware(BaseHTTPMiddleware):
 
 async def get_upload_current_user(
     request: Request,
-    x_ms_token_aad_id_token: str | None = Header(default=None, alias="X-MS-TOKEN-AAD-ID-TOKEN"),
+    _legacy_id_token: str | None = Header(default=None, alias=LEGACY_ID_TOKEN_HEADER),
 ) -> AuthenticatedUser:
     user = cast(AuthenticatedUser | None, getattr(request.state, "authenticated_user", None))
     if user is not None:
         return user
 
-    if x_ms_token_aad_id_token is None or not x_ms_token_aad_id_token.strip():
+    resolved_user, _ = _resolve_authenticated_user(request)
+    if resolved_user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication is required.")
 
-    try:
-        return build_authenticated_user(x_ms_token_aad_id_token)
-    except EntraAuthError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+    return resolved_user
 
 
 def security_template_context(request: Request) -> dict[str, Any]:
@@ -282,6 +279,15 @@ def _extract_expiry(claims: dict[str, Any]) -> int | None:
     if isinstance(raw_exp, str) and raw_exp.isdigit():
         return int(raw_exp)
     return None
+
+
+def _resolve_authenticated_user(request: Request) -> tuple[AuthenticatedUser | None, int | None]:
+    try:
+        user = build_authenticated_user_from_easy_auth_headers(request.headers)
+    except EntraAuthError:
+        return None, None
+
+    return user, _extract_expiry(user.claims)
 
 
 def _is_exempt_path(path: str) -> bool:

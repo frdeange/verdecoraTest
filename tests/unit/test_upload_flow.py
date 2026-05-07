@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-import jwt
+import base64
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 from itsdangerous import URLSafeSerializer
@@ -13,20 +15,32 @@ from src.upload_web.services import upload_session
 from src.upload_web.services.blob_sas import generate_upload_sas_url
 from src.upload_web.services.file_validator import validate_file
 
-TEST_SECRET = "test-secret-with-at-least-thirty-two-bytes"
 SIGNING_KEY = "dev-only-upload-web-session-signing-key-change-me"
 
 
-def _jwt_token(oid: str = "oid-flow-001", name: str = "Flow Test User") -> str:
-    return jwt.encode(
-        {"oid": oid, "name": name, "groups": ["verdecora-store-uploaders"], "exp": 9999999999},
-        TEST_SECRET,
-        algorithm="HS256",
-    )
-
-
 def _auth_headers(oid: str = "oid-flow-001", name: str = "Flow Test User") -> dict[str, str]:
-    return {"X-MS-TOKEN-AAD-ID-TOKEN": _jwt_token(oid, name)}
+    principal = {
+        "auth_typ": "aad",
+        "claims": [
+            {
+                "typ": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
+                "val": oid,
+            },
+            {"typ": "name", "val": name},
+            {"typ": "preferred_username", "val": f"{oid}@verdecora.example"},
+            {"typ": "groups", "val": "verdecora-store-uploaders"},
+            {"typ": "exp", "val": "9999999999"},
+        ],
+        "name_typ": "name",
+        "role_typ": "roles",
+    }
+    encoded_principal = base64.b64encode(json.dumps(principal).encode("utf-8")).decode("utf-8")
+    return {
+        "X-MS-CLIENT-PRINCIPAL": encoded_principal,
+        "X-MS-CLIENT-PRINCIPAL-ID": oid,
+        "X-MS-CLIENT-PRINCIPAL-NAME": name,
+        "X-MS-CLIENT-PRINCIPAL-IDP": "aad",
+    }
 
 
 def _establish_session(client: TestClient, oid: str = "oid-flow-001", name: str = "Flow Test User") -> dict[str, str]:

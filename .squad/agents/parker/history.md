@@ -38,3 +38,8 @@
 - Upload Web now supports a public landing flow: `/` and `/login` are middleware-exempt exact paths, render a branded Microsoft sign-in page, and redirect authenticated users to `/dashboard`.
 - The authenticated home screen moved from `/` to `/dashboard`; templates that offer a “volver” or header-home action should target `/dashboard` for signed-in users and `/` for anonymous users.
 - Upload Web coverage is currently validated with `python -m pytest tests/unit/test_jinja_templates.py tests/unit/test_session_security.py tests/unit/test_upload_web_scaffold.py tests/unit/test_upload_backend.py tests/unit/test_upload_flow.py tests/unit/test_upload_session.py tests/e2e/test_upload_web_smoke.py tests/e2e/test_upload_e2e.py -q`.
+
+### 2026-05-07T23:33:42.986+02:00 — Easy Auth principal headers behind Front Door
+- Upload Web and shared API dependencies now treat `X-MS-CLIENT-PRINCIPAL` as the canonical Easy Auth source, with fallback to `X-MS-CLIENT-PRINCIPAL-ID` + `X-MS-CLIENT-PRINCIPAL-NAME`, and only then the legacy `X-MS-TOKEN-AAD-ID-TOKEN`.
+- The Easy Auth client principal is base64 JSON; normalized claims should map the Entra `nameidentifier/objectidentifier` variants into `oid`, preserve `preferred_username`/email/name, and fold repeated role/group claims into `groups`.
+- Auth regression coverage now uses client-principal headers across Upload Web unit/e2e/load tests, while keeping one explicit legacy ID-token test for backward compatibility.

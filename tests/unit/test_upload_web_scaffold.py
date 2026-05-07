@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-import jwt
+import base64
+import json
+
 import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 
 from src.shared.auth.dependencies import get_current_user
@@ -38,18 +41,36 @@ def test_upload_web_settings_load_from_environment(monkeypatch: pytest.MonkeyPat
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_entra_auth_dependency_extracts_user_from_token() -> None:
-    token = jwt.encode(
+    principal = {
+        "auth_typ": "aad",
+        "claims": [
+            {
+                "typ": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
+                "val": "oid-123",
+            },
+            {"typ": "name", "val": "Alice Upload"},
+            {"typ": "preferred_username", "val": "alice.upload@verdecora.example"},
+            {"typ": "groups", "val": "verdecora-store-uploaders"},
+            {"typ": "groups", "val": "ops"},
+            {"typ": "exp", "val": "9999999999"},
+        ],
+        "name_typ": "name",
+        "role_typ": "roles",
+    }
+    encoded_principal = base64.b64encode(json.dumps(principal).encode("utf-8")).decode("utf-8")
+    request = Request(
         {
-            "oid": "oid-123",
-            "name": "Alice Upload",
-            "groups": ["verdecora-store-uploaders", "ops"],
-            "exp": 9999999999,
-        },
-        "test-secret-with-at-least-thirty-two-bytes",
-        algorithm="HS256",
+            "type": "http",
+            "headers": [
+                (b"x-ms-client-principal", encoded_principal.encode("utf-8")),
+                (b"x-ms-client-principal-id", b"oid-123"),
+                (b"x-ms-client-principal-name", b"Alice Upload"),
+                (b"x-ms-client-principal-idp", b"aad"),
+            ],
+        }
     )
 
-    user = await get_current_user(x_ms_token_aad_id_token=token)
+    user = await get_current_user(request)
 
     assert user.oid == "oid-123"
     assert user.name == "Alice Upload"
