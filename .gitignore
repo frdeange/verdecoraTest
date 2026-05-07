@@ -1,7 +1,55 @@
-# Squad: ignore runtime state (logs, inbox, sessions)
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Testing artifacts
+.coverage
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Temp files
+.ripley-pr*.diff
+.worktrees/
+
+# Copilot skills (local)
+.copilot/skills/
+
+# Squad: runtime state (logs, inbox, sessions)
 .squad/orchestration-log/
 .squad/log/
 .squad/decisions/inbox/
 .squad/sessions/
-# Squad: SubSquad activation file (local to this machine)
 .squad-workstream
+
+# Squad: stale root-level files (templates live in .squad/templates/)
+.squad/artifacts/
+.squad/casting-history.json
+.squad/casting-policy.json
+.squad/casting-registry.json
+.squad/charter.md
+.squad/constraint-tracking.md
+.squad/copilot-instructions.md
+.squad/fact-checker-charter.md
+.squad/history.md
+.squad/issue-lifecycle.md
+.squad/mcp-config.md
+.squad/multi-agent-format.md
+.squad/orchestration-log.md
+.squad/plugin-marketplace.md
+.squad/raw-agent-output.md
+.squad/roster.md
+.squad/run-output.md
+.squad/scribe-charter.md
+.squad/skill.md
+
+# Squad workflows (keep files, don't sync yet)
+.github/workflows/squad-ci.yml
+.github/workflows/squad-docs.yml
+.github/workflows/squad-insider-release.yml
+.github/workflows/squad-label-enforce.yml
+.github/workflows/squad-preview.yml
+.github/workflows/squad-promote.yml
+.github/workflows/squad-release.yml
