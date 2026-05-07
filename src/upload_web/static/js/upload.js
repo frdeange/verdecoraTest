@@ -19,6 +19,10 @@
     "image/tiff",
   ];
   const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+  const UPLOAD_STATE_PENDING = "pending";
+  const UPLOAD_STATE_UPLOADING = "uploading";
+  const UPLOAD_STATE_COMPLETE = "complete";
+  const UPLOAD_STATE_ERROR = "error";
 
   /**
    * Return CSRF token from <meta> tag.
@@ -57,6 +61,8 @@
     const div = document.createElement("div");
     div.className = "file-item";
     div.dataset.tempId = tempId;
+    div.dataset.uploadState = UPLOAD_STATE_PENDING;
+    div.draggable = false;
 
     const isImage = file.type.startsWith("image/");
     let iconHtml;
@@ -88,6 +94,16 @@
     return div;
   }
 
+  function bindDragStart(item) {
+    if (item.dataset.dragBound === "true") {
+      return;
+    }
+    item.addEventListener("dragstart", function (e) {
+      e.dataTransfer.setData("text/plain", item.dataset.fileId);
+    });
+    item.dataset.dragBound = "true";
+  }
+
   /**
    * Update the visible file count badge.
    */
@@ -97,12 +113,35 @@
     const nextBtn = document.getElementById("btn-next-preflight");
     if (!list) return;
 
-    const count = list.querySelectorAll(".file-item").length;
+    const items = Array.from(list.querySelectorAll(".file-item"));
+    const count = items.length;
+    const completedCount = items.filter(function (item) {
+      return item.dataset.uploadState === UPLOAD_STATE_COMPLETE;
+    }).length;
+    const pendingUploads = items.filter(function (item) {
+      return (
+        item.dataset.uploadState === UPLOAD_STATE_PENDING ||
+        item.dataset.uploadState === UPLOAD_STATE_UPLOADING
+      );
+    }).length;
+
     if (counter) {
-      counter.textContent = count > 0 ? count + " archivo(s)" : "";
+      if (count === 0) {
+        counter.textContent = "";
+      } else if (pendingUploads > 0) {
+        counter.textContent =
+          completedCount +
+          "/" +
+          count +
+          " archivo(s) listos · " +
+          pendingUploads +
+          " subiendo…";
+      } else {
+        counter.textContent = completedCount + " archivo(s) listos para analizar";
+      }
     }
     if (nextBtn) {
-      nextBtn.disabled = count === 0;
+      nextBtn.disabled = completedCount === 0 || pendingUploads > 0;
     }
   }
 
@@ -110,18 +149,24 @@
    * Request a SAS token for one file.
    */
   async function requestSas(sessionId, filename, contentType) {
-    const resp = await fetch("/api/sessions/" + sessionId + "/sas", {
+    const params = new URLSearchParams({ filename: filename });
+    const resp = await fetch("/api/sessions/" + sessionId + "/sas?" + params.toString(), {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         "X-CSRF-Token": getCsrfToken(),
       },
-      body: JSON.stringify({ filename: filename, content_type: contentType }),
     });
     if (!resp.ok) {
       throw new Error("No se pudo obtener la URL de subida (SAS).");
     }
-    return resp.json();
+    const body = await resp.json();
+    if (!(body.upload_url || body.sas_url) || !body.blob_path) {
+      throw new Error("La respuesta SAS no incluye la URL o la ruta del blob.");
+    }
+    return {
+      uploadUrl: body.upload_url || body.sas_url || "",
+      blobPath: body.blob_path || "",
+    };
   }
 
   /**
@@ -174,7 +219,7 @@
       body: JSON.stringify({
         filename: filename,
         blob_path: blobPath,
-        content_type: contentType,
+        mime_type: contentType,
         size_bytes: size,
       }),
     });
@@ -189,20 +234,29 @@
    */
   async function processFile(sessionId, file, fileItemEl) {
     const progressBar = fileItemEl.querySelector(".file-progress-bar");
+    fileItemEl.dataset.uploadState = UPLOAD_STATE_UPLOADING;
+    updateFileCount();
     try {
       const sas = await requestSas(sessionId, file.name, file.type);
-      await uploadToBlob(sas.sas_url, file, progressBar);
-      await registerFile(
+      await uploadToBlob(sas.uploadUrl, file, progressBar);
+      const registration = await registerFile(
         sessionId,
         file.name,
-        sas.blob_path,
+        sas.blobPath,
         file.type,
         file.size
       );
+      fileItemEl.dataset.uploadState = UPLOAD_STATE_COMPLETE;
+      fileItemEl.dataset.fileId = registration.file_id || fileItemEl.dataset.tempId;
+      fileItemEl.draggable = true;
+      bindDragStart(fileItemEl);
+      updateFileCount();
     } catch (err) {
       if (progressBar) {
         progressBar.classList.add("error");
       }
+      fileItemEl.dataset.uploadState = UPLOAD_STATE_ERROR;
+      updateFileCount();
       console.error("Upload failed for " + file.name + ":", err);
       throw err;
     }
@@ -214,6 +268,11 @@
   function handleFiles(files, sessionId) {
     const list = document.getElementById("file-list");
     if (!list) return;
+
+    const emptyState = list.querySelector(".empty-state");
+    if (emptyState) {
+      emptyState.remove();
+    }
 
     Array.from(files).forEach(function (file, idx) {
       const error = validateFile(file);
@@ -245,6 +304,11 @@
 
     const fileInput = dropzone.querySelector('input[type="file"]');
     const sessionId = dropzone.dataset.sessionId || "";
+
+    if (!sessionId) {
+      console.error("Upload session is missing; the upload page must create a session before file selection.");
+      return;
+    }
 
     dropzone.addEventListener("dragover", function (e) {
       e.preventDefault();
@@ -304,10 +368,8 @@
       });
     });
 
-    document.querySelectorAll(".file-item[draggable]").forEach(function (item) {
-      item.addEventListener("dragstart", function (e) {
-        e.dataTransfer.setData("text/plain", item.dataset.fileId);
-      });
+    document.querySelectorAll(".file-item[draggable='true']").forEach(function (item) {
+      bindDragStart(item);
     });
   }
 

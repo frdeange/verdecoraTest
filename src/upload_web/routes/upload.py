@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.shared.auth.entra import AuthenticatedUser
 from src.upload_web.middleware import get_upload_current_user
+from src.upload_web.services.upload_session import create_upload_session
 
 router = APIRouter(tags=["upload-web"])
 CurrentUser = Annotated[AuthenticatedUser, Depends(get_upload_current_user)]
@@ -67,6 +68,7 @@ async def dashboard(request: Request, current_user: CurrentUser) -> HTMLResponse
 @router.get("/upload", response_class=HTMLResponse, name="upload_page")
 @router.get("/uploads", response_class=HTMLResponse, include_in_schema=False)
 async def upload_page(request: Request, current_user: CurrentUser) -> HTMLResponse:
+    session = create_upload_session(user_oid=current_user.oid, user_name=current_user.name)
     return request.app.state.templates.TemplateResponse(
         request,
         "pages/upload.html",
@@ -74,6 +76,8 @@ async def upload_page(request: Request, current_user: CurrentUser) -> HTMLRespon
             request,
             current_user,
             page_title="Subir albarán · Verdecora Upload Web",
+            session_id=session.session_id,
+            files=session.files,
         ),
     )
 
