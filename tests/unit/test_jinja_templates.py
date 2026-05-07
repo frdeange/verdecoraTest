@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.upload_web.app import create_app
+from src.upload_web.services import upload_session
 
 
 def _auth_headers(name: str = "Parker Store") -> dict[str, str]:
@@ -32,6 +33,13 @@ def _auth_headers(name: str = "Parker Store") -> dict[str, str]:
         "X-MS-CLIENT-PRINCIPAL-NAME": name,
         "X-MS-CLIENT-PRINCIPAL-IDP": "aad",
     }
+
+
+@pytest.fixture(autouse=True)
+def _clear_upload_sessions() -> None:
+    upload_session.clear_upload_sessions()
+    yield
+    upload_session.clear_upload_sessions()
 
 
 @pytest.mark.unit
@@ -73,3 +81,21 @@ def test_public_landing_page_contains_login_cta() -> None:
     assert "Sistema de Gestión de Albaranes" in response.text
     assert "Iniciar sesión con Microsoft" in response.text
     assert "/.auth/login/aad?post_login_redirect_uri=%2Fdashboard" in response.text
+
+
+@pytest.mark.unit
+def test_upload_page_creates_session_and_binds_preflight_urls() -> None:
+    app = create_app()
+
+    with TestClient(app) as client:
+        response = client.get("/upload", headers=_auth_headers("Parker Flow"))
+
+    assert response.status_code == 200
+
+    sessions = upload_session.get_all_user_sessions("oid-123")
+    assert len(sessions) == 1
+    session_id = sessions[0].session_id
+
+    assert f'data-session-id="{session_id}"' in response.text
+    assert f'hx-post="/api/sessions/{session_id}/preflight"' in response.text
+    assert 'id="preflight-loading"' in response.text

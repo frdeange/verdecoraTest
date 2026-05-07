@@ -43,3 +43,8 @@
 - Upload Web and shared API dependencies now treat `X-MS-CLIENT-PRINCIPAL` as the canonical Easy Auth source, with fallback to `X-MS-CLIENT-PRINCIPAL-ID` + `X-MS-CLIENT-PRINCIPAL-NAME`, and only then the legacy `X-MS-TOKEN-AAD-ID-TOKEN`.
 - The Easy Auth client principal is base64 JSON; normalized claims should map the Entra `nameidentifier/objectidentifier` variants into `oid`, preserve `preferred_username`/email/name, and fold repeated role/group claims into `groups`.
 - Auth regression coverage now uses client-principal headers across Upload Web unit/e2e/load tests, while keeping one explicit legacy ID-token test for backward compatibility.
+
+### 2026-05-08T00:06:25.767+02:00 — Upload Web session-first flow repair
+- The upload page must create an `UploadSession` before the user selects files; `pages/upload.html` and the dropzone/button HTMX attributes depend on a concrete `session_id` and break when it renders empty.
+- The browser upload client must follow the backend contract exactly: request SAS with `POST /api/sessions/{session_id}/sas?filename=...`, use `upload_url` from the response, and register metadata with `mime_type`.
+- The analyze CTA should stay disabled until at least one file has finished SAS upload + backend registration, and the upload template must include the `#preflight-loading` HTMX indicator referenced by the button.
