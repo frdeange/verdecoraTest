@@ -20,10 +20,11 @@ async def test_readyz_returns_200(app_client: httpx.AsyncClient) -> None:
     assert response.json() == {"status": "ready"}
 
 
-async def test_home_redirects_unauthenticated(app_client: httpx.AsyncClient) -> None:
+async def test_home_shows_public_landing(app_client: httpx.AsyncClient) -> None:
     response = await app_client.get("/", follow_redirects=False)
 
-    assert response.status_code in {302, 401}
+    assert response.status_code == 200
+    assert "Sistema de Gestión de Albaranes" in response.text
 
 
 async def test_api_sessions_requires_auth(app_client: httpx.AsyncClient) -> None:
@@ -38,10 +39,19 @@ async def test_upload_page_requires_auth(app_client: httpx.AsyncClient) -> None:
     assert response.status_code in {302, 401}
 
 
-async def test_home_renders_for_authenticated_user(
+async def test_home_redirects_authenticated_user_to_dashboard(
     app_client: httpx.AsyncClient, auth_headers: dict[str, str]
 ) -> None:
-    response = await app_client.get("/", headers=auth_headers)
+    response = await app_client.get("/", headers=auth_headers, follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "/dashboard"
+
+
+async def test_dashboard_renders_for_authenticated_user(
+    app_client: httpx.AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    response = await app_client.get("/dashboard", headers=auth_headers)
 
     assert response.status_code == 200
     assert "Vasquez QA" in response.text

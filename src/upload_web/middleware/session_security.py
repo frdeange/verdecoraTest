@@ -31,7 +31,7 @@ SECURITY_HEADERS = {
     ),
 }
 EXEMPT_PATH_PREFIXES = ("/static", "/.auth")
-EXEMPT_PATHS = {"/healthz", "/readyz", "/logout"}
+EXEMPT_PATHS = {"/", "/login", "/healthz", "/readyz", "/logout"}
 
 
 class SessionSecurityError(ValueError):

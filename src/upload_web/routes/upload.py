@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from typing import Annotated, Any
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.shared.auth.entra import AuthenticatedUser
@@ -10,6 +11,7 @@ from src.upload_web.middleware import get_upload_current_user
 
 router = APIRouter(tags=["upload-web"])
 CurrentUser = Annotated[AuthenticatedUser, Depends(get_upload_current_user)]
+POST_LOGIN_REDIRECT_PATH = "/dashboard"
 
 
 def _build_template_context(
@@ -27,15 +29,37 @@ def _build_template_context(
     return context
 
 
+def _microsoft_login_url() -> str:
+    return f"/.auth/login/aad?{urlencode({'post_login_redirect_uri': POST_LOGIN_REDIRECT_PATH})}"
+
+
 @router.get("/", response_class=HTMLResponse, include_in_schema=False, name="index")
-async def index(request: Request, current_user: CurrentUser) -> HTMLResponse:
+@router.get("/login", response_class=HTMLResponse, include_in_schema=False, name="login")
+async def landing_page(request: Request) -> Response:
+    if request.headers.get("X-MS-TOKEN-AAD-ID-TOKEN") or getattr(request.state, "authenticated_user", None) is not None:
+        return RedirectResponse(url=POST_LOGIN_REDIRECT_PATH, status_code=307)
+
+    return request.app.state.templates.TemplateResponse(
+        request,
+        "pages/login.html",
+        {
+            "request": request,
+            "page_title": "Iniciar sesión · Verdecora Upload Web",
+            "login_url": _microsoft_login_url(),
+            "flash_messages": getattr(request.state, "flash_messages", []),
+        },
+    )
+
+
+@router.get("/dashboard", response_class=HTMLResponse, name="dashboard")
+async def dashboard(request: Request, current_user: CurrentUser) -> HTMLResponse:
     return request.app.state.templates.TemplateResponse(
         request,
         "pages/home.html",
         _build_template_context(
             request,
             current_user,
-            page_title="Inicio · Verdecora Upload Web",
+            page_title="Panel · Verdecora Upload Web",
         ),
     )
 

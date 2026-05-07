@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(20rem,1fr)] lg:items-center">
+  <article class="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200 sm:p-10">
+    <p class="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--vc-accent)]">Verdecora</p>
+    <h1 class="mt-4 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Sistema de Gestión de Albaranes</h1>
+    <p class="mt-5 max-w-2xl text-lg leading-8 text-slate-600">Inicia sesión para subir y gestionar tus albaranes.</p>
+    <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
+      <a href="{{ login_url }}" class="inline-flex min-h-14 items-center justify-center rounded-full bg-[var(--vc-primary)] px-8 text-lg font-semibold text-white shadow-lg shadow-teal-900/10 transition hover:brightness-105">Iniciar sesión con Microsoft</a>
+      <p class="text-sm text-slate-500">Acceso con tu cuenta corporativa de Microsoft Entra ID.</p>
+    </div>
+  </article>
+
+  <aside class="rounded-3xl bg-slate-50 p-8 shadow-sm ring-1 ring-slate-200 sm:p-10">
+    <div class="flex items-center gap-4">
+      <img src="{{ url_for('static', path='img/verdecora-logo.jpg') }}" alt="Verdecora" class="h-14 w-auto rounded-2xl object-cover shadow-sm">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--vc-accent)]">Recepción digital</p>
+        <p class="text-lg font-semibold text-slate-900">Portal interno de tienda</p>
+      </div>
+    </div>
+    <ul class="mt-6 space-y-4 text-sm leading-6 text-slate-600">
+      <li class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">Sube PDFs o fotos del albarán desde cualquier dispositivo de tienda.</li>
+      <li class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">Revisa el estado del procesamiento y la trazabilidad de cada documento.</li>
+      <li class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">Accede con seguridad mediante el inicio de sesión corporativo de Microsoft.</li>
+    </ul>
+  </aside>
+</section>
+{% endblock %}

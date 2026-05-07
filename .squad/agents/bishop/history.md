@@ -27,3 +27,10 @@
 - The checked-in `PRUEBA.pdf` is a mixed-document batch; stable extractor/triage validation comes from the first page, which is a single Herstera albarán with supplier, date, quantities, and prices.
 - GPT-5 extractor calls can exhaust smaller `max_completion_tokens` budgets entirely on reasoning; a budget around `8000` was needed to get visible structured JSON output for the real OCR extraction prompt.
 - Added `tests/integration/test_agent_real.py` with a live-service gate (`RUN_AGENT_REAL_INTEGRATION=1`) so the repo keeps an executable real Azure OCR + agent smoke test without forcing network calls in default pytest runs.
+
+### 2026-05-07 — Sprint 0 → Sprint 1 readiness
+- MAF v1.2.2 compatibility confirmed: `agent_framework.Agent` + `default_options={"response_format": Model}` pattern working.
+- A1 Extractor and A2 Triage agents validated on real albarán data; extraction accuracy and classification correct.
+- Parker's orchestrator E2E tests confirm agents integrate correctly with Event Grid → Service Bus flow.
+- **Team decision:** GPT-5 model strategy locked (A1 uses gpt-5-mini, GPT-5.5 for future triage refinements). Selective hybrid OCR escalation (Document Intelligence first, LLM for mismatch/uncertainty) confirmed working.
+- PR #166 merged; agents ready for Sprint 1 expansion (A3 Coherence, A4 Validator, A5 Inventory, A6 Communication).

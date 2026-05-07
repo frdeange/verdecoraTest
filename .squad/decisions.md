@@ -382,6 +382,66 @@
 - **What:** A1 Extractor (GPT-5.1), A2 Triage (rule-based MVP), A3 Coherence (GPT-5-mini), A4 Validator (GPT-5-mini), A5 Inventory (GPT-5-mini, `require_approval=always` on Post Purchase Receipt), A6 Communication (GPT-5-mini, all outbound). Deferred: A7 Reconciliation (MVP+1), A8 Learning (MVP+2).
 - **Why:** The PRD's 3-agent design bundled 5 distinct concerns (routing, coherence, communication, reconciliation, learning) into Agent 2 + the orchestrator. A truly agentic system separates them. Cost impact ≈ €0; complexity +25%; agentic value +200%.
 
+---
+
+## Inbox Entries (2026-05-04/05)
+
+**D-ASH-001 — MAF v1.0 PoC Patterns Validated**
+- **Author:** Ash (MAF Specialist)
+- **Date:** 2026-05-04
+- **PR:** #56
+- **What:** SequentialBuilder and HandoffBuilder from `agent-framework` v1.0 GA are validated for albarán processing. SequentialBuilder works for linear pipelines; HandoffBuilder for conditional routing. HITL via `handoffs=["user"]` pauses workflow. @tool decorator with Annotated params works. OpenTelemetry integrates cleanly.
+- **Recommendation for Sprint 1:** Use WorkflowBuilder (not Sequential/HandoffBuilder) for production—supports `Case`/`Default` edges with deterministic routing. Keep HandoffBuilder for dynamic edge cases. Use `CosmosCheckpointStorage` for durable HITL waits. Replace mock tools with `MCPStreamableHTTPTool`.
+- **Impact:** Unblocks Sprint 1 agent implementation with confirmed API patterns.
+
+**D-BISHOP-001 — MAF v1.2.2 upgrade compatibility**
+- **Date:** 2026-05-05
+- **What:** Standardize new MAF SDK usage on `agent_framework.Agent` + `default_options={"response_format": Model}` and import orchestration builders from `agent_framework.orchestrations`. After upgrade to MAF v1.2.2, `ChatAgent` is no longer exported from top level; structured output config is in `default_options`.
+- **Impact:** New agent code and future upgrades must follow this pattern to stay compatible with MAF v1.2.2+ and avoid test collection failures.
+
+**D-BRETT-001 — App Gateway + Easy Auth infrastructure**
+- **What:** Added dedicated `appgw-snet` (`10.10.6.0/24`) with NSG lockdown for Application Gateway v2. Added `infra/modules/appgw.bicep` for upload-web edge: Standard_v2 autoscale, HTTP→HTTPS redirect, `/healthz` probe, HTTPS backend to ACA internal FQDN, Key Vault-backed frontend TLS. Added `infra/modules/upload-web-auth.bicep` with Entra client parameters.
+- **Decision:** Keep ACA environment private and front upload-web with Application Gateway on dedicated subnet. Gate Easy Auth rollout behind explicit flag until `verdecora-upload-web-${environment}` container app exists.
+- **Why:** Preserves private-network-first architecture while letting Sprint 0 land edge and auth IaC ahead of app workload.
+
+**D-BRETT-002 — runners bootstrap decisions**
+- **Date:** 2026-05-04
+- **Issue:** #4 — VNet + self-hosted runners bootstrap
+- **Decisions:** (1) Use ACA Jobs, not ACA Apps, for runners (event-driven matches KEDA scaler). (2) Use dedicated internal ACA environment on `snet-runners` (isolates CI/CD blast radius). (3) Back runner PAT with Key Vault + user-assigned managed identity (avoids hardcoding). (4) Keep Key Vault temporarily reachable during Phase 0 only (bootstrap must resolve PAT before private endpoints). (5) Bootstrap verification uses manual ACA job start + GitHub runners API. (6) Treat ACA runners as private IaC/control-plane workers only (no Docker-in-Docker support).
+
+**D-BURKE-001 — BC MCP validation against CRONUS**
+- **Decisions captured:**
+  - (D-BURKE-BC-VALIDATION-001) Standard native BC MCP pages suffice for Sprint 1 read-side: `PAG30066`, `PAG30067`, `PAG30010`, `PAG30008`, `PAG30064`, `PAG30065`.
+  - (D-BURKE-BC-VALIDATION-002) Pin exact action names in production; treat semantic search as design-time discovery only (avoids noisy legacy/intercompany actions).
+  - (D-BURKE-BC-VALIDATION-003) Use parent-scoped sub-entity actions (`List_PurchaseOrderLinesOfPurchaseOrder_PAG30067`, etc.) for detail reads.
+  - (D-BURKE-BC-VALIDATION-004) Posted purchase receipts are canonical native proof artifact after receiving.
+  - (D-BURKE-BC-VALIDATION-005) Plan custom AL for warehouse receipts, item journals, or receipt-only posting (no native BC MCP coverage).
+- **Evidence:** Validation report in `docs/poc/bc-mcp-validation.md`; PoC schema in `src/poc/bc_mcp_poc/entity_schemas.py`; PoC read in `src/poc/bc_mcp_poc/test_bc_read.py`.
+
+**D-DALLAS-001 — Bicep foundation (Sprint 0)**
+- **What:** Implemented base Bicep modules for core infrastructure in `infra/modules` with subscription-scope `main.bicep` orchestrator. Standardized tags across all resources (`project=verdecora-albaranes`, `env`, `managed-by=bicep`). Set `publicNetworkAccess` to `Disabled` where supported for private endpoint readiness.
+- **Notes:** Service Bus topic `albaran-events` with subscriptions `albaran-recibido`, `albaran-validado`. Storage account naming uses hyphenless variant (`st-albaranes-{env}`) for Azure constraints. Storage immutability on `albaranes-raw` uses unlocked 30-day retention.
+
+**D-HICKS-001 — Store rework delivered**
+- **Date:** 2026-05-05
+- **Related:** #89, #91, PRs #127–128, Ripley sprint 0 review
+- **Decision:** Reworked rejected store heuristic and catalog branches onto clean branch from `origin/master` as `squad/89-91-store-rework`.
+- **Preserved:** Burke's canonical `Store` model, JSON-backed 27-store catalog, cached loader, BC seed dry-run, catalog validation tests. Bishop's address-detection heuristic (Unicode normalization, punctuation stripping, postal-code exact match, fuzzy city/street scoring, `StoreMatch` contract).
+- **Changed:** Removed hardcoded `VERDECORA_STORES` from `src/upload_web/services/store_detector.py`. Refactored detector to consume `src.models.store.Store` and `src.shared.stores.loader.load_stores()`. Added missing `src/upload_web/services/__init__.py` only.
+- **Validation:** `pytest tests/unit/test_store_catalog.py tests/unit/test_store_detector.py -q` and `ruff check` on store + detector paths passed.
+- **Delivery note:** GitHub write actions may fail under EMU auth; code rework and local validation complete in clean branch.
+
+**D-PARKER-001 — Upload Web scaffold decisions**
+- **Context:** Sprint 0 issue asked for `src/upload_web/` and `src/shared/auth/`; earlier proposal referenced `src/services/upload_web/` and `src/services/_shared/`.
+- **Decisions:** (1) Follow explicit issue contract for package locations. (2) Keep `hitl_webform` on bearer-token flow for now; start consuming shared claim extraction helpers there for incremental auth refactor. (3) Add `pydantic-settings` as runtime dependency; make Upload Web settings accept both issue names (`BLOB_ACCOUNT`, `COSMOS_URL`, `APP_INSIGHTS_CONNECTION_STRING`) and proposal/IaC names (`STORAGE_ACCOUNT_URL`, `COSMOS_ENDPOINT`, `APPLICATIONINSIGHTS_CONNECTION_STRING`).
+- **Why:** Keeps Sprint 0 aligned with issue wording, avoids larger directory migration, preserves compatibility with existing env names.
+
+**D-VASQUEZ-001 — upload-web smoke auth assumptions**
+- **Date:** 2026-05-05
+- **Issue:** #99 / UW-17
+- **Decision:** Treat upload web landing page (`/`) as Easy Auth protected in smoke coverage. Add placeholder authenticated `POST /api/sessions` route so auth checks exercise end-to-end.
+- **Why:** Requested smoke suite expects unauthenticated access to `/` to be rejected and `/api/sessions` to require auth. Scaffold had no session route and rendered `/` anonymously—minimal change keeps smoke coverage aligned with acceptance criteria.
+
 **D-R-021 — Triage Agent (A2) is rule-based at MVP**
 - **What:** A2 is a MAF agent with a deterministic `route_decision()` tool plus Cosmos-backed feature flags. LLM upgrade optional at MVP+1 once A8 produces supplier-reputation data.
 - **Why:** Routing-policy explainability outweighs sophistication at launch.
@@ -452,6 +512,234 @@
 pwsh -File C:\repos\verdecoraTest\.squad\scripts\create-backlog.ps1
 ```
 After execution, script produces `.squad/decisions/inbox/hicks-issue-map.json` (key → issue# mapping) for downstream automation.
+
+### 2026-05-04: MAF v1.0 PoC Patterns Validated
+**Author:** Ash (MAF Specialist)
+**Date:** 2026-05-04
+**PR:** #56
+**Issue:** #1
+
+SequentialBuilder and HandoffBuilder from `agent-framework` v1.0 GA are validated for our albarán processing pipeline. The PoC confirms:
+1. **SequentialBuilder** works for linear pipelines but has no conditional branching.
+2. **HandoffBuilder** works for conditional routing but depends on LLM prompt quality for decisions.
+3. **HITL** via `handoffs=["user"]` correctly pauses workflow for human review.
+4. **@tool decorator** with `Annotated` params and `approval_mode` works as documented.
+5. **OpenTelemetry** integrates cleanly with custom spans.
+
+**Recommendation for Sprint 1:**
+- Use **WorkflowBuilder** (not SequentialBuilder/HandoffBuilder) for the production pipeline. It supports `Case`/`Default` conditional edges with deterministic routing — better fit for business rules than LLM-driven handoff.
+- Keep HandoffBuilder pattern for dynamic edge cases (e.g., complex discrepancy triage).
+- Use `CosmosCheckpointStorage` for durable HITL waits (24h reminder, 48h escalation).
+- Replace mock tools with `MCPStreamableHTTPTool` pointing to real MCP servers.
+
+**Impact:** Unblocks Sprint 1 agent implementation with confirmed API patterns. PRD pseudocode corrections remain valid and are incorporated in the PoC.
+
+### 2026-05-07: Bishop — Agent Real OCR Test Decisions
+- For real OCR agent validation, use `prerequisites/PRUEBA.pdf` as the fallback fixture when no PDF exists under `data/` or `tests/fixtures/`; it is the checked-in real document sample currently available in the repo.
+- Gate the live Azure OCR + GPT integration test behind `RUN_AGENT_REAL_INTEGRATION=1` so default pytest runs stay offline-safe.
+- Limit the default OCR slice for `tests/integration/test_agent_real.py` to the first page of `PRUEBA.pdf`; the full PDF is a mixed-document batch, while page 1 is a single coherent albarán suitable for stable A1/A2 validation.
+- Budget `max_completion_tokens=8000` for GPT-5 extractor runs; smaller budgets were consumed entirely by GPT-5 reasoning tokens and returned empty visible content for structured JSON extraction.
+
+### 2026-05-05: Bishop — MAF v1.2.2 Upgrade Compatibility
+- **Decision:** Standardize new MAF SDK usage on `agent_framework.Agent` + `default_options={"response_format": Model}` and import orchestration builders from `agent_framework.orchestrations`.
+- **Why:** After upgrading to MAF v1.2.2, `ChatAgent` is no longer exported from the top-level package and structured output configuration is expected in `default_options`, not `response_format=`. The workflow event stream also returns `AgentResponse`, so terminal output handling must normalize `.text` / `.messages` consistently.
+- **Impact:** New agent code and future upgrades should follow this constructor/import pattern to stay compatible with MAF v1.2.2+ and avoid test collection failures.
+
+### 2026-05-04: Brett — App Gateway + Easy Auth
+**What changed:**
+- Added a dedicated `appgw-snet` (`10.10.6.0/24`) and locked NSG rules so Application Gateway v2 has its own subnet and only accepts Internet 80/443 plus GatewayManager maintenance traffic.
+- Added `infra/modules/appgw.bicep` for the upload-web edge: Standard_v2 autoscale, HTTP→HTTPS redirect, `/healthz` probe, HTTPS backend to the ACA internal FQDN, and Key Vault-backed frontend TLS via managed identity.
+- Added `infra/modules/upload-web-auth.bicep` plus `uploadWebEntraClientId`/group audience parameters in `infra/modules/main.bicep` so Easy Auth can be enabled once `verdecora-upload-web-${environment}` exists.
+
+**Decision:**
+- Keep the ACA environment private and front upload-web with Application Gateway on a dedicated subnet.
+- Gate Easy Auth rollout behind an explicit flag until the upload-web container app exists, while documenting the required manual Entra group creation (`verdecora-store-uploaders`) in `infra/README.md`.
+
+**Why:** This preserves the private-network-first architecture from the approved proposal while letting Sprint 0 land the edge and auth IaC safely ahead of the app workload. The manual Entra group step remains outside Bicep, so the deployment notes must carry that operational dependency.
+
+### 2026-05-04: Brett — Runners Bootstrap Decisions
+**Issue:** #4 — VNet + self-hosted runners bootstrap
+
+**Decisions captured:**
+1. **Use ACA Jobs, not ACA Apps, for GitHub Actions runners** — Rationale: the runner pool is event-driven and matches the `github-runner` KEDA scaler model.
+2. **Use a dedicated internal ACA managed environment on `snet-runners`** — Rationale: isolates CI/CD runner blast radius from the application ACA environment while satisfying the ADR private-network requirement.
+3. **Back the runner PAT with Key Vault and a user-assigned managed identity** — Rationale: avoids hard-coding the scaler secret in Bicep and keeps the bootstrap authentication path compatible with later hardening.
+4. **Keep Key Vault temporarily reachable during Phase 0 only** — Rationale: the runner job must resolve the PAT before private endpoints/private DNS are in place; the bootstrap guide explicitly requires removing this exception after cutover.
+5. **Bootstrap verification uses a manual ACA job start plus the GitHub runners API** — Rationale: this gives a deterministic runner-registration check before the team moves all later deploys to the self-hosted runner pool.
+6. **Treat ACA runners as private IaC/control-plane workers only** — Rationale: ACA jobs do not support Docker-in-Docker, so Docker-heavy builds remain out of scope for this runner pool.
+
+### 2026-05-04: Burke — BC MCP Validation Against CRONUS
+
+**D-BURKE-BC-VALIDATION-001 — Standard native BC MCP pages are sufficient for Sprint 1 read-side validation**
+- **Decision:** Use native BC MCP standard pages `PAG30066`, `PAG30067`, `PAG30010`, `PAG30008`, `PAG30064`, and `PAG30065` for purchase-order, purchase-line, vendor, item, and posted-purchase-receipt reads.
+- **Why:** Live CRONUS validation confirmed these actions are discoverable and readable with filtering, projection, ordering, pagination, and parent-scoped sub-entity patterns.
+
+**D-BURKE-BC-VALIDATION-002 — Pin exact action names instead of relying on semantic discovery at runtime**
+- **Decision:** Treat semantic search as design-time discovery only; production code should call pinned action names.
+- **Why:** Broad prompts such as `inventory` and `receipt` returned noisy legacy/intercompany/document actions alongside the relevant entities.
+
+**D-BURKE-BC-VALIDATION-003 — Use parent-scoped sub-entity actions for detail reads**
+- **Decision:** Use `List_PurchaseOrderLinesOfPurchaseOrder_PAG30067` and `List_PurchaseReceiptLinesOfPurchaseReceipt_PAG30065` for document-detail fetches.
+- **Why:** They worked cleanly in CRONUS once the parent id was known and provide the most direct document-centric read pattern for agents.
+
+**D-BURKE-BC-VALIDATION-004 — Posted purchase receipts remain the canonical native proof artifact**
+- **Decision:** Treat posted purchase receipts and posted purchase receipt lines as the native confirmation artifact after receiving.
+- **Why:** They are readable natively through MCP and match the intended downstream audit/confirmation use case.
+
+**D-BURKE-BC-VALIDATION-005 — Plan custom AL for warehouse receipts, item journals, or receipt-only posting**
+- **Decision:** Do not assume native BC MCP covers warehouse receipt creation/posting, item journal lines, or receipt-only purchase-order posting.
+- **Why:** This validation surfaced no native warehouse-receipt action, no native item-journal-line action, and only the `ReceiveAndInvoice_PurchaseOrders_PAG30066` bound action on purchase orders.
+
+**Evidence captured:** `docs/poc/bc-mcp-validation.md`, `src/poc/bc_mcp_poc/entity_schemas.py`, `src/poc/bc_mcp_poc/test_bc_read.py`
+
+### 2026-05-04: Dallas — Bicep Foundation (Sprint 0)
+
+**Decision summary:**
+- Implemented base Bicep modules for core infrastructure in `infra/modules` with a subscription-scope `main.bicep` orchestrator.
+- Standardized tags across all resources (`project=verdecora-albaranes`, `env`, `managed-by=bicep`) and set `publicNetworkAccess` to `Disabled` where supported to align with private endpoint readiness.
+- Storage account naming uses a hyphenless variant of `st-albaranes-{env}` to satisfy Azure naming constraints while preserving the naming convention intent.
+
+**Notes:**
+- Service Bus topic `albaran-events` includes subscriptions `albaran-recibido` and `albaran-validado`.
+- Storage immutability policy on `albaranes-raw` uses an unlocked 30-day retention as a baseline.
+
+### 2026-05-05: Hicks — Store Rework Delivered
+**Related:** #89, #91, PRs #127 and #128, Ripley sprint 0 review
+
+**Decision:** Reworked the rejected store heuristic and store catalog branches onto a clean branch from `origin/master` as `squad/89-91-store-rework`.
+
+**What was preserved:**
+- Burke's canonical `Store` model, JSON-backed 27-store catalog, cached loader, BC seed dry-run script, and catalog validation tests.
+- Bishop's address-detection heuristic: Unicode normalization, punctuation stripping, postal-code exact match, fuzzy city/street scoring, and the `StoreMatch` + `detect_store(extracted_address: str, stores: list[Store])` contract.
+
+**What changed in the rework:**
+- Removed the hardcoded `VERDECORA_STORES` list from `src/upload_web/services/store_detector.py`.
+- Refactored the detector to consume `src.models.store.Store` and `src.shared.stores.loader.load_stores()`.
+- Kept Parker's `src/upload_web/__init__.py` and `src/shared/__init__.py` unchanged; added `src/upload_web/services/__init__.py` only because it was missing on master.
+- Adapted detector tests to validate the canonical catalog IDs and shared-loader path.
+
+**Validation:** `python -m pytest tests/unit/test_store_catalog.py tests/unit/test_store_detector.py -q` + `python -m ruff check src/models/store.py src/shared/stores/ src/upload_web/services/store_detector.py`
+
+**Delivery note:** GitHub write actions may still fail under the current EMU authentication context, but the code rework and local validation are complete in the clean branch/worktree.
+
+### 2026-05-04: Parker — Upload Web Scaffold Decisions
+
+**Context:** Sprint 0 issue text asked for `src/upload_web/` and `src/shared/auth/`, while the earlier proposal referenced `src/services/upload_web/` and `src/services/_shared/`.
+
+**Decisions:**
+1. Follow the explicit issue contract for package locations: `src/upload_web/` for the new FastAPI app and `src/shared/auth/` for reusable Entra helpers.
+2. Keep `hitl_webform` on its current bearer-token validation flow for now, but start consuming shared claim extraction helpers there so the auth refactor lands incrementally without breaking HITL.
+3. Add `pydantic-settings` as a runtime dependency and make Upload Web settings accept both issue names (`BLOB_ACCOUNT`, `COSMOS_URL`, `APP_INSIGHTS_CONNECTION_STRING`) and existing proposal/IaC names (`STORAGE_ACCOUNT_URL`, `COSMOS_ENDPOINT`, `APPLICATIONINSIGHTS_CONNECTION_STRING`).
+
+**Why this matters:** This keeps Sprint 0 aligned with the requested issue wording, avoids a larger directory migration in the same branch, and preserves compatibility with the env names already present in the architecture proposal.
+
+### 2026-05-05: Ripley — PR #129 Review Verdict
+**PR:** #129 — `[Upload Web] Consolidated store catalog + detection heuristic (rework)`
+**Author:** Hicks (rework of rejected #127 / #128)
+**Branch:** `squad/89-91-store-rework` → `master`
+**Closes:** #89, #91
+**Verdict:** APPROVED + MERGED (squash, admin override)
+
+**Criteria check:**
+1. **Clean branch on master (no #85/MAF noise)** — ✅ PASS. Diff is 700 lines purely additive; no carry-over of `agent-framework>=1.2.2` noise or #127 remnants.
+2. **Burke's canonical `Store` + JSON + `load_stores()`** — ✅ PASS. `src/models/store.py` (Pydantic `Store`), `data/stores/verdecora-stores.json` (27 stores), `src/shared/stores/loader.py` with `lru_cache`.
+3. **Bishop's heuristic refactored to shared loader (no hardcoded `VERDECORA_STORES`)** — ✅ PASS. `src/upload_web/services/store_detector.py` imports from canonical sources. Algorithm preserved: postal exact, then fuzzy city+street with thresholds 0.85/0.5. Helper `detect_store_from_catalog()` added.
+4. **No conflicts with Parker's scaffold (#126)** — ✅ PASS. NO touch to `src/upload_web/__init__.py` or `src/shared/__init__.py`. Only creates `src/upload_web/services/__init__.py` (missing on master).
+5. **Tests** — ✅ PASS functionally. `tests/unit/test_store_catalog.py` (4 tests) + `tests/unit/test_store_detector.py` (6 tests). Hicks reports local `pytest -q` and `ruff` pass.
+
+**CI status — UNSTABLE but not blocking:** `lint-test-build` fails on `pip install` due to pre-existing master-wide breakage (agent-framework-azure-cosmos pin). Same as PR #126. Merged with admin override.
+
+**Decision:** Merge squash with admin. The agent-framework-azure-cosmos issue is managed separately. No blocker for Sprint 1.
+
+**Follow-ups (no blockers):**
+- `_STORE_CATALOG_PATH` in `loader.py` uses `parents[3]` — consider `importlib.resources` or env var for Sprint 1.
+- `test_store_detector.py` evaluates `STORES` at module level — prefer fixture in Sprint 1.
+- `scripts/seed_bc_stores.py` `--execute` is no-op; activate when BC MCP write is operative (Sprint 2+).
+
+### 2026-05-05: Ripley — Sprint 0 Review (4 PRs)
+**Scope:** PR #125 (Brett), PR #126 (Parker), PR #127 (Bishop), PR #128 (Burke)
+**Outcome:** 2 approved & merged, 2 request changes (rework delivered as #129)
+
+**PR #125 — App Gateway v2 + Easy Auth (Brett, #90 #94)** → **APPROVED + MERGED (2026-05-05T20:04:13Z, commit d9d7d2b)**
+
+Why: Subnet `appgw-snet` (10.10.6.0/24) with correct NSG. App Gateway Standard_v2, autoscale 0-10, HTTP→HTTPS, listener HTTPS + Key Vault cert, backend HTTPS to internal ACA FQDN, probe `/healthz`. Easy Auth with AAD provider, group enforcement, token store enabled. Feature flags `enableUploadWebAppGateway` and `enableUploadWebAuth` for phase-safe rollout. Prerequisite manual Entra group `verdecora-store-uploaders` documented in `infra/README.md`.
+
+**PR #126 — Upload Web Scaffold + Shared Auth (Parker, #88 #92 #93)** → **APPROVED + MERGED (2026-05-05T20:05:36Z, admin merge due to pre-existing master CI breakage)**
+
+Why: `src/upload_web/` with FastAPI app factory, `/healthz` `/readyz`, Jinja templates, static CSS/fonts. `src/shared/auth/` with `AuthenticatedUser`, `decode_jwt`, claim extractors, dependency `get_current_user`. `UploadWebSettings` with `pydantic-settings` + alias choices for both issue names and proposal/IaC names. `/mis-albaranes` and `/my-uploads` placeholder routes ready for Sprint 1. Tests scaffold.
+
+**PR #127 — Spike Store Detection Heuristic (Bishop, #89)** → **REQUEST CHANGES (no merge)**
+
+Issues: (1) CONFLICTING with master — based on `squad/85-maf-v122-upgrade` pre-merge, carries spuri ous noise. (2) Duplicates with PR #128 — declares own `Store` dataclass instead of consuming canonical catalog. (3) Conflicts with PR #126 (already merged).
+
+Good parts to preserve: Algorithm correct, normalization clean, tests good, signature injects catalog correctly. **Assigned to Hicks for rework.** Delivered as PR #129 merged.
+
+**PR #128 — Store Catalog + BC Seed (Burke, #91)** → **REQUEST CHANGES (no merge)**
+
+Issues: (1) CONFLICTING with master — stacked on #127, carries inherited noise. (2) Conflicts with #126 (already merged). (3) Misses architectural opportunity — includes detector.py without refactoring to consume own catalog.
+
+Good parts to preserve: `src/models/store.py` canonical, `data/stores/verdecora-stores.json` 27 stores, `src/shared/stores/loader.py` correct pattern, `scripts/seed_bc_stores.py` dry-run coherent with BC Location, `tests/unit/test_store_catalog.py` validates well. **Assigned to Hicks for consolidated rework.** Delivered as PR #129 merged.
+
+**Sprint 1 consequence:** #100 (Document Intelligence preflight) blocked until store detector + catalog were unified. Unblocked by PR #129.
+
+### 2026-05-05: Vasquez — Upload-Web Smoke Auth Assumptions
+**Issue:** #99 / UW-17
+
+**Decision:** Treat the upload web landing page (`/`) as Easy Auth protected in smoke coverage, and add a placeholder authenticated `POST /api/sessions` route so auth checks can be exercised end-to-end.
+
+**Why:** The requested smoke suite explicitly expects unauthenticated access to `/` to be rejected and `/api/sessions` to require auth. The existing scaffold had no session route and rendered `/` anonymously, so the minimal product change keeps smoke coverage aligned with the acceptance criteria.
+
+### 2026-05-07: Ripley — PR review batch (#165, #166, #167)
+**Scope:** 3 PRs covering orchestrator E2E, A1/A2 OCR tests, Event Grid trigger setup.
+**Outcome:** All 3 approved and merged. GitHub formal approvals blocked due to identity restrictions (author = personal identity frdeange, corporate identity has EMU restriction).
+
+**PR #165 — Orchestrator E2E integration test + fixes** → **MERGED (commit: squashed)**
+- Why: Fixes private-storage OCR path by sending document bytes instead of raw blob URLs. Updates agent construction to current Agent Framework signature. Adds gated live integration test.
+- Caveat: New raw Event Grid path inherits blob-path-to-`store_id` parsing assumption; hardening follow-up needed.
+
+**PR #166 — A1 + A2 real OCR tests** → **MERGED (commit: squashed)**
+- Why: Uses `DefaultAzureCredential`, avoids API keys. Uses `max_completion_tokens` without `temperature`. Gated behind `RUN_AGENT_REAL_INTEGRATION=1`.
+- Caveat: None beyond normal live-test portability.
+
+**PR #167 — Event Grid → Service Bus trigger setup** → **MERGED (commit: squashed)**
+- Why: No secrets introduced. Managed-identity architecture correctly aligned. Runtime notes document Event Grid/Service Bus flow.
+- Caveat: Documented runtime queue name (`albaran-incoming`) does not match IaC default (`extraccion-queue`); ops documentation reconciliation follow-up needed.
+
+**Follow-ups (no blockers):**
+- Harden blob-path-to-`store_id` parsing for raw Event Grid events
+- Reconcile queue name drift between Event Grid → Service Bus documentation and IaC defaults
+
+### 2026-05-07: Parker — Orchestrator E2E decisions
+**Scope:** Updated orchestrator OCR flow, queue deserialization, agent construction, integration test gating.
+**Outcome:** All implementation changes complete; live test gated by infrastructure availability.
+
+**Key changes:**
+- Orchestrator OCR flow now analyzes downloaded blob bytes via Document Intelligence base64 input instead of passing raw blob URL. Avoids failures when storage account is private.
+- Extended orchestrator queue deserialization to accept raw Event Grid BlobCreated payloads in addition to Flow 0 forwarded messages. Maps Event Grid metadata into `OrchestrationRequest` with stable `processing_id` from event id.
+- Normalized agent construction for Reconciliation/Learning agents to match current Agent Framework `Agent(...)` signature with GPT-5-safe defaults (`max_tokens` → `max_completion_tokens`).
+- Added live integration test gated by `RUN_LIVE_AZURE_TESTS=1`. On this runner, Service Bus data plane is IP-filtered, so test skips with explicit infrastructure reason instead of failing indistinctly.
+
+### 2026-05-07: Lambert — Security audit (GPS Demo Subscription)
+**Scope:** Azure exposure posture of `rg-verdecoratest-dev` in Sweden Central before E2E.
+**Outcome:** Public surface reduced to Azure Front Door + Upload Web Container App FQDN. Core resources locked down.
+
+**Audit results:**
+| Resource | Type | Status |
+|---|---|---|
+| `verdecora-ais-dev` | Azure AI Services | ✅ `publicNetworkAccess=Disabled`, `networkAcls.defaultAction=Deny` |
+| `verdecora-docintell-dev` | Document Intelligence | ✅ `publicNetworkAccess=Disabled` |
+| `cosmos-albaranes-dev` | Cosmos DB | ✅ `publicNetworkAccess=Disabled`, firewall IP rule removed |
+| `acralbaranesdev` | Azure Container Registry | ✅ `publicNetworkAccess=Disabled` |
+| `kv-albaranes-dev` | Key Vault | ✅ Already `publicNetworkAccess=Disabled`, `defaultAction=Deny` |
+| `sb-albaranes-dev` | Service Bus | ✅ `publicNetworkAccess=Disabled`, `trustedServiceAccessEnabled=true` for Event Grid delivery |
+| `stalbaranesdev` | Storage | ✅ Already `publicNetworkAccess=Disabled`, `defaultAction=Deny` |
+| `afd-verdecora-dev` | Azure Front Door | ⚠️ Public by design (intentional) |
+| `verdecora-upload-web-dev` | Azure Container App | ⚠️ External ingress enabled, public ACA FQDN (unchanged per instruction) |
+
+**Notes:**
+- Document Intelligence resource shape did not expose writable `networkAcls.defaultAction` but is still locked from public ingress.
+- Service Bus keeps trusted Microsoft services enabled for safe Event Grid delivery while public access remains disabled.
+- Upload Web Container App remains directly reachable on ACA hostname. For strict "Front Door + nothing else," next step is ACA ingress restrictions or private ingress + Front Door origin hardening.
 
 ## Governance
 
