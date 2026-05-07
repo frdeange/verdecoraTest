@@ -18,16 +18,23 @@ FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PATH="/opt/venv/bin:$PATH"
+    PATH="/opt/venv/bin:$PATH" \
+    PYTHONPATH="/app"
 
 WORKDIR /app
 
 RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin appuser
 
 COPY --from=builder /opt/venv /opt/venv
-COPY src/upload_web ./src/upload_web
+
+# Keep the package root and every src.* dependency used by upload_web so absolute imports resolve.
+COPY src/__init__.py ./src/__init__.py
+COPY src/config ./src/config
 COPY src/shared ./src/shared
 COPY src/models ./src/models
+COPY src/upload_web ./src/upload_web
+
+# Store detection reads the shared catalog from data/stores at runtime.
 COPY data/stores ./data/stores
 
 RUN chown -R appuser:appuser /app
