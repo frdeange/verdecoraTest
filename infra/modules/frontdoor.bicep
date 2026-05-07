@@ -50,7 +50,6 @@ resource wafPolicy 'Microsoft.Network/FrontDoorWebApplicationFirewallPolicies@20
         {
           ruleSetType: 'Microsoft_BotManagerRuleSet'
           ruleSetVersion: '1.1'
-          ruleSetAction: 'Block'
         }
       ]
     }
@@ -178,3 +177,4 @@ resource securityPolicy 'Microsoft.Cdn/profiles/securityPolicies@2024-09-01' = {
 output frontDoorEndpointHostname string = endpoint.properties.hostName
 output frontDoorProfileId string = frontDoorProfile.id
 output wafPolicyId string = wafPolicy.id
+output securityPolicyId string = securityPolicy.id
