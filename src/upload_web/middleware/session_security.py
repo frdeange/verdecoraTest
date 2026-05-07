@@ -12,9 +12,9 @@ from itsdangerous import BadSignature, URLSafeSerializer
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.shared.auth.entra import (
+    LEGACY_ID_TOKEN_HEADER,
     AuthenticatedUser,
     EntraAuthError,
-    LEGACY_ID_TOKEN_HEADER,
     build_authenticated_user_from_easy_auth_headers,
 )
 from src.upload_web.config import UploadWebSettings
