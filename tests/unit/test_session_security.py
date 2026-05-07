@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import json
 import re
 from datetime import UTC, datetime, timedelta
 
@@ -49,13 +51,34 @@ def _build_client() -> TestClient:
 
 def _auth_headers(expiry_offset_seconds: int = 3600) -> dict[str, str]:
     exp = int((datetime.now(UTC) + timedelta(seconds=expiry_offset_seconds)).timestamp())
+    principal = {
+        "auth_typ": "aad",
+        "claims": [
+            {
+                "typ": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
+                "val": "user-123",
+            },
+            {"typ": "name", "val": "Alice Upload"},
+            {"typ": "preferred_username", "val": "alice.upload@verdecora.example"},
+            {"typ": "groups", "val": "verdecora-store-uploaders"},
+            {"typ": "exp", "val": str(exp)},
+        ],
+        "name_typ": "name",
+        "role_typ": "roles",
+    }
+    encoded_principal = base64.b64encode(json.dumps(principal).encode("utf-8")).decode("utf-8")
+    return {
+        "X-MS-CLIENT-PRINCIPAL": encoded_principal,
+        "X-MS-CLIENT-PRINCIPAL-ID": "user-123",
+        "X-MS-CLIENT-PRINCIPAL-NAME": "Alice Upload",
+        "X-MS-CLIENT-PRINCIPAL-IDP": "aad",
+    }
+
+
+def _legacy_auth_headers(expiry_offset_seconds: int = 3600) -> dict[str, str]:
+    exp = int((datetime.now(UTC) + timedelta(seconds=expiry_offset_seconds)).timestamp())
     token = jwt.encode(
-        {
-            "oid": "user-123",
-            "name": "Alice Upload",
-            "groups": ["verdecora-store-uploaders"],
-            "exp": exp,
-        },
+        {"oid": "user-123", "name": "Alice Upload", "groups": ["verdecora-store-uploaders"], "exp": exp},
         "test-secret-with-at-least-thirty-two-bytes",
         algorithm="HS256",
     )
@@ -124,10 +147,14 @@ def test_security_headers_are_set() -> None:
     assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
     assert response.headers["Content-Security-Policy"] == (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: https://verdecora.es"
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self' https://login.microsoftonline.com"
     )
 
 
@@ -145,3 +172,30 @@ def test_logout_clears_session_cookie() -> None:
     assert "HttpOnly" in response.headers["set-cookie"]
     assert "SameSite=lax" in response.headers["set-cookie"]
     assert "Secure" in response.headers["set-cookie"]
+
+
+@pytest.mark.unit
+def test_direct_client_principal_headers_allow_authentication() -> None:
+    app = create_app(_settings())
+
+    with TestClient(app, base_url="https://testserver") as client:
+        response = client.get(
+            "/dashboard",
+            headers={
+                "X-MS-CLIENT-PRINCIPAL-ID": "direct-user-123",
+                "X-MS-CLIENT-PRINCIPAL-NAME": "Direct User",
+                "X-MS-CLIENT-PRINCIPAL-IDP": "aad",
+            },
+        )
+
+    assert response.status_code == 200
+    assert "Hola, Direct User" in response.text
+
+
+@pytest.mark.unit
+def test_legacy_id_token_remains_supported() -> None:
+    with _build_client() as client:
+        response = client.get("/dashboard", headers=_legacy_auth_headers())
+
+    assert response.status_code == 200
+    assert "Hola, Alice Upload" in response.text

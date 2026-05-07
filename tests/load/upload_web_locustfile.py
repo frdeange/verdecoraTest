@@ -14,6 +14,8 @@ Run:
 
 from __future__ import annotations
 
+import base64
+import json
 import os
 from uuid import uuid4
 
@@ -21,11 +23,35 @@ from locust import HttpUser, between, task
 
 UPLOAD_WEB_HOST = os.getenv("UPLOAD_WEB_HOST", "http://localhost:8000")
 AUTH_TOKEN = os.getenv("UPLOAD_WEB_AUTH_TOKEN", "Bearer test.jwt.token")
+CLIENT_PRINCIPAL = os.getenv(
+    "UPLOAD_WEB_CLIENT_PRINCIPAL",
+    base64.b64encode(
+        json.dumps(
+            {
+                "auth_typ": "aad",
+                "claims": [
+                    {
+                        "typ": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
+                        "val": "load-test-user",
+                    },
+                    {"typ": "name", "val": "Load Test User"},
+                    {"typ": "preferred_username", "val": "load.test@verdecora.example"},
+                    {"typ": "groups", "val": "verdecora-store-uploaders"},
+                ],
+                "name_typ": "name",
+                "role_typ": "roles",
+            }
+        ).encode("utf-8")
+    ).decode("utf-8"),
+)
 CSRF_TOKEN = os.getenv("UPLOAD_WEB_CSRF_TOKEN", "test-csrf-token")
 
 COMMON_HEADERS = {
     "Authorization": AUTH_TOKEN,
-    "X-MS-TOKEN-AAD-ID-TOKEN": AUTH_TOKEN.removeprefix("Bearer "),
+    "X-MS-CLIENT-PRINCIPAL": CLIENT_PRINCIPAL,
+    "X-MS-CLIENT-PRINCIPAL-ID": os.getenv("UPLOAD_WEB_CLIENT_PRINCIPAL_ID", "load-test-user"),
+    "X-MS-CLIENT-PRINCIPAL-NAME": os.getenv("UPLOAD_WEB_CLIENT_PRINCIPAL_NAME", "Load Test User"),
+    "X-MS-CLIENT-PRINCIPAL-IDP": "aad",
     "X-CSRF-Token": CSRF_TOKEN,
 }
 

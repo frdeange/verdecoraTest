@@ -1,26 +1,35 @@
 from __future__ import annotations
 
-import jwt
+import base64
+import json
 import pytest
 from fastapi.testclient import TestClient
 
 from src.upload_web.app import create_app
 
-TEST_SECRET = "test-secret-with-at-least-thirty-two-bytes"
-
-
 def _auth_headers(name: str = "Parker Store") -> dict[str, str]:
-    token = jwt.encode(
-        {
-            "oid": "oid-123",
-            "name": name,
-            "groups": ["verdecora-store-uploaders"],
-            "exp": 9999999999,
-        },
-        TEST_SECRET,
-        algorithm="HS256",
-    )
-    return {"X-MS-TOKEN-AAD-ID-TOKEN": token}
+    principal = {
+        "auth_typ": "aad",
+        "claims": [
+            {
+                "typ": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
+                "val": "oid-123",
+            },
+            {"typ": "name", "val": name},
+            {"typ": "preferred_username", "val": f"{name.lower().replace(' ', '.')}@verdecora.example"},
+            {"typ": "groups", "val": "verdecora-store-uploaders"},
+            {"typ": "exp", "val": "9999999999"},
+        ],
+        "name_typ": "name",
+        "role_typ": "roles",
+    }
+    encoded_principal = base64.b64encode(json.dumps(principal).encode("utf-8")).decode("utf-8")
+    return {
+        "X-MS-CLIENT-PRINCIPAL": encoded_principal,
+        "X-MS-CLIENT-PRINCIPAL-ID": "oid-123",
+        "X-MS-CLIENT-PRINCIPAL-NAME": name,
+        "X-MS-CLIENT-PRINCIPAL-IDP": "aad",
+    }
 
 
 @pytest.mark.unit
@@ -47,8 +56,8 @@ def test_home_page_contains_expected_elements() -> None:
     assert "Hola, Parker Dev" in response.text
     assert "Subir albarán" in response.text
     assert "Mis albaranes" in response.text
-    assert "tailwindcss.com" in response.text
-    assert "htmx.org" in response.text
+    assert "/static/css/tailwind.min.css" in response.text
+    assert "/static/js/htmx.min.js" in response.text
 
 
 @pytest.mark.unit

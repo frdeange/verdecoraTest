@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 from collections.abc import AsyncIterator, Callable
 from types import SimpleNamespace
@@ -7,7 +8,6 @@ from typing import Any
 from unittest.mock import AsyncMock
 
 import httpx
-import jwt
 import pytest
 import pytest_asyncio
 
@@ -266,15 +266,25 @@ async def app_client() -> AsyncIterator[httpx.AsyncClient]:
 
 @pytest.fixture()
 def auth_headers() -> dict[str, str]:
-    token = jwt.encode(
-        {
-            "oid": "oid-e2e-smoke-001",
-            "name": "Vasquez QA",
-            "preferred_username": "vasquez.qa@verdecora.example",
-            "groups": ["verdecora-store-uploaders"],
-            "exp": 9999999999,
-        },
-        "test-secret-with-at-least-thirty-two-bytes",
-        algorithm="HS256",
-    )
-    return {"X-MS-TOKEN-AAD-ID-TOKEN": token}
+    principal = {
+        "auth_typ": "aad",
+        "claims": [
+            {
+                "typ": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
+                "val": "oid-e2e-smoke-001",
+            },
+            {"typ": "name", "val": "Vasquez QA"},
+            {"typ": "preferred_username", "val": "vasquez.qa@verdecora.example"},
+            {"typ": "groups", "val": "verdecora-store-uploaders"},
+            {"typ": "exp", "val": "9999999999"},
+        ],
+        "name_typ": "name",
+        "role_typ": "roles",
+    }
+    encoded_principal = base64.b64encode(json.dumps(principal).encode("utf-8")).decode("utf-8")
+    return {
+        "X-MS-CLIENT-PRINCIPAL": encoded_principal,
+        "X-MS-CLIENT-PRINCIPAL-ID": "oid-e2e-smoke-001",
+        "X-MS-CLIENT-PRINCIPAL-NAME": "Vasquez QA",
+        "X-MS-CLIENT-PRINCIPAL-IDP": "aad",
+    }

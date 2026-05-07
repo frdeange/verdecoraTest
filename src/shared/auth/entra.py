@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import base64
+import binascii
+import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -24,6 +27,25 @@ class AuthenticatedUser(BaseModel):
 
 
 ClaimsMapping = Mapping[str, Any]
+CLIENT_PRINCIPAL_HEADER = "X-MS-CLIENT-PRINCIPAL"
+CLIENT_PRINCIPAL_ID_HEADER = "X-MS-CLIENT-PRINCIPAL-ID"
+CLIENT_PRINCIPAL_NAME_HEADER = "X-MS-CLIENT-PRINCIPAL-NAME"
+CLIENT_PRINCIPAL_IDP_HEADER = "X-MS-CLIENT-PRINCIPAL-IDP"
+LEGACY_ID_TOKEN_HEADER = "X-MS-TOKEN-AAD-ID-TOKEN"
+CLIENT_PRINCIPAL_CLAIM_MAP = {
+    "name": "name",
+    "preferred_username": "preferred_username",
+    "email": "email",
+    "upn": "upn",
+    "oid": "oid",
+    "http://schemas.microsoft.com/identity/claims/objectidentifier": "oid",
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier": "oid",
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": "email",
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name": "name",
+    "groups": "groups",
+    "roles": "groups",
+    "http://schemas.microsoft.com/ws/2008/06/identity/claims/role": "groups",
+}
 
 
 def decode_jwt(token: str) -> dict[str, Any]:
@@ -83,3 +105,106 @@ def build_authenticated_user(token: str) -> AuthenticatedUser:
         groups=extract_groups(claims),
         claims=claims,
     )
+
+
+def build_authenticated_user_from_easy_auth_headers(headers: ClaimsMapping) -> AuthenticatedUser:
+    user = _build_authenticated_user_from_client_principal_headers(headers)
+    if user is not None:
+        return user
+
+    legacy_id_token = _clean_header_value(headers.get(LEGACY_ID_TOKEN_HEADER))
+    if legacy_id_token is None:
+        raise EntraAuthError("Missing Easy Auth authentication headers.")
+
+    return build_authenticated_user(legacy_id_token)
+
+
+def _build_authenticated_user_from_client_principal_headers(headers: ClaimsMapping) -> AuthenticatedUser | None:
+    principal_name = _clean_header_value(headers.get(CLIENT_PRINCIPAL_NAME_HEADER))
+    principal_id = _clean_header_value(headers.get(CLIENT_PRINCIPAL_ID_HEADER))
+    principal_idp = _clean_header_value(headers.get(CLIENT_PRINCIPAL_IDP_HEADER))
+    client_principal = _clean_header_value(headers.get(CLIENT_PRINCIPAL_HEADER))
+
+    if client_principal is not None:
+        claims = decode_client_principal_claims(client_principal)
+        if principal_id is not None:
+            claims.setdefault("oid", principal_id)
+        if principal_name is not None:
+            claims.setdefault("name", principal_name)
+            claims.setdefault("preferred_username", principal_name)
+        if principal_idp is not None:
+            claims.setdefault("idp", principal_idp)
+        return AuthenticatedUser(
+            oid=extract_oid(claims),
+            name=extract_name(claims),
+            groups=extract_groups(claims),
+            claims=claims,
+        )
+
+    if principal_name is None or principal_id is None:
+        return None
+
+    claims: dict[str, Any] = {
+        "oid": principal_id,
+        "name": principal_name,
+        "preferred_username": principal_name,
+    }
+    if principal_idp is not None:
+        claims["idp"] = principal_idp
+
+    return AuthenticatedUser(oid=principal_id, name=principal_name, groups=(), claims=claims)
+
+
+def decode_client_principal_claims(encoded_principal: str) -> dict[str, Any]:
+    padded_principal = encoded_principal + "=" * (-len(encoded_principal) % 4)
+    try:
+        decoded_bytes = base64.b64decode(padded_principal.encode("utf-8"))
+        decoded_json = json.loads(decoded_bytes.decode("utf-8"))
+    except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise EntraAuthError("The Easy Auth client principal could not be decoded.") from exc
+
+    if not isinstance(decoded_json, dict):
+        raise EntraAuthError("The Easy Auth client principal did not contain a valid claim set.")
+
+    raw_claims = decoded_json.get("claims")
+    if not isinstance(raw_claims, list):
+        raise EntraAuthError("The Easy Auth client principal is missing claims.")
+
+    name_claim_type = _clean_header_value(decoded_json.get("name_typ"))
+    role_claim_type = _clean_header_value(decoded_json.get("role_typ"))
+    normalized_claims: dict[str, Any] = {}
+    groups: list[str] = []
+
+    for raw_claim in raw_claims:
+        if not isinstance(raw_claim, dict):
+            continue
+        claim_type = _clean_header_value(raw_claim.get("typ"))
+        claim_value = _clean_header_value(raw_claim.get("val"))
+        if claim_type is None or claim_value is None:
+            continue
+
+        if claim_type == name_claim_type and "name" not in normalized_claims:
+            normalized_claims["name"] = claim_value
+
+        mapped_claim_name = CLIENT_PRINCIPAL_CLAIM_MAP.get(claim_type)
+        if mapped_claim_name == "groups" or claim_type == role_claim_type:
+            groups.append(claim_value)
+            continue
+        if mapped_claim_name is not None and mapped_claim_name not in normalized_claims:
+            normalized_claims[mapped_claim_name] = claim_value
+
+    if groups:
+        normalized_claims["groups"] = groups
+
+    auth_type = _clean_header_value(decoded_json.get("auth_typ"))
+    if auth_type is not None:
+        normalized_claims["auth_typ"] = auth_type
+
+    return normalized_claims
+
+
+def _clean_header_value(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    cleaned_value = value.strip()
+    return cleaned_value or None
