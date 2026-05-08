@@ -24,3 +24,9 @@
 - End-to-end smoke test succeeded: uploaded a PDF to albaranes-raw and observed albaran-incoming active message count increase from 0 to 1. Temporary Storage public access/CIDR allowlist and Storage Blob Data Contributor were granted only for the smoke test and then reverted.
 - Completed issue #171 ACR rollback in IaC + runtime: `acralbaranesdev` moved from Premium/private to Standard/public, `buildpool-dev` agent pool was removed, and the ACR private endpoint / `privatelink.azurecr.io` DNS assets were deleted.
 - Updated `build-deploy.yml` so all five `az acr build` invocations use the registry directly without `--agent-pool`; Container Apps keep pulling through managed identity + `AcrPull`.
+
+## 2026-05-08
+- Issue #186: updated IaC so upload-web no longer targets the shared internal ACA environment. `upload-web-app.bicep` now creates its own external managed environment (`acae-upload-web-${environment}`) with VNet integration through a dedicated delegated subnet.
+- Added `snet-upload-web` (`10.10.6.0/23`) plus `nsg-upload-web-albaranes-${environment}` in `network.bicep`; this matches ACA custom-VNet sizing requirements without overlapping the existing subnet plan.
+- Switched Front Door origin wiring to consume the upload app FQDN directly and made Private Link optional in `frontdoor.bicep`, because this flow now uses an external ACA origin instead of an internal-only backend.
+- Kept Storage private and added parameterized Blob CORS origins (`uploadWebBlobCorsAllowedOrigins`) so browser uploads can be enabled for the exact Front Door/custom domain without introducing a dependency cycle on the generated Azure Front Door hostname.

@@ -6,8 +6,11 @@ param environment string
 @description('Azure region for Container Apps resources.')
 param location string
 
-@description('Existing Container Apps managed environment resource id used by upload-web.')
-param managedEnvironmentId string
+@description('Subnet resource ID delegated to the upload-web Container Apps environment.')
+param infrastructureSubnetId string
+
+@description('Name of the Log Analytics workspace used by the upload-web Container Apps environment.')
+param logAnalyticsWorkspaceName string = 'log-albaranes-${environment}'
 
 @description('Azure Container Registry login server used for the upload-web image.')
 param acrLoginServer string
@@ -30,6 +33,7 @@ var tags = {
   service: 'upload-web'
   'managed-by': 'bicep'
 }
+var managedEnvironmentName = 'acae-upload-web-${environment}'
 var resolvedUploadWebImage = empty(uploadWebImage) ? '${acrLoginServer}/verdecora-upload-web:latest' : uploadWebImage
 var docIntellEndpoint = 'https://verdecora-docintell-${environment}.cognitiveservices.azure.com/'
 var keyVaultUrl = 'https://kv-albaranes-${environment}.vault.azure.net/'
@@ -37,6 +41,35 @@ var rawBlobContainerName = 'albaranes-raw'
 var serviceBusFullyQualifiedNamespace = 'sb-albaranes-${environment}.servicebus.windows.net'
 var serviceBusTopicName = 'albaran-events'
 var uploadSessionsContainerName = 'upload-sessions'
+
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
+  name: logAnalyticsWorkspaceName
+}
+
+resource managedEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
+  name: managedEnvironmentName
+  location: location
+  tags: tags
+  properties: {
+    appLogsConfiguration: {
+      destination: 'log-analytics'
+      logAnalyticsConfiguration: {
+        customerId: logAnalytics.properties.customerId
+        sharedKey: logAnalytics.listKeys().primarySharedKey
+      }
+    }
+    vnetConfiguration: {
+      infrastructureSubnetId: infrastructureSubnetId
+      internal: false
+    }
+    workloadProfiles: [
+      {
+        name: 'Consumption'
+        workloadProfileType: 'Consumption'
+      }
+    ]
+  }
+}
 
 resource uploadWebApp 'Microsoft.App/containerApps@2025-01-01' = {
   name: 'verdecora-upload-web-${environment}'
@@ -46,7 +79,7 @@ resource uploadWebApp 'Microsoft.App/containerApps@2025-01-01' = {
     type: 'SystemAssigned'
   }
   properties: {
-    environmentId: managedEnvironmentId
+    environmentId: managedEnvironment.id
     configuration: {
       activeRevisionsMode: 'Single'
       registries: [
@@ -56,7 +89,7 @@ resource uploadWebApp 'Microsoft.App/containerApps@2025-01-01' = {
         }
       ]
       ingress: {
-        external: false // Internal — only accessible via Front Door Private Link
+        external: true
         allowInsecure: false
         targetPort: 8000
         transport: 'Auto'
@@ -137,8 +170,17 @@ resource uploadWebApp 'Microsoft.App/containerApps@2025-01-01' = {
 @description('Upload-web container app id.')
 output uploadWebAppId string = uploadWebApp.id
 
+@description('Upload-web managed environment id.')
+output managedEnvironmentId string = managedEnvironment.id
+
+@description('Upload-web managed environment default domain.')
+output managedEnvironmentDefaultDomain string = managedEnvironment.properties.defaultDomain
+
 @description('Upload-web container app name.')
 output uploadWebAppName string = uploadWebApp.name
+
+@description('Upload-web public FQDN.')
+output uploadWebFqdn string = uploadWebApp.properties.configuration.ingress.fqdn
 
 @description('Upload-web managed identity principal id.')
 output uploadWebPrincipalId string = uploadWebApp.identity.principalId

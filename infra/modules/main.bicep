@@ -39,6 +39,9 @@ param uploadWebAllowedAudiences array = []
 @description('Optional Microsoft Entra group object ids allowed to access upload-web.')
 param uploadWebAllowedGroupObjectIds array = []
 
+@description('Exact origins allowed to call Blob CORS for upload-web browser uploads (for example the Front Door custom domain).')
+param uploadWebBlobCorsAllowedOrigins array = []
+
 var resourceGroupName = 'rg-verdecoratest-${environment}'
 var storageAccountUrl = 'https://${storage.outputs.storageAccountName}.blob.${az.environment().suffixes.storage}/'
 
@@ -93,6 +96,7 @@ module storage './storage.bicep' = {
   params: {
     environment: environment
     location: location
+    blobCorsAllowedOrigins: uploadWebBlobCorsAllowedOrigins
   }
   dependsOn: [
     rg
@@ -275,7 +279,7 @@ module uploadWebApp './upload-web-app.bicep' = if (enableUploadWeb) {
   params: {
     environment: environment
     location: location
-    managedEnvironmentId: containerApps.outputs.managedEnvironmentId
+    infrastructureSubnetId: network.outputs.subnetUploadWebId
     acrLoginServer: acr.outputs.acrLoginServer
     storageAccountUrl: storageAccountUrl
     cosmosEndpoint: cosmos.outputs.cosmosEndpoint
@@ -285,20 +289,14 @@ module uploadWebApp './upload-web-app.bicep' = if (enableUploadWeb) {
 }
 
 var uploadWebAppName = 'verdecora-upload-web-${environment}'
-var uploadWebBackendFqdn = '${uploadWebAppName}.internal.${containerApps.outputs.managedEnvironmentDefaultDomain}'
 
 module frontDoor './frontdoor.bicep' = if (enableUploadWeb) {
   name: 'frontDoor'
   scope: az.resourceGroup(resourceGroupName)
   params: {
     environment: environment
-    backendFqdn: uploadWebBackendFqdn
-    containerAppEnvironmentId: containerApps.outputs.managedEnvironmentId
+    backendFqdn: enableUploadWeb ? uploadWebApp.outputs.uploadWebFqdn : ''
   }
-  dependsOn: [
-    rg
-    uploadWebApp
-  ]
 }
 
 module uploadWebAuth './upload-web-auth.bicep' = if (enableUploadWebAuth && !empty(uploadWebEntraClientId)) {
