@@ -1,0 +1,8 @@
+# 2026-05-08 — Upload Web MI RBAC + env var remediation
+
+- Confirmed `verdecora-upload-web-dev` runtime drift: the ACA only had `STORAGE_ACCOUNT_URL`, `RAW_BLOB_CONTAINER`, and `UPLOAD_SESSIONS_CONTAINER` configured, so Document Intelligence preflight, Service Bus publish, Cosmos endpoint wiring, Key Vault URL, tenant ID, and Application Insights connection string were absent at runtime.
+- Updated `infra/modules/identity.bicep` so the Upload Web system-assigned MI receives the missing least-privilege access on Document Intelligence (`Cognitive Services User`), Key Vault (`Key Vault Secrets User`), Cosmos SQL RBAC (`Cosmos DB Built-in Data Contributor`), and Service Bus (`Azure Service Bus Data Sender`).
+- Corrected a tightly-coupled IaC bug in `identity.bicep`: the shared `serviceBusDataSenderRoleDefinitionId` constant pointed to `Key Vault Secrets Officer` instead of `Azure Service Bus Data Sender`. This would have produced wrong sender assignments for every workload using that helper.
+- Updated `infra/modules/upload-web-app.bicep` to codify the Upload Web runtime env vars required by `src/upload_web/config.py`, including `DOCINTELL_ENDPOINT`, `SERVICEBUS_FQ_NAMESPACE`, `SERVICEBUS_TOPIC`, `KEY_VAULT_URL`, `AZURE_TENANT_ID`, the blob container names, and the correctly named `APPLICATIONINSIGHTS_CONNECTION_STRING`.
+- Applied the missing RBAC assignments immediately in Azure for `verdecora-upload-web-dev` and updated the live ACA env vars so testing is unblocked before the PR merges.
+- Kept the change additive inside `identity.bicep` and `upload-web-app.bicep` to minimize overlap with Dallas's broader networking/front door work.

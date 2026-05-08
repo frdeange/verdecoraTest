@@ -53,3 +53,9 @@
 - Upload Web templates must use literal relative paths for internal navigation/HTMX (`/dashboard`, `/upload`, `/mis-albaranes`, `/upload/{session_id}/status`, etc.); `url_for()` in Jinja can emit the ACA hostname and break Front Door cookie scope.
 - The only logout handler should be the auth route that clears the upload session cookie and redirects to `/.auth/logout?post_logout_redirect_uri=/`; placeholder `/logout` redirects are not acceptable behind Front Door.
 - `src/upload_web/static/js/upload.js` already follows the required pattern: all browser API calls stay relative under `/api/sessions/...`, so Front Door compatibility there is a verification point, not a new code path.
+
+### 2026-05-08T00:58:18.381+02:00 — Upload Web real storage config + CSP
+- `src/upload_web/config.py` expects `STORAGE_ACCOUNT_URL` (alias `BLOB_ACCOUNT`), `RAW_BLOB_CONTAINER`, and `UPLOAD_SESSIONS_CONTAINER` for blob upload configuration; there is no dedicated `STORAGE_ACCOUNT_NAME` env consumed by Upload Web.
+- `src/upload_web/services/blob_sas.py` and `src/upload_web/services/upload_session.py` both call `BlobServiceClient(...).get_user_delegation_key(...)`, so the ACA managed identity needs Blob delegation capability in addition to the blob container config.
+- Azure Container App `verdecora-upload-web-dev` was missing explicit storage env vars; configured it with `https://stalbaranesdev.blob.core.windows.net`, `albaranes-raw`, and `upload-sessions`, and ensured the system-assigned identity has `Storage Blob Data Contributor` plus `Storage Blob Delegator` on `stalbaranesdev`.
+- Upload Web CSP now needs `connect-src 'self' https://*.blob.core.windows.net` so direct browser SAS uploads to Azure Blob Storage are allowed.
