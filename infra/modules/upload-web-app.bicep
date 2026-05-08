@@ -31,6 +31,12 @@ var tags = {
   'managed-by': 'bicep'
 }
 var resolvedUploadWebImage = empty(uploadWebImage) ? '${acrLoginServer}/verdecora-upload-web:latest' : uploadWebImage
+var docIntellEndpoint = 'https://verdecora-docintell-${environment}.cognitiveservices.azure.com/'
+var keyVaultUrl = 'https://kv-albaranes-${environment}.vault.azure.net/'
+var rawBlobContainerName = 'albaranes-raw'
+var serviceBusFullyQualifiedNamespace = 'sb-albaranes-${environment}.servicebus.windows.net'
+var serviceBusTopicName = 'albaran-events'
+var uploadSessionsContainerName = 'upload-sessions'
 
 resource uploadWebApp 'Microsoft.App/containerApps@2025-01-01' = {
   name: 'verdecora-upload-web-${environment}'
@@ -67,11 +73,39 @@ resource uploadWebApp 'Microsoft.App/containerApps@2025-01-01' = {
               value: storageAccountUrl
             }
             {
+              name: 'RAW_BLOB_CONTAINER'
+              value: rawBlobContainerName
+            }
+            {
+              name: 'UPLOAD_SESSIONS_CONTAINER'
+              value: uploadSessionsContainerName
+            }
+            {
               name: 'COSMOS_ENDPOINT'
               value: cosmosEndpoint
             }
             {
-              name: 'APPINSIGHTS_CONNECTION_STRING'
+              name: 'DOCINTELL_ENDPOINT'
+              value: docIntellEndpoint
+            }
+            {
+              name: 'SERVICEBUS_FQ_NAMESPACE'
+              value: serviceBusFullyQualifiedNamespace
+            }
+            {
+              name: 'SERVICEBUS_TOPIC'
+              value: serviceBusTopicName
+            }
+            {
+              name: 'KEY_VAULT_URL'
+              value: keyVaultUrl
+            }
+            {
+              name: 'AZURE_TENANT_ID'
+              value: subscription().tenantId
+            }
+            {
+              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
               value: applicationInsightsConnectionString
             }
           ]

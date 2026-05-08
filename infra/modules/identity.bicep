@@ -40,7 +40,7 @@ param escalationTimerPrincipalId string = ''
 param uploadWebPrincipalId string = ''
 
 var cosmosBuiltInDataContributorRoleDefinitionId = '00000000-0000-0000-0000-000000000002'
-var serviceBusDataSenderRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')
+var serviceBusDataSenderRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '69a216fc-b8fb-44d8-bc22-1f3c2cd27a39')
 var serviceBusDataReceiverRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4f6d3b9b-027b-4f4c-9142-0e5a2a2247e0')
 var storageBlobDataReaderRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')
 var storageBlobDataContributorRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
@@ -361,6 +361,36 @@ resource uploadWebSystemAssignedCosmosRoleAssignment 'Microsoft.DocumentDB/datab
     principalId: uploadWebPrincipalId
     roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosBuiltInDataContributorRoleDefinitionId}'
     scope: cosmosAccount.id
+  }
+}
+
+resource uploadWebSystemAssignedServiceBusSenderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(uploadWebPrincipalId)) {
+  name: guid(serviceBusNamespace.id, uploadWebPrincipalId, serviceBusDataSenderRoleDefinitionId, 'system')
+  scope: serviceBusNamespace
+  properties: {
+    principalId: uploadWebPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataSenderRoleDefinitionId
+  }
+}
+
+resource uploadWebSystemAssignedDocIntellRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(uploadWebPrincipalId) && !empty(docIntellAccountName)) {
+  name: guid(docIntellAccount.id, uploadWebPrincipalId, cognitiveServicesUserRoleDefinitionId, 'system')
+  scope: docIntellAccount
+  properties: {
+    principalId: uploadWebPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: cognitiveServicesUserRoleDefinitionId
+  }
+}
+
+resource uploadWebSystemAssignedKeyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(uploadWebPrincipalId) && !empty(keyVaultName)) {
+  name: guid(keyVault.id, uploadWebPrincipalId, keyVaultSecretsUserRoleDefinitionId, 'system')
+  scope: keyVault
+  properties: {
+    principalId: uploadWebPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: keyVaultSecretsUserRoleDefinitionId
   }
 }
 
