@@ -26,6 +26,11 @@
 - Wired Upload Web to use middleware-backed auth/session state, moved logout to `src/upload_web/routes/auth.py`, and redirect logout through Easy Auth after clearing the app cookie.
 - Updated `src/upload_web/templates/base.html` and `src/upload_web/static/css/verdecora.css` so the logout control is highly visible and HTMX requests automatically send the server-rendered CSRF token.
 - Added `tests/unit/test_session_security.py` and extended dependency config (`itsdangerous`) to cover idle timeout, CSRF, headers, and logout cookie clearing.
+
+### 2026-05-08 — Issue #185 upload-web MI RBAC + env repair
+- `verdecora-upload-web-dev` was missing live ACA env vars beyond blob storage, so Upload Web had no runtime wiring for Document Intelligence preflight, Service Bus publish, Cosmos endpoint access, Key Vault URL, tenant ID, or Application Insights telemetry.
+- Updated `infra/modules/identity.bicep` so Upload Web gets `Cognitive Services User`, `Key Vault Secrets User`, `Cosmos DB Built-in Data Contributor`, and `Azure Service Bus Data Sender`; also corrected the shared Service Bus sender role GUID, which had mistakenly pointed at `Key Vault Secrets Officer`.
+- Updated `infra/modules/upload-web-app.bicep` to codify the required Upload Web env vars (`DOCINTELL_ENDPOINT`, `SERVICEBUS_FQ_NAMESPACE`, `SERVICEBUS_TOPIC`, `KEY_VAULT_URL`, `AZURE_TENANT_ID`, `APPLICATIONINSIGHTS_CONNECTION_STRING`, plus the blob container names) and applied the missing roles/env vars directly in Azure so dev testing is unblocked immediately.
 ## Decisions (Team Integration — 2026-05-07)
 
 ### 2026-05-07 — Merged from decisions/inbox/lambert-security-audit.md
