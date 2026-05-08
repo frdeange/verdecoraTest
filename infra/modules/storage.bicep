@@ -6,6 +6,9 @@ param environment string
 @description('Azure region for Storage resources.')
 param location string
 
+@description('Exact origins allowed to call Blob service CORS. Pass the Front Door/custom-domain origins explicitly because the default azurefd.net hostname is generated at deploy time.')
+param blobCorsAllowedOrigins array = []
+
 var tags = {
   project: 'verdecora-albaranes'
   env: environment
@@ -41,6 +44,25 @@ resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01'
   name: '${storageAccount.name}/default'
   properties: {
     isVersioningEnabled: true
+    cors: {
+      corsRules: length(blobCorsAllowedOrigins) == 0 ? [] : [
+        {
+          allowedOrigins: blobCorsAllowedOrigins
+          allowedMethods: [
+            'PUT'
+          ]
+          allowedHeaders: [
+            '*'
+          ]
+          exposedHeaders: [
+            'ETag'
+            'x-ms-request-id'
+            'x-ms-version'
+          ]
+          maxAgeInSeconds: 3600
+        }
+      ]
+    }
   }
 }
 

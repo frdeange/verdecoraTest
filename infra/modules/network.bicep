@@ -47,6 +47,12 @@ resource nsgEgress 'Microsoft.Network/networkSecurityGroups@2023-04-01' = {
   tags: tags
 }
 
+resource nsgUploadWeb 'Microsoft.Network/networkSecurityGroups@2023-04-01' = {
+  name: 'nsg-upload-web-albaranes-${environment}'
+  location: location
+  tags: tags
+}
+
 resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
   name: vnetName
   location: location
@@ -120,6 +126,23 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
           }
         }
       }
+      {
+        name: 'snet-upload-web'
+        properties: {
+          addressPrefix: '10.10.6.0/23'
+          networkSecurityGroup: {
+            id: nsgUploadWeb.id
+          }
+          delegations: [
+            {
+              name: 'acaDelegation'
+              properties: {
+                serviceName: 'Microsoft.App/environments'
+              }
+            }
+          ]
+        }
+      }
     ]
   }
 }
@@ -142,6 +165,9 @@ output subnetRunnersId string = vnet.properties.subnets[3].id
 @description('Egress subnet id.')
 output subnetEgressId string = vnet.properties.subnets[4].id
 
+@description('Upload-web ACA environment subnet id.')
+output subnetUploadWebId string = vnet.properties.subnets[5].id
+
 @description('ACA NSG id.')
 output nsgAcaId string = nsgAca.id
 
@@ -156,3 +182,6 @@ output nsgRunnersId string = nsgRunners.id
 
 @description('Egress NSG id.')
 output nsgEgressId string = nsgEgress.id
+
+@description('Upload-web ACA environment NSG id.')
+output nsgUploadWebId string = nsgUploadWeb.id
